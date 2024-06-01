@@ -9,3 +9,5 @@ function sp_res(model::TemkinApprox,p)
     Kp = K*p
     return M*(log1p(Kp) + θ*(2*Kp + 1)/(2*(Kp+1)*(Kp+1)))
 end
+
+export TemkinApprox

@@ -78,3 +78,5 @@ Tables.getcolumn(m::AbsorbedIsothermData, ::Type{T}, col::Int, nm::Symbol) where
 
 
 Tables.columnnames(table) = (table.x_label,table.y_label)
+
+export AbsorbedIsothermData, isotherm_data

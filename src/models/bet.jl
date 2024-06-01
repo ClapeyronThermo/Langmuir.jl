@@ -11,3 +11,5 @@ function sp_res(model::BrunauerEmmettTeller,p)
     Kap = Ka*p
     return M*log1p(Kap/(1 - Kap))
 end
+
+export BET

@@ -1,4 +1,4 @@
-function Δπ!(Δπ, x, p, models)
+function fast_ias_loop!(models,η)
     #x::Vector{Float64}, 
     #p::Vector{Float64},
     #aim::Vector{<:AdsIsoTModel})
@@ -11,28 +11,52 @@ function Δπ!(Δπ, x, p, models)
     return Δπ
 end
 
-function iast_x0(models,p)
-    #langmuir approximation.
-    #if we suppose all models are langmuir, then you can obtain an analytical 
-    #solution to the iast problem.
-    n = length(p)
-    M̃ = sum(saturated_loading.(models)) / n # high pressure loading, mean
-    K̃ = henry_coefficient.(models) / M̃  # Henry 
-    x_guess = K̃ .* p
-    x_guess ./= (1 + dot(K̃, p))
-    x_guess ./= sum(x_guess)
-    return x_guess[1:end-1]
+function iast_Π0(models,p,y,x0)
+    if x0 === nothing
+        K_henry = henry_coefficient.(models)
+        K_average = dot(K_henry,y)
+        Π0 = zero(eltype(K_average))*p
+        #Mangano et al. 2015, initial guess (eq. 16)
+        for i in 1:length(y)
+            model_i = models[i]
+            p0i = P*K_average/K_henry[i]
+            Π0 = min(Π0,sp_res(model_i, p0i))
+        end
+        return Π0
+    else
+        #xi*loading(mi,Π0) = py
+
+    end
 end
 
-function iast(models,p)
+function iast(models,p,y;x0 = nothing,ss_iters = 3*length(y),fastias_iters = 100)
     n = length(p)
-    x0 = iast_x0(models,p)
-    _Δπ!(Δπ, x) = Δπ!(Δπ, FractionVector(x), p, models)
-    res = nlsolve(_Δπ!, x0)
-    xsol = x_sol(res)
-    x = vcat(xsol,1 - sum(xsol))
-    p₀ = p ./ x
-    nₜ = 1.0 / sum(x[c] / loading(models[c], p₀[c]) for c = 1:n)
-    x .*= nₜ
-    return x
+    #TODO: fastIAS
+    Π0 = iast_Π0(models,p,y,x0)
+    p_i = similar(y)
+    Πx = iast_nested_loop(models,p,y,Π0,p_i,ss_iters)
+    x = similar(y)
+    for i in 1:n
+        x[i] = y[i]p/p_i[i]
+    end
+    return Πx,x
+end
+
+function iast_nested_loop(models::T,p,y,Π,p_i = similar(y),iters = 5) where T
+    function iast_f0(Π) 
+        f = one(Π)
+        df = zero(Π)
+        for i in 1:length(y)
+            mi = models[i]
+            p0i = sp_res_pressure(mi,Π)
+            p_i[i] = p0i
+            fi = p*y[i]/p0i
+            f -= fi
+            df -= fi/loading(mi,p0i)
+        end
+        return f,f/df
+    end
+    prob = Roots.ZeroProblem(iast_f0,Π)
+    #newton with history
+    return Roots.solve(prob,Roots.LithBoonkkampIJzerman(4,1),maxiters = iters)
 end

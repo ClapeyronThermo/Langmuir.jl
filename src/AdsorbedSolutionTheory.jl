@@ -5,6 +5,7 @@ using LinearAlgebra
 using ForwardDiff
 using LogExpFunctions
 using Tables
+using Roots
 
 include("utils.jl")
 include("isotherm_data.jl")

@@ -6,9 +6,12 @@ api:
 
 necessary function: sp_res(model::IsothermModel,p)
 
+
 derived:
-loading(model::IsothermModel,p)
-henry(model::IsothermModel,p)
+- sp_res_inv(model::IsothermModel,q)
+- loading(model::IsothermModel,p) <-> isotherm_pure_pressure(model,q)
+- henry_coefficient(model::IsothermModel,p)
+- saturated_loading(model::IsothermModel) #TODO: decide if just return max loading or add a flag if the isotherm does not have max loading
 =#
 Rgas(model) = 8.31446261815324
 
@@ -32,6 +35,30 @@ dloading/dp* p(p - p0)
 =#
 function henry_coefficient(model::IsothermModel)
     return ForwardDiff.derivative(Fix1(loading,model),sqrt(eps(eltype(model))))
+end
+
+#inverse problem
+
+"""
+sp_res_pressure(model::IsothermModel,q)
+
+given an isotherm::IsothermModel and q = sp_res(model,p), find p such that sp_res(model,p) = q.
+by default, it performs a root-finding
+"""
+function sp_res_pressure(model::IsothermModel,q)
+    return sp_res_pressure_impl(model,p)
+end
+
+
+function sp_res_pressure_x0(model::IsothermModel,q)
+    q/henry_coefficient(model)
+end
+
+function sp_res_pressure_impl(model::IsothermModel,q)
+    p0 = sp_res_pressure_x0(model)
+    f0(p) = loading(model,p) - q
+    prob = Roots.ZeroProblem(f0,p0)
+    return Roots.solve(prob)
 end
 
 #high pressure loading

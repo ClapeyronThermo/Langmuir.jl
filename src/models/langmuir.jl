@@ -13,6 +13,7 @@ end
 #optimizations for Langmuir, not necessary, but improve performance
 henry_coefficient(model::Langmuir) = model.M*model.K
 saturated_loading(model::Langmuir) = model.M
+sp_res_pressure_impl(model::Langmuir,q) = expm1(q/model.M)/model.K
 
 struct DualSiteLangmuir{T} <: IsothermModel{T}
     M1::T
@@ -30,3 +31,4 @@ end
 henry_coefficient(model::DualSiteLangmuir) = model.M1*model.K1 + model.M2*model.K2
 saturated_loading(model::DualSiteLangmuir) = model.M1 + model.M2
 
+export Langmuir, DualSiteLangmuir
