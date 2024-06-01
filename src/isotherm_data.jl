@@ -21,7 +21,7 @@ function isotherm_data(x::X,y::Y,x_label::Symbol,y_label::Symbol) where {X,Y}
     
     if !issorted(x)
         idx = sortperm(xx)
-        yv,xv = @view(y,idx),@view(x,idx)
+        yv,xv = view(y,idx),view(x,idx)
         yy .= yv
         xx .= xv
     else
@@ -77,6 +77,6 @@ end
 Tables.getcolumn(m::AbsorbedIsothermData, ::Type{T}, col::Int, nm::Symbol) where {T} = Tables.getcolumn(m,nm)
 
 
-Tables.columnnames(table) = (table.x_label,table.y_label)
+Tables.columnnames(table::AbsorbedIsothermData) = (table.x_label,table.y_label)
 
 export AbsorbedIsothermData, isotherm_data
