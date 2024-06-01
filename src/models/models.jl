@@ -42,23 +42,27 @@ end
 """
 sp_res_pressure(model::IsothermModel,q)
 
-given an isotherm::IsothermModel and q = sp_res(model,p), find p such that sp_res(model,p) = q.
-by default, it performs a root-finding
+given an isotherm::IsothermModel and Π = sp_res(model,p), find p such that sp_res(model,p) = Π.
+by default, it performs a root-finding over the isotherm
 """
-function sp_res_pressure(model::IsothermModel,q)
-    return sp_res_pressure_impl(model,p)
+function sp_res_pressure(model::IsothermModel,Π)
+    return sp_res_pressure_impl(model,Π)
 end
 
 
-function sp_res_pressure_x0(model::IsothermModel,q)
+function sp_res_pressure_x0(model::IsothermModel,Π)
     q/henry_coefficient(model)
 end
 
-function sp_res_pressure_impl(model::IsothermModel,q)
+function sp_res_pressure_impl(model::IsothermModel,Π)
     p0 = sp_res_pressure_x0(model)
     f0(p) = loading(model,p) - q
     prob = Roots.ZeroProblem(f0,p0)
     return Roots.solve(prob)
+end
+
+function sp_res_pressure_fdf(model,q)
+    p = sp_res_pressure(model,q)
 end
 
 #high pressure loading

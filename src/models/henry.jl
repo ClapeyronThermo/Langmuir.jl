@@ -11,6 +11,6 @@ function henry_coefficient(model::HenryIsotherm)
     return model.Kh
 end
 
-sp_res_pressure_impl(model::HenryIsotherm,q) = q/model.Kh
+sp_res_pressure_impl(model::HenryIsotherm,Π) = Π/model.Kh
 
 export HenryIsotherm

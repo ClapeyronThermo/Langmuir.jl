@@ -39,6 +39,7 @@ function iast(models,p,y;x0 = nothing,ss_iters = 3*length(y),fastias_iters = 100
     for i in 1:n
         x[i] = y[i]p/p_i[i]
     end
+    x[i] ./= sum(x)
     return Πx,x
 end
 
