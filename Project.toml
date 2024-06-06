@@ -20,10 +20,12 @@ IASTClapeyronExt = "Clapeyron"
 [compat]
 Clapeyron = "0.5"
 ForwardDiff = "^0.10"
+julia = "1.9"
 LinearAlgebra = "1"
 LogExpFunctions = "^0.3.24"
 NLSolvers = "0.5"
-julia = "1.9"
+Roots = "2.1"
+Tables = "^1.8"
 
 [extras]
 Clapeyron = "7c7805af-46cc-48c9-995b-ed0ed2dc909a"
