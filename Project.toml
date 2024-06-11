@@ -18,7 +18,7 @@ Clapeyron = "7c7805af-46cc-48c9-995b-ed0ed2dc909a"
 IASTClapeyronExt = "Clapeyron"
 
 [compat]
-Clapeyron = "0.5"
+Clapeyron = "0.5,0.6"
 ForwardDiff = "^0.10"
 julia = "1.9"
 LinearAlgebra = "1"
