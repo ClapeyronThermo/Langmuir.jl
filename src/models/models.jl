@@ -4,7 +4,7 @@ Base.eltype(model::IsothermModel{T}) where T = T
 #=
 api: 
 
-necessary function: sp_res(model::IsothermModel,p)
+necessary function: sp_res(model::IsothermModel, p, T) 
 
 
 derived:
@@ -13,6 +13,7 @@ derived:
 - henry_coefficient(model::IsothermModel,p)
 - saturated_loading(model::IsothermModel) #TODO: decide if just return max loading or add a flag if the isotherm does not have max loading
 =#
+
 Rgas(model) = 8.31446261815324
 
 #default.
@@ -22,8 +23,8 @@ function _model_length(model::Type{T}) where T <: IsothermModel
     return length(fieldcount(T))
 end
 
-function loading(model::IsothermModel,p)
-    return p*ForwardDiff.derivative(Fix1(sp_res,model),p)
+function loading(model::IsothermModel, p)
+    return p*ForwardDiff.derivative(Fix1(sp_res,model), p)
 end
 
 #henry coefficient
@@ -34,7 +35,7 @@ dloading/dp* p(p - p0)
 
 =#
 function henry_coefficient(model::IsothermModel)
-    return ForwardDiff.derivative(Fix1(loading,model),sqrt(eps(eltype(model))))
+    return ForwardDiff.derivative(Fix1(loading, model), sqrt(eps(eltype(model))))
 end
 
 #inverse problem
@@ -44,25 +45,27 @@ sp_res_pressure(model::IsothermModel,q)
 
 given an isotherm::IsothermModel and Π = sp_res(model,p), find p such that sp_res(model,p) = Π.
 by default, it performs a root-finding over the isotherm
+
 """
-function sp_res_pressure(model::IsothermModel,Π)
-    return sp_res_pressure_impl(model,Π)
+function sp_res_pressure(model::IsothermModel, Π, T)
+
+    return sp_res_pressure_impl(model, Π, T)
 end
 
 
-function sp_res_pressure_x0(model::IsothermModel,Π)
-    q/henry_coefficient(model)
+function sp_res_pressure_x0(model::IsothermModel, Π, T)
+    q/henry_coefficient(model) ## what is q?
 end
 
-function sp_res_pressure_impl(model::IsothermModel,Π)
-    p0 = sp_res_pressure_x0(model)
-    f0(p) = loading(model,p) - q
-    prob = Roots.ZeroProblem(f0,p0)
+function sp_res_pressure_impl(model::IsothermModel, Π, T)
+    p0 = sp_res_pressure_x0(model, Π, T)
+    f0(p) = loading(model, p) - q
+    prob = Roots.ZeroProblem(f0, p0)
     return Roots.solve(prob)
 end
 
-function sp_res_pressure_fdf(model,q)
-    p = sp_res_pressure(model,q)
+function sp_res_pressure_fdf(model, q, T)
+    p = sp_res_pressure(model, q, T)
 end
 
 #high pressure loading
@@ -83,7 +86,7 @@ end
 
 include("langmuir.jl")
 include("quadratic.jl")
-include("bet")
+include("bet.jl")
 include("henry.jl")
 include("temkin.jl")
 include("interpolation.jl")
