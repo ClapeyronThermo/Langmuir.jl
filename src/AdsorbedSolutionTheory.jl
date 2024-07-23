@@ -4,6 +4,7 @@ using NLSolvers
 using LinearAlgebra
 using ForwardDiff
 using LogExpFunctions
+using StaticArrays
 using Tables
 using Roots
 

@@ -1,3 +1,3 @@
-function fit(data,model,x0 = nothing)
+function fit(data, model, x0 = nothing)
 
 end

@@ -11,16 +11,16 @@ function fast_ias_loop!(models,η)
     return Δπ
 end
 
-function iast_Π0(models,p,y,x0)
+function iast_Π0(models, p, T, y, x0)
     if x0 === nothing
-        K_henry = henry_coefficient.(models)
-        K_average = dot(K_henry,y)
+        K_henry = henry_coefficient.(models, T)
+        K_average = dot(K_henry, y)
         Π0 = zero(eltype(K_average))*p
         #Mangano et al. 2015, initial guess (eq. 16)
-        for i in 1:length(y)
+        for i in eachindex(y)
             model_i = models[i]
             p0i = P*K_average/K_henry[i]
-            Π0 = min(Π0,sp_res(model_i, p0i))
+            Π0 = min(Π0, sp_res(model_i, p0i, T))
         end
         return Π0
     else
@@ -29,12 +29,12 @@ function iast_Π0(models,p,y,x0)
     end
 end
 
-function iast(models,p,y;x0 = nothing,ss_iters = 3*length(y),fastias_iters = 100)
+function iast(models, p, T, y; x0 = nothing, ss_iters = 3*length(y), fastias_iters = 100)
     n = length(p)
     #TODO: fastIAS
-    Π0 = iast_Π0(models,p,y,x0)
+    Π0 = iast_Π0(models, p, T, y, x0)
     p_i = similar(y)
-    Πx = iast_nested_loop(models,p,y,Π0,p_i,ss_iters)
+    Πx = iast_nested_loop(models, p, T, y, Π0, p_i, ss_iters)
     x = similar(y)
     for i in 1:n
         x[i] = y[i]p/p_i[i]
@@ -43,21 +43,22 @@ function iast(models,p,y;x0 = nothing,ss_iters = 3*length(y),fastias_iters = 100
     return Πx,x
 end
 
-function iast_nested_loop(models::T,p,y,Π,p_i = similar(y),iters = 5) where T
-    function iast_f0(Π) 
+function iast_nested_loop(models::M, p, T, y, Π, p_i = similar(y), iters = 5) where M
+
+    function iast_f0(Π, T) 
         f = one(Π)
         df = zero(Π)
         for i in 1:length(y)
             mi = models[i]
-            p0i = sp_res_pressure(mi,Π)
+            p0i = sp_res_pressure(mi, Π, T) #Calls sp_res_pressure_impl
             p_i[i] = p0i
             fi = p*y[i]/p0i
             f -= fi
-            df -= fi/loading(mi,p0i)
+            df -= fi/loading(mi, p0i, T)
         end
-        return f,f/df
+        return f, f/df
     end
-    prob = Roots.ZeroProblem(iast_f0,Π)
+    prob = Roots.ZeroProblem(Base.Fix2(iast_f0, T), Π)
     #newton with history
-    return Roots.solve(prob,Roots.LithBoonkkampIJzerman(4,1),maxiters = iters)
+    return Roots.solve(prob, Roots.LithBoonkkampIJzerman(4,1), maxiters = iters)
 end

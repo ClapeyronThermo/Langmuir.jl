@@ -1,10 +1,9 @@
 #general multisite langmuir.
 
 """
+    Langmuir <: IsothermModel
 
-Langmuir <: IsothermModel
-
-Langmuir(M, K₀, E)
+    Langmuir(M, K₀, E)
 
 ## Inputs
 
@@ -14,40 +13,13 @@ Langmuir(M, K₀, E)
 
 ## Description
 
-A Langmuir isotherm model:
-
-```math
-q = M \frac{Kp}{1 + Kp}
-K = K₀ \exp\left(\frac{-E}{RT}\right)
-``` 
 
 """
-
-
 struct Langmuir{T} <: IsothermModel{T}
     M::T
     K₀::T
     E::T
 end
-
-"""
-
-sp_res(model::IsothermModel, p, T)
-
-default units: `[mol/kg]`
-
-Calculates the single component spreading pressure of the `model` given the bulk pressure `p` and temperature `T`:
-
-## Returns
-
-Returns a scalar of the same type as `p`.
-
-Mathematically:
-
-```math
-```
-
-"""
 
 
 function sp_res(model::Langmuir, p, T)
@@ -59,21 +31,6 @@ function sp_res(model::Langmuir, p, T)
 end
 
 
-"""
-henry_coefficient(model)
-
-default units: `[mol/kg]`
-
-
-Returns the single component spreading pressure of the `model` given the bulk pressure `p`, defined as:
-
-```math
-H = 
-
-```
-
-
-"""
 #optimizations for Langmuir, not necessary, but improve performance
 henry_coefficient(model::Langmuir, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
 saturated_loading(model::Langmuir, T) = model.M #Some depend on T, some don't
@@ -105,4 +62,4 @@ end
 
 saturated_loading(model::DualSiteLangmuir, T) = model.M1 + model.M2
 
-export Langmuir, DualSiteLangmuir
+export Langmuir, DualSiteLangmuir, henry_coefficient
