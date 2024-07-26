@@ -5,6 +5,7 @@ using LinearAlgebra
 using ForwardDiff
 using LogExpFunctions
 using StaticArrays
+using Integrals
 using Tables
 using Roots
 

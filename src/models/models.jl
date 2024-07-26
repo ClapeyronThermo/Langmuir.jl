@@ -74,6 +74,30 @@ function sp_res_pressure(model::IsothermModel, Π, T)
 end
 
 
+function sp_res(model, p, T)
+
+    return sp_res_numerical(model, p, T)
+end
+
+function sp_res_numerical(model, p, T; solver = QuadGKJL(), abstol = 1e-6, reltol = 1e-6)
+        #For cases where the sp_res is not analytical, we use numerical integration
+
+        #Part 1 integral
+        ϵ = sqrt(eps(eltype(model)))
+
+        ∫ni_p⁻¹ = henry_coefficient(model, T)*ϵ
+
+        #Part 2 integral    
+        f(p) = loading(model, p, T)/p
+
+        prob = IntegralProblem(f(p), (ϵ, p))
+
+        π_i = ∫ni_p⁻¹ + Integrals.solve(prob, solver; reltol = reltol, abstol = abstol)
+
+    return π_i
+
+end
+
 function sp_res_pressure_x0(model::IsothermModel, Π, T)
     Π/henry_coefficient(model, T) 
 end
@@ -113,5 +137,6 @@ include("quadratic.jl")
 include("bet.jl")
 include("henry.jl")
 include("temkin.jl")
+using Roots: solve
 include("interpolation.jl")
 
