@@ -56,7 +56,8 @@ H = `\\lim_{p \\to 0} \\frac{loading(model, p, T)}{p}
 
 """
 function henry_coefficient(model::IsothermModel, T)
-    return ForwardDiff.derivative(p -> loading(model, p , T), sqrt(eps(eltype(model))))
+    _0 = zero(eltype(model))
+    return ForwardDiff.derivative(p -> loading(model, p , T),  _0)
 end
 
 #inverse problem

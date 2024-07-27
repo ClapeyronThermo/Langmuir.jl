@@ -1,4 +1,4 @@
-function fast_ias_loop!(models,η)
+function fast_ias_loop!(models, η)
     #x::Vector{Float64}, 
     #p::Vector{Float64},
     #aim::Vector{<:AdsIsoTModel})
@@ -40,7 +40,7 @@ function iast(models, p, T, y; x0 = nothing, ss_iters = 3*length(y), fastias_ite
         x[i] = y[i]p/p_i[i]
     end
     x[i] ./= sum(x)
-    return Πx,x
+    return Πx, x
 end
 
 function iast_nested_loop(models::M, p, T, y, Π, p_i = similar(y), iters = 5) where M
