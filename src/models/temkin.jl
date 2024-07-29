@@ -12,4 +12,11 @@ function sp_res(model::TemkinApprox, p, T)
     return M*(log1p(Kp) + θ*(2*Kp + 1)/(2*(Kp + 1)*(Kp + 1)))
 end
 
+function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: TemkinApprox
+    #unilan ≈ langmuir with f = 1
+    langmuir_model = x0_guess_fit(Langmuir,data)
+    M,K₀,E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
+    return TemkinApprox(M, K₀,zero(eltype(langmuir_model)),E)
+end
+
 export TemkinApprox

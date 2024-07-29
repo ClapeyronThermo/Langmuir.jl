@@ -26,7 +26,6 @@ struct Toth{T} <: IsothermModel{T}
     β::T
 end
 
-
 function loading(model::Toth, p, T)
     M = model.M
     K = model.K₀*exp(-model.E/(Rgas(model)*T))
@@ -34,9 +33,7 @@ function loading(model::Toth, p, T)
     return M*K*p/(1 + (K*p)^f)^(1/f)
 end
 
-
 henry_coefficient(model::Toth, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
 saturated_loading(model::Toth, T) = model.M #Some depend on T, some don't
 
-
-export Toth, henry_coefficient
+export Toth

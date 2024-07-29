@@ -49,6 +49,13 @@ function sp_res(model::Langmuir, p, T)
     return M*log1p(K*p)
 end
 
+function loading(model::Langmuir, p, T)
+    M = model.M
+    K₀ = model.K₀
+    E = model.E
+    K = K₀*exp(-E/(Rgas(model)*T))
+    return M*K*p/(1 + K*p)
+end
 
 #optimizations for Langmuir, not necessary, but improve performance
 henry_coefficient(model::Langmuir, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
@@ -119,4 +126,24 @@ end
 
 saturated_loading(model::DualSiteLangmuir, T) = model.M1 + model.M2
 
-export Langmuir, DualSiteLangmuir, henry_coefficient
+#methods for fit, from IAST.jl
+#TODO: include effects of temperature. at the moment, the fit procedure ignores temperature dependence.
+#probably requires separating the models by temperature and linearizing K to obtain T-dependence.
+function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Langmuir
+    # use first two data points to get the slope
+    l,p = data.l,data.p
+    H1 = l[1]/p[1]
+    H2 = l[2]/p[2]
+    if iszero(p[1])
+        H = (l[2] - l[1])/p[2]
+    else
+        H = 0.5*(H1 + H2)
+    end
+    # estimate M as 10% more than max observed loading
+    M = maximum(data.l)
+    K = H / M
+    
+    return Langmuir(M,K,zero(K))
+end
+
+export Langmuir, DualSiteLangmuir

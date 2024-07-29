@@ -29,7 +29,7 @@ function iast_Π0(models, p, T, y, x0)
     end
 end
 
-function iast(models, p, T, y; x0 = nothing, ss_iters = 3*length(y), fastias_iters = 100)
+function iast(models, p, T, y; x0 = nothing,carrier_gas = nothing,ss_iters = 3*length(y), fastias_iters = 100)
     n = length(p)
     #TODO: fastIAS
     Π0 = iast_Π0(models, p, T, y, x0)
@@ -50,11 +50,13 @@ function iast_nested_loop(models::M, p, T, y, Π, p_i = similar(y), iters = 5) w
         df = zero(Π)
         for i in 1:length(y)
             mi = models[i]
-            p0i = sp_res_pressure(mi, Π, T) #Calls sp_res_pressure_impl
-            p_i[i] = p0i
-            fi = p*y[i]/p0i
-            f -= fi
-            df -= fi/loading(mi, p0i, T)
+            if !iszero(mi)
+                p0i = sp_res_pressure(mi, Π, T) #Calls sp_res_pressure_impl
+                p_i[i] = p0i
+                fi = p*y[i]/p0i
+                f -= fi
+                df -= fi/loading(mi, p0i, T)
+            end
         end
         return f, f/df
     end
