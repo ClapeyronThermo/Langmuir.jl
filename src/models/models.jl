@@ -1,6 +1,7 @@
-abstract type IsothermModel{T} end
-
 Base.eltype(model::IsothermModel{T}) where T = T
+function Base.eltype(::Type{M}) where M <: IsothermModel{T} where T 
+    return T
+end
 #=
 api: 
 
@@ -17,10 +18,11 @@ derived:
 Rgas(model) = 8.31446261815324
 
 #default.
-model_length(model::IsothermModel) = _model_length(typeof(model))
+model_length(::Type{T}) where T <: IsothermModel = _model_length(T)
+model_length(model::IsothermModel) = model_length(typeof(model))
 
 function _model_length(model::Type{T}) where T <: IsothermModel
-    return length(fieldcount(T))
+    return fieldcount(T)
 end
 
 """
@@ -32,6 +34,10 @@ Calculate the loading based on the model, pressure (p), and temperature (T).
  - model::IsothermModel: the isotherm model
 """
 function loading(model::IsothermModel, p, T)
+    return loading_ad(model,p,T)
+end
+
+function loading_ad(model,p,T)
     return p*ForwardDiff.derivative(p -> p*sp_res(model, p, T), p)
 end
 
@@ -71,13 +77,11 @@ by default, it performs a root-finding over the isotherm
 
 """
 function sp_res_pressure(model::IsothermModel, Π, T)
-
     return sp_res_pressure_impl(model, Π, T)
 end
 
 
 function sp_res(model, p, T)
-
     return sp_res_numerical(model, p, T)
 end
 
@@ -85,7 +89,7 @@ function sp_res_numerical(model, p, T; solver = QuadGKJL(), abstol = 1e-6, relto
         #For cases where the sp_res is not analytical, we use numerical integration
 
         #Part 1 integral
-        ϵ = sqrt(eps(eltype(model)))
+        ϵ = sqrt(eps(Base.promote_eltype(model,p,T)))
 
         ∫ni_p⁻¹ = henry_coefficient(model, T)*ϵ
 
@@ -106,7 +110,7 @@ end
 
 function sp_res_pressure_impl(model::IsothermModel, Π, T)
     p0 = sp_res_pressure_x0(model, Π, T)
-    f0(p) = Π - sp_res(model, p, T)  
+    f0(p) = Π - sp_res(model, p, T)
     prob = Roots.ZeroProblem(f0, p0)
     return Roots.solve(prob)
 end
@@ -121,15 +125,52 @@ function saturated_loading(model::IsothermModel, T)
     return loading(model, one(eltype(model))/sqrt(eltype(model)), T)
 end
 
-function from_vec(::Type{T},p::AbstractVector{K}) where {T <: IsothermModel,K}
-    return T(ntuple(i -> p[i], model_length(model)))
+function from_vec(::Type{M},p::AbstractVector{K}) where {M <: IsothermModel,K}
+    return M(ntuple(i -> p[i], model_length(M))...)
 end
 
-function to_vec!(model::IsothermModel,p)
+function from_vec(::Type{M},p::NTuple{N,K}) where {M <: IsothermModel,N,K}
+    return M(ntuple(i -> p[i], model_length(M))...)
+end
+
+function to_vec!(model::IsothermModel,x)
     for i in 1:model_length(model)
-        p[i] = getfield(model,i)
+        x[i] = getfield(model,i)
     end
-    return p
+    return x
+end
+
+function to_vec(model::IsothermModel)
+    x = Vector{eltype(model)}(undef, model_length(model))
+    to_vec!(model,x)
+    return x
+end
+
+function to_tuple(model::IsothermModel)
+    return ntuple(i -> getfield(model,i), model_length(model))
+end
+
+Base.zero(model::M) where M <: IsothermModel = Base.zero(M)
+
+function Base.zero(model::Type{M}) where M <: IsothermModel{T} where T
+    from_vec(M,ntuple(Returns(Base.zero(T)),model_length(model)))
+end
+
+#when T is not defined (zero(Langmuir))
+function Base.zero(model::Type{M}) where M <: IsothermModel
+    from_vec(M,ntuple(Returns(0.0),model_length(model)))
+end
+
+function Base.iszero(model::IsothermModel)
+    result = true
+    for i in 1:model_length(model)
+        result &= iszero(getfield(model,i))
+    end
+    return result
+end
+
+function x0_guess_fit(::Type{T}, data) where T <: IsothermModel
+    eltype = Base.promote_eltype(T, data)
 end
 
 export loading, henry_coefficient
@@ -139,6 +180,7 @@ include("quadratic.jl")
 include("bet.jl")
 include("henry.jl")
 include("temkin.jl")
-using Roots: solve
+include("unilan.jl")
+include("Toth.jl")
 include("interpolation.jl")
 
