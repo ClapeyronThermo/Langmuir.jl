@@ -1,11 +1,11 @@
-function fit(data::AdsIsoTData{TT}, ::Type{M}, x0 = to_vec(x0_guess_fit(M, data))) where {M <: IsothermModel,TT}
+function fit(data::AdsIsoTData{TT}, ::Type{M},loss = abs2,x0 = to_vec(x0_guess_fit(M, data))) where {M <: IsothermModel,TT}
     p = pressure(data)
     l = loading(data)
     T = temperature(data)
     function ℓ(θ)
 		# construct model
 		model = from_vec(M, θ)
-		loss = zero(eltype(model))
+		ℓr = zero(eltype(model))
 		for (pᵢ, nᵢ, Tᵢ) in zip(p,l,T)
 			# predicted loading
             n̂ᵢ = loading(model, pᵢ, Tᵢ)
@@ -13,9 +13,9 @@ function fit(data::AdsIsoTData{TT}, ::Type{M}, x0 = to_vec(x0_guess_fit(M, data)
             if isnan(n̂ᵢ)
                 n̂ᵢ = -one(nᵢ)*nᵢ
             end
-			loss += (nᵢ - n̂ᵢ)^2
+			ℓr += loss(nᵢ - n̂ᵢ)
         end
-		return loss
+		return ℓr
 	end
     #=
     some notes:
@@ -27,6 +27,6 @@ function fit(data::AdsIsoTData{TT}, ::Type{M}, x0 = to_vec(x0_guess_fit(M, data)
     but sp_res has the restriction K*p > -1
     if loading is calculated via AD, we have to keep an eye on those situations.
     =#
-    result = optimize(ℓ,x0,NLSolvers.LineSearch(NLSolvers.LBFGS()))
+    result = optimize(ℓ,x0,NLSolvers.LineSearch(NLSolvers.Newton()))
     return from_vec(M, x_sol(result)),x_minimum(result)
 end
