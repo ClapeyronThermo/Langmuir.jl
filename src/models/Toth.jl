@@ -30,10 +30,19 @@ function loading(model::Toth, p, T)
     M = model.M
     K = model.K₀*exp(-model.E/(Rgas(model)*T))
     f = model.f₀ + model.β/T
-    return M*K*p/(1 + (K*p)^f)^(1/f)
+    Kpf = abs(K*p)^f
+    return M*K*p/(1 + Kpf)^(1/f)
 end
 
 henry_coefficient(model::Toth, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
 saturated_loading(model::Toth, T) = model.M #Some depend on T, some don't
+
+function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Toth
+    langmuir_model = x0_guess_fit(Langmuir,data)
+    M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
+    _0 = zero(M)
+    _1 = one(M)
+    return T(M, K₀, E, _1, _0)
+end
 
 export Toth

@@ -1,16 +1,20 @@
-function fit(data::AdsIsoTData, ::Type{M}, x0 = to_vec(x0_guess_fit(M, data))) where M <: IsothermModel
-    p,l,T = getfield(data,1),getfield(data,2),getfield(data,3)
+function fit(data::AdsIsoTData{TT}, ::Type{M}, x0 = to_vec(x0_guess_fit(M, data))) where {M <: IsothermModel,TT}
+    p = pressure(data)
+    l = loading(data)
+    T = temperature(data)
     function ℓ(θ)
 		# construct model
 		model = from_vec(M, θ)
 		loss = zero(eltype(model))
-        p,l = data.p, data.l
 		for (pᵢ, nᵢ, Tᵢ) in zip(p,l,T)
 			# predicted loading
             n̂ᵢ = loading(model, pᵢ, Tᵢ)
 			# increment loss.
+            if isnan(n̂ᵢ)
+                n̂ᵢ = -one(nᵢ)*nᵢ
+            end
 			loss += (nᵢ - n̂ᵢ)^2
-		end
+        end
 		return loss
 	end
     #=

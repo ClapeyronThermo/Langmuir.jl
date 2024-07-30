@@ -231,8 +231,6 @@ function ls_restricted(φ::P,λ) where P
         end
     end
     _x = φ.z
-    @show λmax
-    @show _x - λmax*_d
     return λmax
 end
 

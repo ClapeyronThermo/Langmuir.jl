@@ -62,7 +62,6 @@ henry_coefficient(model::Langmuir, T) = model.M*model.K₀*exp(-model.E/(Rgas(mo
 saturated_loading(model::Langmuir, T) = model.M #Some depend on T, some don't
 sp_res_pressure_impl(model::Langmuir, Π, T) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
 
-
 """
     DualSiteLangmuir <: IsothermModel
 
@@ -139,7 +138,6 @@ function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Langmuir
     else
         H = 0.5*(H1 + H2)
     end
-    # estimate M as 10% more than max observed loading
     M = maximum(data.l)
     K = H / M
     

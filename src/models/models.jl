@@ -180,4 +180,6 @@ include("bet.jl")
 include("henry.jl")
 include("temkin.jl")
 include("unilan.jl")
+include("Toth.jl")
 include("interpolation.jl")
+

@@ -102,4 +102,8 @@ Tables.columnnames(table::AbsorbedIsothermData) = (getfield(table,4),getfield(ta
 Base.eltype(::Type{<:AbsorbedIsothermData{T}}) where {T} = T
 Base.eltype(::AbsorbedIsothermData{T}) where {T} = T
 
+temperature(m::AbsorbedIsothermData) = Tables.getcolumn(m,3)
+loading(m::AbsorbedIsothermData) = Tables.getcolumn(m,2)
+pressure(m::AbsorbedIsothermData) = Tables.getcolumn(m,1)
+
 export AbsorbedIsothermData, isotherm_data
