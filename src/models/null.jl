@@ -1,6 +1,6 @@
 #useful for defining carrier gas
 
-struct ZeroIsotherm{T} <: IsothermModel{T}
+struct ZeroIsotherm{T} <: IsothermModel{T} end
 
 
 """

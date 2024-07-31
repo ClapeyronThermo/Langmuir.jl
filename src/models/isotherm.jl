@@ -14,7 +14,7 @@ const Isotherm1{T,I} = Isotherm{T,1,I} where {T,I}
 function sp_res(modelx::Isotherm, p, T)
     result = zero(Base.promote_eltype(modelx,p,T))
     for model in modelx.isotherms
-        !iszero(model)
+        if !iszero(model)
             result += sp_res(model, p, T)
         end
     end
@@ -24,7 +24,7 @@ end
 function loading(modelx::Isotherm, p, T)
     result = zero(Base.promote_eltype(modelx,p,T))
     for model in modelx.isotherms
-        !iszero(model)
+        if !iszero(model)
             result += loading(model, p, T)
         end
     end
