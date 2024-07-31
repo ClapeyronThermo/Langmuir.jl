@@ -13,7 +13,7 @@ function sp_res(model::QuadraticIsotherm, p, T)
     return M*log1p(p*(Ka + Kb*p))
 end
 
-function sp_res_pressure_impl(model::QuadraticIsotherm, Π, T)
+function sp_res_pressure_impl(model::QuadraticIsotherm, Π, T, approx)
     K₀a, K₀b, M, Ea, Eb = model.K₀a, model.K₀b, model.M, model.Ea, model.Eb
     Ka = K₀a*exp(-Ea/(Rgas(model)*T))
     Kb = K₀b*exp(-Eb/(Rgas(model)*T))

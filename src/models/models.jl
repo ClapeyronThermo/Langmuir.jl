@@ -1,11 +1,11 @@
 Base.eltype(model::IsothermModel{T}) where T = T
-function Base.eltype(::Type{M}) where M <: IsothermModel{T} where T 
+function Base.eltype(::Type{M}) where M <: IsothermModel{T} where T
     return T
 end
 #=
-api: 
+api:
 
-necessary function: sp_res(model::IsothermModel, p, T) 
+necessary function: sp_res(model::IsothermModel, p, T)
 
 
 derived:
@@ -41,6 +41,28 @@ function loading_ad(model,p,T)
     return p*ForwardDiff.derivative(p -> p*sp_res(model, p, T), p)
 end
 
+function sp_res(model, p, T)
+    return sp_res_numerical(model, p, T)
+end
+
+function sp_res_numerical(model, p, T; solver = QuadGKJL(), abstol = 1e-6, reltol = 1e-6)
+        #For cases where the sp_res is not analytical, we use numerical integration
+
+        #Part 1 integral
+        ϵ = sqrt(eps(Base.promote_eltype(model,p,T)))
+
+        ∫ni_p⁻¹ = henry_coefficient(model, T)*ϵ
+
+        #Part 2 integral
+        f(p) = loading(model, p, T)/p
+
+        prob = IntegralProblem(f(p), (ϵ, p))
+
+        π_i = ∫ni_p⁻¹ + Integrals.solve(prob, solver; reltol = reltol, abstol = abstol)
+
+    return π_i
+end
+
 #henry coefficient
 
 #=
@@ -69,49 +91,35 @@ end
 #inverse problem
 
 """
-sp_res_pressure(model::IsothermModel,q)
+sp_res_pressure(model::IsothermModel,Π, T, approx = :exact)
 
-given an isotherm::IsothermModel and Π = sp_res(model,p), find p such that sp_res(model,p) = Π.
-by default, it performs a root-finding over the isotherm
+given an isotherm::IsothermModel and Π = sp_res(model,p,T), find p such that sp_res(model,p) = Π.
+by default, it performs a root-finding over the isotherm.
 
 """
-function sp_res_pressure(model::IsothermModel, Π, T)
-    return sp_res_pressure_impl(model, Π, T)
+function sp_res_pressure(model::IsothermModel, Π, T;approx = :exact)
+    return sp_res_pressure_impl(model, Π, T, approx)
 end
 
-
-function sp_res(model, p, T)
-    return sp_res_numerical(model, p, T)
-end
-
-function sp_res_numerical(model, p, T; solver = QuadGKJL(), abstol = 1e-6, reltol = 1e-6)
-        #For cases where the sp_res is not analytical, we use numerical integration
-
-        #Part 1 integral
-        ϵ = sqrt(eps(Base.promote_eltype(model,p,T)))
-
-        ∫ni_p⁻¹ = henry_coefficient(model, T)*ϵ
-
-        #Part 2 integral    
-        f(p) = loading(model, p, T)/p
-
-        prob = IntegralProblem(f(p), (ϵ, p))
-
-        π_i = ∫ni_p⁻¹ + Integrals.solve(prob, solver; reltol = reltol, abstol = abstol)
-
-    return π_i
-
-end
+sp_res_pressure_impl(model, Π, T) = sp_res_pressure_impl(model, Π, T, :exact)
 
 function sp_res_pressure_x0(model::IsothermModel, Π, T)
-    Π/henry_coefficient(model, T) 
+    Π/henry_coefficient(model, T)
 end
 
-function sp_res_pressure_impl(model::IsothermModel, Π, T)
-    p0 = sp_res_pressure_x0(model, Π, T)
-    f0(p) = Π - sp_res(model, p, T)
-    prob = Roots.ZeroProblem(f0, p0)
-    return Roots.solve(prob)
+function sp_res_pressure_impl(model::IsothermModel, Π, T, approx)
+    if approx == :exact
+        p0 = sp_res_pressure_x0(model, Π, T)
+        f0(p,Π) = Π - sp_res(model, p, T)
+        prob = Roots.ZeroProblem(f0, p0)
+        return Roots.solve(prob,p = Π)
+    elseif approx == :henry
+        return Π/henry_coefficient(model, T)
+   # elseif approx == :saturated ?
+    else
+        _0 = Base.promote_eltype(model,Π,T)
+        return _0/_0
+    end
 end
 
 function sp_res_pressure_fdf(model, q, T)

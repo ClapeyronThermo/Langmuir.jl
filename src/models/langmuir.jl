@@ -60,7 +60,7 @@ end
 #optimizations for Langmuir, not necessary, but improve performance
 henry_coefficient(model::Langmuir, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
 saturated_loading(model::Langmuir, T) = model.M #Some depend on T, some don't
-sp_res_pressure_impl(model::Langmuir, Π, T) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
+sp_res_pressure_impl(model::Langmuir, Π, T, approx) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
 
 """
     DualSiteLangmuir <: IsothermModel
