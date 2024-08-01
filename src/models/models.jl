@@ -57,7 +57,7 @@ default units: `[mol/kg]`
 Returns the single component spreading pressure of the `model` given the temperature `T`, defined as:
 
 ```math
-H = `\\lim_{p \\to 0} \\frac{loading(model, p, T)}{p}
+H = 2
 ```
 
 """
@@ -119,10 +119,43 @@ function sp_res_pressure_fdf(model, q, T)
     p = sp_res_pressure(model, q, T)
 end
 
-#high pressure loading (Is it necessary?)
-
 function saturated_loading(model::IsothermModel, T)
     return loading(model, one(eltype(model))/sqrt(eltype(model)), T)
+end
+
+"""
+    isosteric_heat(model::IsothermModel, Vᵍ, Vᵃ = zero(eltype(model)), p, T)
+
+Calculate the isosteric heat of adsorption for a given isotherm model.
+
+# Arguments
+- `model::IsothermModel`: The isotherm model used to describe the adsorption process.
+- `Vᵍ`: The molar volume of the gas phase.
+- `Vᵃ`: The molar volume of the adsorbed phase (normaly Vᵃ << Vᵍ, default is zero).
+- `p`: Pressure at which the isosteric heat is evaluated.
+- `T`: Temperature at which the isosteric heat is evaluated.
+
+# Returns
+- The estimated isosteric heat of adsorption.
+
+# Details
+The function Estimates the isosteric heat of adsorption for a single component from it's isotherm 
+using the Clausius-Clapeyron Equation:
+
+Q_st = T × (Vᵍ - Vᵃ) × (∂n∂T)ₚ/(∂n∂P)ₜ (for explicit loading expressions)
+
+Pan et al. (1998) https://doi.org/10.1021/la9803373
+
+"""
+function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model)))
+
+        f(∂p,∂T) = loading(model, ∂p, ∂T)
+        
+        _f,_df = fgradf2(f, p, T)
+
+        ∂n_∂p, ∂n_∂T = _df
+
+        return -T*(Vᵍ - Vᵃ)*∂n_∂T/∂n_∂p
 end
 
 function from_vec(::Type{M},p::AbstractVector{K}) where {M <: IsothermModel,K}
