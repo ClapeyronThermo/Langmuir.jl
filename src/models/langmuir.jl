@@ -78,4 +78,4 @@ function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Langmuir
     return Langmuir(M,K,zero(K))
 end
 
-export Langmuir, DualSiteLangmuir
+export Langmuir

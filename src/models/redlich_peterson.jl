@@ -45,7 +45,7 @@ end
 
 #TODO: sp_res is defined, but depends on Hypergeometric functions.
 
-henry_coefficient(model::Langmuir, T) = model.M
+henry_coefficient(model::RedlichPeterson, T) = model.M
 #pressure_impl(model::RedlichPeterson, Π, T,::typeof(sp_res), approx) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
 
 export RedlichPeterson

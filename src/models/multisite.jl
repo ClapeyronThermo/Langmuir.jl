@@ -2,6 +2,7 @@ struct MultiSite{T,𝕀} <: IsothermModel{T}
     isotherms::𝕀
 end
 
+
 #we suppose that the isotherms tuple was processed before this
 function _multisite(::Type{T},isotherms::𝕀) where {T,𝕀}
     return MultiSite{T,𝕀}(isotherms)
@@ -10,9 +11,9 @@ end
 _multisite(isotherms::I) where I = _multisite(eltype(first(isotherms)),isotherms)
 
 function MultiSite(m_first::IsothermModel,m_rest::Vararg{I}) where I <:IsothermModel
-    
     return _multisite((m_first,m_rest...))
 end
+
 function model_length(model::MultiSite{T,I}) where {T,I}
     return model_length(typeof(model))
 end
@@ -21,7 +22,7 @@ function model_length(::Type{MultiSite{T,I}}) where {T,I}
     return _model_length_multi(I)
 end
 
-function _model_length_multi(I) where {I}
+function _model_length_multi(I::𝕀) where {𝕀}
     if @generated
         types = fieldtypes(I)
         N = mapreduce(model_length,+,types)
@@ -50,7 +51,7 @@ function Base.iszero(m::MultiSite{T,I}) where {T,I}
 end
 
 function to_vec!(model::MultiSite,x)
-    isotherms = m.isotherms
+    isotherms = model.isotherms
     n_begin = 1
     for i in 1:length(isotherms)
         model_i = isotherms[i]
@@ -63,8 +64,8 @@ function to_vec!(model::MultiSite,x)
     return x
 end
 
-function from_vec(::Type{M},x) where {M::MultiSite{T,I},T,I}
-    isotherms = zero(M)
+function from_vec(::Type{M},x) where M <: MultiSite{T,I} where {T,I}
+    isotherms = zero(M).isotherms
     n_begin = 1
     for i in 1:length(isotherms)
         model_i = isotherms[i]
@@ -80,19 +81,19 @@ end
 
 function loading(model::MultiSite,p,T)
     result = zero(Base.promote_eltype(model,p,T))
-    for model in model.isotherms
-        if !iszero(model)
-            result += loading(model,p,T)
+    for model_i in model.isotherms
+        if !iszero(model_i)
+            result += loading(model_i,p,T)
         end
     end
     return result
 end
 
-function sp_res(model::MultiSite,p,T)
+function sp_res(model::M,p,T) where M <: MultiSite
     result = zero(Base.promote_eltype(model,p,T))
-    for model in model.isotherms
-        if !iszero(model)
-            result += sp_res(model,p,T)
+    for model_i in model.isotherms
+        if !iszero(model_i)
+            result += sp_res(model_i,p,T)
         end
     end
     return result
@@ -100,9 +101,9 @@ end
 
 function henry_coefficient(model::MultiSite,T)
     result = zero(Base.promote_eltype(model,T))
-    for model in model.isotherms
-        if !iszero(model)
-            result += henry_coefficient(model,T)
+    for model_i in model.isotherms
+        if !iszero(model_i)
+            result += henry_coefficient(model_i,T)
         end
     end
     return result
@@ -110,10 +111,12 @@ end
 
 function saturated_loading(model::MultiSite,T)
     result = zero(Base.promote_eltype(model,T))
-    for model in model.isotherms
+    for model_i in model.isotherms
         if !iszero(model)
-            result += saturated_loading(model,T)
+            result += saturated_loading(model_i,T)
         end
     end
     return result
 end
+
+export MultiSite

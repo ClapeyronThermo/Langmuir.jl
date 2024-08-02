@@ -1,19 +1,12 @@
 Base.eltype(model::IsothermModel{T}) where T = T
+
 function Base.eltype(::Type{M}) where M <: IsothermModel{T} where T
     return T
 end
-#=
-api:
 
-necessary function: sp_res(model::IsothermModel, p, T)
-
-
-derived:
-- sp_res_inv(model::IsothermModel,q)
-- loading(model::IsothermModel,p) <-> isotherm_pure_pressure(model,q)
-- henry_coefficient(model::IsothermModel,p)
-- saturated_loading(model::IsothermModel) #TODO: decide if just return max loading or add a flag if the isotherm does not have max loading
-=#
+function (::Type{I})(p) where I <: IsothermModel
+    return from_vec(I,p)
+end
 
 Rgas(model) = 8.31446261815324
 
@@ -25,11 +18,11 @@ function _model_length(model::Type{T}) where T <: IsothermModel
     return fieldcount(T)
 end
 
-function from_vec(::Type{M},p::AbstractVector{K}) where {M <: IsothermModel,K}
-    return M(ntuple(i -> p[i], model_length(M))...)
+function from_vec(m::IsothermModel,x) where K
+    return from_vec(typeof(m),x)
 end
 
-function from_vec(::Type{M},p::NTuple{N,K}) where {M <: IsothermModel,N,K}
+function from_vec(::Type{M},Base.@specialize(p)) where M <: IsothermModel
     return M(ntuple(i -> p[i], model_length(M))...)
 end
 
