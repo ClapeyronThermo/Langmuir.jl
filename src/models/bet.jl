@@ -16,4 +16,13 @@ function sp_res(model::BrunauerEmmettTeller, p, T)
     return M*log((1.0 - Kbp + Kap)/(1.0 - Kbp))
 end
 
+function loading(model::BrunauerEmmettTeller, p, T)
+    K₀a, K₀b, M, E = model.K₀a, model.K₀b, model.M, model.E
+    Ka = K₀a*exp(-E/(Rgas(model)*T))
+    Kb = K₀b*exp(-E/(Rgas(model)*T))
+    Kap = Ka*p
+    Kbp = Kb*p
+    return M*Kap/((1 - Kbp)*(1 - Kb + Kap))
+end
+
 export BET
