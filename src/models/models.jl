@@ -34,11 +34,11 @@ Calculate the loading based on the model, pressure (p), and temperature (T).
  - model::IsothermModel: the isotherm model
 """
 function loading(model::IsothermModel, p, T)
-    return loading_ad(model,p,T)
+    return loading_ad(model, p, T)
 end
 
-function loading_ad(model,p,T)
-    return p*ForwardDiff.derivative(p -> p*sp_res(model, p, T), p)
+function loading_ad(model, p, T)
+    return p*ForwardDiff.derivative(p -> sp_res(model, p, T), p)
 end
 
 #henry coefficient
@@ -91,14 +91,16 @@ function sp_res_numerical(model, p, T; solver = QuadGKJL(), abstol = 1e-6, relto
         #Part 1 integral
         ϵ = sqrt(eps(Base.promote_eltype(model,p,T)))
 
-        ∫ni_p⁻¹ = henry_coefficient(model, T)*ϵ
+        ∫₁ni_p⁻¹ = henry_coefficient(model, T)*ϵ
 
         #Part 2 integral    
         f(p) = loading(model, p, T)/p
 
-        prob = IntegralProblem(f(p), (ϵ, p))
+        prob = IntegralProblem((u, p) -> f(u), (ϵ, p))
 
-        π_i = ∫ni_p⁻¹ + Integrals.solve(prob, solver; reltol = reltol, abstol = abstol)
+        ∫₂ni_p⁻¹ = Integrals.solve(prob, solver; reltol = reltol, abstol = abstol).u
+
+        π_i = ∫₁ni_p⁻¹ + ∫₂ni_p⁻¹
 
     return π_i
 
@@ -128,7 +130,7 @@ end
 
 Calculate the isosteric heat of adsorption for a given isotherm model.
 
-# Arguments
+# Inputs
 - `model::IsothermModel`: The isotherm model used to describe the adsorption process.
 - `Vᵍ`: The molar volume of the gas phase.
 - `Vᵃ`: The molar volume of the adsorbed phase (normaly Vᵃ << Vᵍ, default is zero).
@@ -138,7 +140,7 @@ Calculate the isosteric heat of adsorption for a given isotherm model.
 # Returns
 - The estimated isosteric heat of adsorption.
 
-# Details
+## Description
 The function Estimates the isosteric heat of adsorption for a single component from it's isotherm 
 using the Clausius-Clapeyron Equation:
 
@@ -147,6 +149,7 @@ Q_st = T × (Vᵍ - Vᵃ) × (∂n∂T)ₚ/(∂n∂P)ₜ (for explicit loading e
 Pan et al. (1998) https://doi.org/10.1021/la9803373
 
 """
+
 function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model)))
 
         f(∂p,∂T) = loading(model, ∂p, ∂T)
