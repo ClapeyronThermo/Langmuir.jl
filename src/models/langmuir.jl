@@ -60,7 +60,7 @@ function loading(model::Langmuir, p, T)
     E = model.E
     K = K₀*exp(-E/(Rgas(model)*T))
     _1 = one(eltype(model))
-    
+
     return M * K *p / (_1 + K*p)
 end
 

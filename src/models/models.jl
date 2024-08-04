@@ -126,22 +126,24 @@ function saturated_loading(model::IsothermModel, T)
 end
 
 """
-    isosteric_heat(model::IsothermModel, Vᵍ, Vᵃ = zero(eltype(model)), p, T)
+    `isosteric_heat(model::IsothermModel, Vᵍ, Vᵃ = zero(eltype(model)), p, T)`
+
 
 Calculate the isosteric heat of adsorption for a given isotherm model.
 
-# Inputs
+## Inputs
 - `model::IsothermModel`: The isotherm model used to describe the adsorption process.
 - `Vᵍ`: The molar volume of the gas phase.
 - `Vᵃ`: The molar volume of the adsorbed phase (normaly Vᵃ << Vᵍ, default is zero).
 - `p`: Pressure at which the isosteric heat is evaluated.
 - `T`: Temperature at which the isosteric heat is evaluated.
 
-# Returns
+## Returns
 - The estimated isosteric heat of adsorption.
 
 ## Description
-The function Estimates the isosteric heat of adsorption for a single component from it's isotherm 
+
+The function Estimates the isosteric heat of adsorption for a single component from its isotherm 
 using the Clausius-Clapeyron Equation:
 
 Q_st = T × (Vᵍ - Vᵃ) × (∂n∂T)ₚ/(∂n∂P)ₜ (for explicit loading expressions)
@@ -149,7 +151,6 @@ Q_st = T × (Vᵍ - Vᵃ) × (∂n∂T)ₚ/(∂n∂P)ₜ (for explicit loading e
 Pan et al. (1998) https://doi.org/10.1021/la9803373
 
 """
-
 function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model)))
 
         f(∂p,∂T) = loading(model, ∂p, ∂T)
