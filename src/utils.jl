@@ -86,8 +86,32 @@ end
 
 f∂f∂2f(f::F) where F = Base.Fix1(f∂f∂2f,f)
 
+"""
+    fgradf2(f,x1,x2)
+
+returns f and ∇f(x),using `ForwardDiff.jl`
+"""
+
+function fgradf2(f::F,x1::R1,x2::R2) where{F,R1<:Real,R2<:Real}
+    y1,y2 = promote(x1,x2)
+    return fgradf2(f,y1,y2)
+end
+
+@inline function fgradf2(f::F,x1::R,x2::R) where{F,R<:Real}
+    T = typeof(ForwardDiff.Tag(f, R))
+    _1 = oneunit(R)
+    _0 = zero(R)
+    dual1 = ForwardDiff.Dual{T,R,2}(x1, ForwardDiff.Partials((_1,_0)))
+    dual2 = ForwardDiff.Dual{T,R,2}(x2, ForwardDiff.Partials((_0,_1)))
+    out = f(dual1,dual2)
+    ∂out = ForwardDiff.partials(out)
+    return ForwardDiff.value(out),SVector(∂out.values)
+end
+
+
 function to_newton(f,x)
     f,df = f∂f(f,x)
     return f,f/df
 end
+
 

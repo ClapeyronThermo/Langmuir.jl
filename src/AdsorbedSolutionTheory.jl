@@ -4,13 +4,17 @@ using NLSolvers
 using LinearAlgebra
 using ForwardDiff
 using LogExpFunctions
+using StaticArrays
+using Integrals
 using Tables
-using Roots
+using Roots: Roots, solve
+import PolyLog
+
+abstract type IsothermModel{T} end
 
 include("utils.jl")
 include("isotherm_data.jl")
 include("methods/methods.jl")
 include("models/models.jl")
-# Write your package code here.
 
 end
