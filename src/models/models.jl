@@ -22,7 +22,55 @@ function from_vec(m::IsothermModel,x)
     return from_vec(typeof(m),x)
 end
 
-function from_vec(::Type{M},Base.@specialize(p)) where M <: IsothermModel
+"""
+    isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model))) -> Qₛₜ
+
+Calculate the isosteric heat of adsorption for a given isotherm model.
+
+# Arguments
+- `model::IsothermModel`: The isotherm model used to describe the adsorption process.
+- `Vᵍ`: The molar volume of the gas phase.
+- `Vᵃ`: The molar volume of the adsorbed phase (typically Vᵃ << Vᵍ; default is zero).
+- `p`: Pressure at which the isosteric heat is evaluated.
+- `T`: Temperature at which the isosteric heat is evaluated.
+
+# Returns
+- `Qₛₜ`: The estimated isosteric heat of adsorption.
+
+# Description
+
+The function estimates the isosteric heat of adsorption Qₛₜ for a single component using its isotherm and the Clausius-Clapeyron equation:
+
+Qₛₜ = -T * (Vᵍ - Vᵃ) * (∂n/∂T)ₚ / (∂n/∂p)ₜ
+
+where:
+- n is the loading,
+- Vᵍ is the molar volume of the gas phase,
+- Vᵃ is the molar volume of the adsorbed phase,
+- T is the temperature,
+- p is the pressure.
+
+This equation is derived based on the Clausius-Clapeyron relation, which relates the temperature dependence of the loading to the isosteric heat.
+
+Reference:
+- Pan et al. (1998) DOI: 10.1021/la9803373
+"""
+function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model)))
+
+        f(∂p,∂T) = loading(model, ∂p, ∂T)
+        
+        _f,_df = fgradf2(f, p, T)
+
+        ∂n_∂p, ∂n_∂T = _df
+
+        return -T*(Vᵍ - Vᵃ)*∂n_∂T/∂n_∂p
+end
+
+function from_vec(::Type{M},p::AbstractVector{K}) where {M <: IsothermModel,K}
+    return M(ntuple(i -> p[i], model_length(M))...)
+end
+
+function from_vec(::Type{M},p::NTuple{N,K}) where {M <: IsothermModel,N,K}
     return M(ntuple(i -> p[i], model_length(M))...)
 end
 
@@ -66,7 +114,7 @@ function x0_guess_fit(::Type{T}, data) where T <: IsothermModel
     eltype = Base.promote_eltype(T, data)
 end
 
-export loading, henry_coefficient
+export loading, henry_coefficient, isosteric_heat, sp_res
 
 include("freundlich.jl")
 include("langmuir.jl")
