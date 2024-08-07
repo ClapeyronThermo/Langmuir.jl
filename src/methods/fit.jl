@@ -27,6 +27,10 @@ function fit(data::AdsIsoTData{TT}, ::Type{M},loss = abs2,x0 = to_vec(x0_guess_f
     but sp_res has the restriction K*p > -1
     if loading is calculated via AD, we have to keep an eye on those situations.
     =#
-    result = optimize(ℓ,x0,NLSolvers.LineSearch(NLSolvers.Newton()))
+    lb = similar(x0)
+    ub = similar(x0)
+    lb .= isotherm_lower_bound(eltype(x0),M)
+    ub .= isotherm_upper_bound(eltype(x0),M)
+    result = optimize(ℓ,x0,NLSolvers.ActiveBox(),bounds = (lb,ub))
     return from_vec(M, x_sol(result)),x_minimum(result)
 end

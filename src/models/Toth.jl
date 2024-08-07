@@ -13,6 +13,9 @@
  - `β`::T: Empirical parameter, `K`
 
 ## Description
+
+Toth isotherm model: 
+
 K = K₀*exp(-E/(RT))
 f = f₀ + β/T
 nᵢ = M*K*P/(1 + (K*P)ᶠ)¹/ᶠ

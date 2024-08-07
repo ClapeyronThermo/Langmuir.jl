@@ -19,11 +19,11 @@ function FractionVector(v::AbstractVector)
     # any(x->x<0,v) && throw(DomainError(v,"all elements of a fraction vector should be positive."))
     a -=Base.sum(v)
     # a < 0 && throw(DomainError(a,"the values of the input vector add to more than one"))
-    return FractionVector(v,a) 
+    return FractionVector(v,a)
 end
 
 function FractionVector(v::Real)
-    a = Base.one(v) 
+    a = Base.one(v)
     # (v < zero(v)) && throw(DomainError(v,"all elements of a fraction vector should be positive."))
     a -= v
     # a < 0 && throw(DomainError(a,"the values of the input vector add to more than one"))
@@ -108,10 +108,10 @@ end
     return ForwardDiff.value(out),SVector(∂out.values)
 end
 
-
 function to_newton(f,x)
     f,df = f∂f(f,x)
     return f,f/df
 end
-
-
+@inline tuplejoin(x) = x
+@inline tuplejoin(x, y) = (x..., y...)
+@inline tuplejoin(x, y, z...) = (x..., tuplejoin(y, z...)...)

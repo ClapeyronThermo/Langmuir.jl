@@ -1,5 +1,3 @@
-#general multisite langmuir.
-
 """
     `Langmuir(M, K₀, E)`
 
@@ -67,88 +65,24 @@ end
 #optimizations for Langmuir, not necessary, but improve performance
 henry_coefficient(model::Langmuir, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
 saturated_loading(model::Langmuir, T) = model.M #Some depend on T, some don't
-sp_res_pressure_impl(model::Langmuir, Π, T) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
+pressure_impl(model::Langmuir, Π, T,::typeof(sp_res), approx) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
 
-"""
-    DualSiteLangmuir <: IsothermModel
-
-    DualSiteLangmuir(M1, K₀1, E1, M2, K₀2, E2)
-
- DualSiteLangmuir(M1, K₀1, E1, M2, K₀2, E2) represents the DualSite Langmuir isotherm model.
-
-## Inputs
-- `M1`::T: maximum loading capacity of the first adsorbent site, `[mol/kg]`
-- `K₀1`::T: equilibrium constant at zero coverage for the first site, `[1/Pa]`
-- `E1`::T: adsorption energy for the first site, `[J/mol]`
-- `M2`::T: maximum loading capacity of the second adsorbent site, `[mol/kg]`
-- `K₀2`::T: equilibrium constant at zero coverage for the second site, `[1/Pa]`
-- `E2`::T: adsorption energy for the second site, `[J/mol]`
-
-## Description
-
-The DualSite Langmuir equation is given by:
-
-n = M1 * log(1 + K1 * p) + M2 * log(1 + K2 * p)
-
-where:
-- n is the loading of the adsorbate on the adsorbent,
-- M1 and M2 are the maximum loading capacities of the first and second adsorbent sites, respectively,
-- K1 and K2 are the equilibrium constants at zero coverage for the first and second sites, respectively,
-- p is the pressure of the gas.
-
-The adsorption energies E1 and E2 are related to the equilibrium constants K₀1 and K₀2 by the equations:
-
-K1 = exp(-E1 / (R * T))
-K2 = exp(-E2 / (R * T))
-    
-where:
-- R is the gas constant,
-- T is the temperature,
-
-"""
-struct DualSiteLangmuir{T} <: IsothermModel{T}
-    M1::T
-    K₀1::T
-    E1::T
-    M2::T
-    K₀2::T
-    E2::T
-end
-
-function sp_res(model::DualSiteLangmuir, p, T)
-    M1, K₀1, E1, M2, K₀2, E2 = model.M1, model.K₀1, model.E1, model.M2, model.K₀2, model.E2
-    RT = Rgas(model)*T
-    K1 = K₀1*exp(-E1/RT)
-    K2 = K₀2*exp(-E2/RT)
-    return M1*log1p(K1*p) + M2*log1p(K2*p)
-end
-
-#optimizations for DualSiteLangmuir, not necessary, but improve performance
-
-function henry_coefficient(model::DualSiteLangmuir, T) 
-    RT = Rgas(model)*T    
-    return model.M1*model.K₀1*exp(-model.E1/RT) + model.M2*model.K₀2*exp(-model.E2/RT)
-end
-
-saturated_loading(model::DualSiteLangmuir, T) = model.M1 + model.M2
-
-#methods for fit, from IAST.jl
 #TODO: include effects of temperature. at the moment, the fit procedure ignores temperature dependence.
 #probably requires separating the models by temperature and linearizing K to obtain T-dependence.
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Langmuir
     # use first two data points to get the slope
-    l,p = data.l,data.p
-    H1 = l[1]/p[1]
-    H2 = l[2]/p[2]
-    if iszero(p[1])
-        H = (l[2] - l[1])/p[2]
-    else
-        H = 0.5*(H1 + H2)
-    end
-    M = maximum(data.l)
-    K = H / M
+
+
+    #l = M*k*p/(1 + k*p)
+    #l*(1 + k*p) = M*k*p
+    #l + l*k*p = M*k*p
+    #M*k*p - l*k*p = l
+    #p*(Mk) - l*p(k) = l
     
+    l,p = data.l,data.p
+    MK,K = hcat(p,-l .* p)\l
+    M = MK/K
     return Langmuir(M,K,zero(K))
 end
 
-export Langmuir, DualSiteLangmuir
+export Langmuir

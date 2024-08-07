@@ -1,5 +1,5 @@
 function fast_ias_loop!(models, η)
-    #x::Vector{Float64}, 
+    #x::Vector{Float64},
     #p::Vector{Float64},
     #aim::Vector{<:AdsIsoTModel})
     n = length(x)
@@ -47,13 +47,13 @@ function iast(models, p, T, y; x0 = nothing,ss_iters = 3*length(y), fastias_iter
 end
 
 function iast_nested_loop(models::M, p, T, y, Π, p_i = similar(y), iters = 5) where M
-    function iast_f0(Π) 
+    function iast_f0(Π)
         f = one(Π)
         df = zero(Π)
         for i in 1:length(y)
             mi = models[i]
             if !iszero(mi)
-                p0i = sp_res_pressure(mi, Π, T) #Calls sp_res_pressure_impl
+                p0i = pressure(mi, Π, T, sp_res) #Calls sp_res_pressure_impl
                 p_i[i] = p0i
                 fi = p*y[i]/p0i
                 f -= fi
