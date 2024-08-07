@@ -67,7 +67,7 @@ end
 Tables.istable(::Type{<:AbsorbedIsothermData}) = true
 Tables.columnaccess(::Type{<:AbsorbedIsothermData}) = true
 function Tables.schema(m::AbsorbedIsothermData{T}) where {T}
-    
+
     Tables.Schema(Tables.columnnames(m), (T,T,T))
 end
 Tables.columns(m::AbsorbedIsothermData) = m
@@ -93,7 +93,7 @@ function Tables.getcolumn(table::AbsorbedIsothermData, nm::Int)
     end
 end
 
-function Tables.getcolumn(m::AbsorbedIsothermData, ::Type{T}, col::Int, nm::Symbol) where {T} 
+function Tables.getcolumn(m::AbsorbedIsothermData, ::Type{T}, col::Int, nm::Symbol) where {T}
     return Tables.getcolumn(m, col)
 end
 
