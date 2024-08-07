@@ -14,10 +14,6 @@ function MultiSite(m_first::IsothermModel,m_rest::Vararg{I}) where I <:IsothermM
     return _multisite((m_first,m_rest...))
 end
 
-function model_length(model::MultiSite{T,I}) where {T,I}
-    return model_length(typeof(model))
-end
-
 function model_length(::Type{MultiSite{T,I}}) where {T,I}
     return _model_length_multi(I)
 end

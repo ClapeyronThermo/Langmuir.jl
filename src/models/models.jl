@@ -18,7 +18,7 @@ function _model_length(model::Type{T}) where T <: IsothermModel
     return fieldcount(T)
 end
 
-function from_vec(m::IsothermModel,x) where K
+function from_vec(m::IsothermModel,x)
     return from_vec(typeof(m),x)
 end
 
