@@ -89,22 +89,17 @@ end
 Returns the lower bound for the parameters of the isotherm model `model` of type `M`. with number type `T`, as a `Ntuple{model_length(M),T}`.
 The default assumes that all parameters are nonnegative.
 """
-function isotherm_lower_bound(model::T) where T <: IsothermModel
-    return isotherm_lower_bound(Float64,T)
+function isotherm_lower_bound(model::IsothermModel)
+    return isotherm_lower_bound(eltype(model),typeof(model))
 end
 
 function isotherm_lower_bound(::Type{T},m::IsothermModel) where T
     return isotherm_lower_bound(T,typeof(m))
 end
 
-function isotherm_lower_bound(model::T) where T <: IsothermModel{K} where K
-    return isotherm_lower_bound(K,T)
-end
-
 function isotherm_lower_bound(::Type{T},::Type{M}) where T where M <: IsothermModel
     ntuple(Returns(zero(T)),model_length(M))
 end
-
 
 """
     isotherm_upper_bound(model::IsothermModel)
@@ -115,16 +110,11 @@ Returns the upper bound for the parameters of the isotherm model `model` of type
 The default assumes no upper bound for the parameters.
 """
 function isotherm_upper_bound(model::T) where T <: IsothermModel
-    return isotherm_upper_bound(Float64,T)
+    return isotherm_upper_bound(eltype(model),typeof(model))
 end
 
 function isotherm_upper_bound(::Type{T},m::IsothermModel) where T
     return isotherm_upper_bound(T,typeof(m))
-end
-
-
-function isotherm_upper_bound(model::T) where T <: IsothermModel{K} where K
-    return isotherm_upper_bound(K,T)
 end
 
 function isotherm_upper_bound(::Type{T},::Type{M}) where T where M <: IsothermModel
