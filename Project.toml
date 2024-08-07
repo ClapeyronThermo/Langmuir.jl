@@ -1,6 +1,6 @@
 name = "AdsorbedSolutionTheory"
 uuid = "c62cc850-d7ca-4cc1-a95b-48008b40dc90"
-authors = [Andrés Riedemann <longemen3000@gmail.com>, Vinicius Santana <vinicius.viena1@gmail.com>]
+authors = ["Andrés Riedemann <longemen3000@gmail.com>", "Vinicius Santana <vinicius.viena1@gmail.com>"]
 version = "1.0.0"
 
 [deps]
