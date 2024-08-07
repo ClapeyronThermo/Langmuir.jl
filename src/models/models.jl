@@ -10,6 +10,11 @@ end
 
 Rgas(model) = 8.31446261815324
 
+"""
+    model_length(model::IsothermModel)
+
+Returns the amount of parameters necessary to instantiate a `model::IsothermModel`. For simple models, this is equivalent to `fieldcount(typeof(model))`, but composite models (like `MultiSite`), define their own implementation.
+"""
 #default.
 model_length(::Type{T}) where T <: IsothermModel = _model_length(T)
 model_length(model::IsothermModel) = model_length(typeof(model))
@@ -20,50 +25,6 @@ end
 
 function from_vec(m::IsothermModel,x)
     return from_vec(typeof(m),x)
-end
-
-"""
-    isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model))) -> Qₛₜ
-
-Calculate the isosteric heat of adsorption for a given isotherm model.
-
-# Arguments
-- `model::IsothermModel`: The isotherm model used to describe the adsorption process.
-- `Vᵍ`: The molar volume of the gas phase.
-- `Vᵃ`: The molar volume of the adsorbed phase (typically Vᵃ << Vᵍ; default is zero).
-- `p`: Pressure at which the isosteric heat is evaluated.
-- `T`: Temperature at which the isosteric heat is evaluated.
-
-# Returns
-- `Qₛₜ`: The estimated isosteric heat of adsorption.
-
-# Description
-
-The function estimates the isosteric heat of adsorption Qₛₜ for a single component using its isotherm and the Clausius-Clapeyron equation:
-
-Qₛₜ = -T * (Vᵍ - Vᵃ) * (∂n/∂T)ₚ / (∂n/∂p)ₜ
-
-where:
-- n is the loading,
-- Vᵍ is the molar volume of the gas phase,
-- Vᵃ is the molar volume of the adsorbed phase,
-- T is the temperature,
-- p is the pressure.
-
-This equation is derived based on the Clausius-Clapeyron relation, which relates the temperature dependence of the loading to the isosteric heat.
-
-Reference:
-- Pan et al. (1998) DOI: 10.1021/la9803373
-"""
-function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model)))
-
-        f(∂p,∂T) = loading(model, ∂p, ∂T)
-        
-        _f,_df = fgradf2(f, p, T)
-
-        ∂n_∂p, ∂n_∂T = _df
-
-        return -T*(Vᵍ - Vᵃ)*∂n_∂T/∂n_∂p
 end
 
 function from_vec(::Type{M},p::AbstractVector{K}) where {M <: IsothermModel,K}
@@ -110,11 +71,67 @@ function Base.iszero(model::IsothermModel)
     return result
 end
 
+#default: fill with ones
 function x0_guess_fit(::Type{T}, data) where T <: IsothermModel
-    eltype = Base.promote_eltype(T, data)
+    p = pressure(data)
+    _1 = one(eltype(p))
+    _ones = ntuple(Returns(_1),model_length(T))
+    _lb_bounds = 2 .* lower_bound(typeof(_1),T)
+    v = max.(_ones,_lb_bounds)
+    return from_vec(T,v)
 end
 
-export loading, henry_coefficient, isosteric_heat, sp_res
+"""
+    isotherm_lower_bound(model::IsothermModel)
+    isotherm_lower_bound(T,model::IsothermModel)
+    isotherm_lower_bound(T,::Type{M}) where M <:IsothermModel
+
+Returns the lower bound for the parameters of the isotherm model `model` of type `M`. with number type `T`, as a `Ntuple{model_length(M),T}`.
+The default assumes that all parameters are nonnegative.
+"""
+function isotherm_lower_bound(model::T) where T <: IsothermModel
+    return isotherm_lower_bound(Float64,T)
+end
+
+function isotherm_lower_bound(::Type{T},m::IsothermModel) where T
+    return isotherm_lower_bound(T,typeof(m))
+end
+
+function isotherm_lower_bound(model::T) where T <: IsothermModel{K} where K
+    return isotherm_lower_bound(K,T)
+end
+
+function isotherm_lower_bound(::Type{T},::Type{M}) where T where M <: IsothermModel
+    ntuple(Returns(zero(T)),model_length(M))
+end
+
+
+"""
+    isotherm_upper_bound(model::IsothermModel)
+    isotherm_upper_bound(T,model::IsothermModel)
+    isotherm_upper_bound(T,::Type{M}) where M <:IsothermModel
+
+Returns the upper bound for the parameters of the isotherm model `model` of type `M`. with number type `T`, as a `Ntuple{model_length(M),T}`.
+The default assumes no upper bound for the parameters.
+"""
+function isotherm_upper_bound(model::T) where T <: IsothermModel
+    return isotherm_upper_bound(Float64,T)
+end
+
+function isotherm_upper_bound(::Type{T},m::IsothermModel) where T
+    return isotherm_upper_bound(T,typeof(m))
+end
+
+
+function isotherm_upper_bound(model::T) where T <: IsothermModel{K} where K
+    return isotherm_upper_bound(K,T)
+end
+
+function isotherm_upper_bound(::Type{T},::Type{M}) where T where M <: IsothermModel
+    ntuple(Returns(T(Inf)),model_length(M))
+end
+
+export isotherm_lower_bound, isotherm_upper_bound, model_length
 
 include("freundlich.jl")
 include("langmuir.jl")

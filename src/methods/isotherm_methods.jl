@@ -213,3 +213,5 @@ function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(mod
 
     return -T*(Vᵍ - Vᵃ)*∂n_∂T/∂n_∂p
 end
+
+export loading, henry_coefficient, isosteric_heat, sp_res

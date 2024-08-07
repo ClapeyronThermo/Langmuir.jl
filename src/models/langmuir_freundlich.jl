@@ -34,4 +34,4 @@ function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: LangmuirFreundlich
     return T(M, K₀, E, _1)
 end
 
-export LangmuirFreundlich, DualSiteLangmuirFreundlich
+export LangmuirFreundlich

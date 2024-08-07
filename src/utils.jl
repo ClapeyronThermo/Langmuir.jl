@@ -112,3 +112,6 @@ function to_newton(f,x)
     f,df = f∂f(f,x)
     return f,f/df
 end
+@inline tuplejoin(x) = x
+@inline tuplejoin(x, y) = (x..., y...)
+@inline tuplejoin(x, y, z...) = (x..., tuplejoin(y, z...)...)

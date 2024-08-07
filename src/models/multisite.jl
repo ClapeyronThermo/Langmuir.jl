@@ -2,7 +2,11 @@ struct MultiSite{T,𝕀} <: IsothermModel{T}
     isotherms::𝕀
 end
 
-
+isotherm_types(odel::MultiSite) = isotherm_types(typeof(model))
+ 
+function isotherm_types(::Type{MultiSite{T,I}}) where {T,I}
+    return fieldtypes(I)
+end
 #we suppose that the isotherms tuple was processed before this
 function _multisite(::Type{T},isotherms::𝕀) where {T,𝕀}
     return MultiSite{T,𝕀}(isotherms)
@@ -13,6 +17,25 @@ _multisite(isotherms::I) where I = _multisite(eltype(first(isotherms)),isotherms
 function MultiSite(m_first::IsothermModel,m_rest::Vararg{I}) where I <:IsothermModel
     return _multisite((m_first,m_rest...))
 end
+
+function Base.getindex(m::MultiSite{T,𝕀}) where {T,𝕀}
+    return m.isotherms[i]
+end
+
+"""
+
+    MultiSite(m1::IsothermModel,isotherms::Vararg{IsothermModel}...)
+
+given a list of isotherms, create a multisite isotherm model.
+
+```julia
+model1 = Langmuir(3.0,1.0,0.0)
+model2 = Langmuir(3.0,0.9,3000.0)
+double_site_langmuir = MultiSite(model1,model2) #create a multisite model with two langmuir isotherms
+
+@assert loading(model1,1.0,3000.0) + loading(model2,1.0,3000.0) = loading(double_site_langmuir,1.0,3000.0)
+```
+"""
 
 function model_length(::Type{MultiSite{T,I}}) where {T,I}
     return _model_length_multi(I)
@@ -113,6 +136,16 @@ function saturated_loading(model::MultiSite,T)
         end
     end
     return result
+end
+
+function isotherm_lower_bound(::Type{TT},::Type{MultiSite{T,I}}) where {TT,T,I}
+    isotherms = fieldtypes(I)
+    return tuplejoin(isotherm_lower_bound.(TT,isotherms))
+end
+
+function isotherm_upper_bound(::Type{TT},::Type{MultiSite{T,I}}) where {TT,T,I}
+    isotherms = fieldtypes(I)
+    return tuplejoin(isotherm_upper_bound.(TT,isotherms))
 end
 
 export MultiSite
