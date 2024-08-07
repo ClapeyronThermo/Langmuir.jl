@@ -37,7 +37,7 @@ function loading(model::IsothermModel, p, T)
 end
 
 function loading_ad(model,p,T)
-    return p*ForwardDiff.derivative(p -> p*sp_res(model, p, T), p)
+    return p*ForwardDiff.derivative(p -> sp_res(model, p, T), p)
 end
 
 """
