@@ -15,14 +15,21 @@ derived:
 =#
 
 """
-    n = loading(model::IsothermModel, p, T)
+    loading(model::IsothermModel, p, T) -> q
 
-Calculate the loading based on the model, pressure (p), and temperature (T).
+Calculate the loading `q` based on the provided isotherm model, pressure `p`, and temperature `T`.
 
-## Inputs
- - model::IsothermModel: the isotherm model
- - p: pressure.
- - T: temperature.
+# Arguments
+- `model::IsothermModel`: An instance of `IsothermModel`, representing the isotherm model to be used for the calculation.
+- `p`: The pressure at which the loading is to be calculated.
+- `T`: The temperature at which the loading is to be calculated.
+
+# Returns
+- `q`: The calculated loading based on the isotherm model, pressure, and temperature.
+
+# Description
+This function computes the loading `q` based on the given isotherm model, pressure `p`,
+and temperature `T`.
 
 """
 function loading(model::IsothermModel, p, T)
@@ -34,18 +41,28 @@ function loading_ad(model,p,T)
 end
 
 """
-    Π = sp_res(model::IsothermModel, p, T)
+    sp_res(model::IsothermModel, p, T) -> Π
 
-Calculate the reduced spreading pressure based on the model, pressure (p), and temperature (T). This is also known as the reduced grand potential, and it is defined as:
+Calculate the reduced spreading pressure for a given isotherm model at a specific pressure `p` and temperature `T`.
 
-```math
-H = \\int_{0}^{p}\\frac{loading(model,p,T)}{p}dP
-```
+# Arguments
+- `model::IsothermModel`: An instance of `IsothermModel`, representing the isotherm model used for the calculation.
+- `p`: The pressure at which the reduced spreading pressure is to be calculated.
+- `T`: The temperature at which the reduced spreading pressure is to be calculated.
 
-## Inputs
- - model::IsothermModel: the isotherm model
- - p: pressure.
- - T: temperature.
+# Returns
+- `Π`: The reduced spreading pressure 
+
+# Description
+The reduced spreading pressure is a key quantity in Ideal Adsorbed Solution Theory (IAST), used to describe the adsorption behavior of mixtures. This function calculates the reduced spreading pressure Π by integrating the isotherm equation over the pressure range from 0 to `p`.
+
+The reduced spreading pressure is often calculated numerically as:
+
+Π = ∫ (q(p') / p') dp' from 0 to p
+
+where:
+- `q(p')` is the loading at pressure `p'`.
+
 """
 function sp_res(model, p, T)
     return sp_res_numerical(model, p, T)
@@ -78,15 +95,21 @@ dloading/dp* p(p - p0)
 =#
 
 """
-    henry_coefficient(model, T)
+    henry_coefficient(model::IsothermModel, T) -> H
 
-default units: `[mol/kg]`
+Calculate the Henry's coefficient for a single component system using the specified isotherm model and temperature `T`.
 
-Returns the single component spreading pressure of the `model` given the temperature `T`.
+# Arguments
+- `model::IsothermModel`: An instance of `IsothermModel`, representing the isotherm model to be used for the calculation.
+- `T`: The temperature at which the Henry's coefficient is to be calculated.
 
-## Inputs
- - model::IsothermModel: the isotherm model
- - T: temperature.
+# Returns
+- `H`: The Henry's coefficient in the default units of [mol/kg].
+
+# Description
+This function returns the Henry's coefficient, which is a measure of the initial slope of the adsorption isotherm at low pressures. It is defined as the derivative of the loading `q` with respect to pressure `p` at `p = 0`:
+
+H = (∂q/∂p) at p = 0 at a given T.
 """
 function henry_coefficient(model::IsothermModel, T)
     _0 = zero(eltype(model))
@@ -149,31 +172,39 @@ function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), approx)
 end
 
 """
-    isosteric_heat(model::IsothermModel, Vᵍ, Vᵃ = zero(eltype(model)), p, T)
+    isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model))) -> Qₛₜ
 
 Calculate the isosteric heat of adsorption for a given isotherm model.
 
 # Arguments
 - `model::IsothermModel`: The isotherm model used to describe the adsorption process.
 - `Vᵍ`: The molar volume of the gas phase.
-- `Vᵃ`: The molar volume of the adsorbed phase (normaly Vᵃ << Vᵍ, default is zero).
+- `Vᵃ`: The molar volume of the adsorbed phase (typically Vᵃ << Vᵍ; default is zero).
 - `p`: Pressure at which the isosteric heat is evaluated.
 - `T`: Temperature at which the isosteric heat is evaluated.
 
 # Returns
-- The estimated isosteric heat of adsorption.
+- `Qₛₜ`: The estimated isosteric heat of adsorption.
 
-# Details
-The function Estimates the isosteric heat of adsorption for a single component from it's isotherm 
-using the Clausius-Clapeyron Equation:
+# Description
 
-Q_st = T × (Vᵍ - Vᵃ) × (∂n∂T)ₚ/(∂n∂P)ₜ (for explicit loading expressions)
+The function estimates the isosteric heat of adsorption Qₛₜ for a single component using its isotherm and the Clausius-Clapeyron equation:
 
-Pan et al. (1998) https://doi.org/10.1021/la9803373
+Qₛₜ = -T * (Vᵍ - Vᵃ) * (∂n/∂T)ₚ / (∂n/∂p)ₜ
 
+where:
+- n is the loading,
+- Vᵍ is the molar volume of the gas phase,
+- Vᵃ is the molar volume of the adsorbed phase,
+- T is the temperature,
+- p is the pressure.
+
+This equation is derived based on the Clausius-Clapeyron relation, which relates the temperature dependence of the loading to the isosteric heat.
+
+## References:
+1. Pan, H., Ritter, J. A., & Balbuena, P. B. (1998). Examination of the approximations used in determining the isosteric heat of adsorption from the Clausius−Clapeyron equation. Langmuir: The ACS Journal of Surfaces and Colloids, 14(21), 6323–6327. [doi:10.1021/la9803373](https://doi.org/10.1021/la9803373)
 """
 function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model)))
-
     f(∂p,∂T) = loading(model, ∂p, ∂T)
     
     _f,_df = fgradf2(f, p, T)
