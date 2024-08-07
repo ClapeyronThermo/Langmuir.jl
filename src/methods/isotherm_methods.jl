@@ -69,21 +69,24 @@ function sp_res(model, p, T)
 end
 
 function sp_res_numerical(model, p, T; solver = QuadGKJL(), abstol = 1e-6, reltol = 1e-6)
-        #For cases where the sp_res is not analytical, we use numerical integration
+    #For cases where the sp_res is not analytical, we use numerical integration
 
-        #Part 1 integral
-        ϵ = sqrt(eps(Base.promote_eltype(model,p,T)))
+    #Part 1 integral
+    ϵ = sqrt(eps(Base.promote_eltype(model, p, T)))
 
-        ∫ni_p⁻¹ = henry_coefficient(model, T)*ϵ
+    ∫₁ni_p⁻¹ = henry_coefficient(model, T)*ϵ
 
-        #Part 2 integral
-        f(p) = loading(model, p, T)/p
+    #Part 2 integral    
+    f(p) = loading(model, p, T)/p
 
-        prob = IntegralProblem(f(p), (ϵ, p))
+    prob = IntegralProblem((u, p) -> f(u), (ϵ, p))
 
-        π_i = ∫ni_p⁻¹ + Integrals.solve(prob, solver; reltol = reltol, abstol = abstol)
+    ∫₂ni_p⁻¹ = Integrals.solve(prob, solver; reltol = reltol, abstol = abstol).u
 
-    return π_i
+    π_i = ∫₁ni_p⁻¹ + ∫₂ni_p⁻¹
+
+return π_i
+
 end
 
 #henry coefficient
