@@ -5,7 +5,7 @@ const AST = AdsorbedSolutionTheory
 #we test that definitions of loading and sp_res are consistent.
 
 function test_sp_res_loading(model, prange, T)
-    
+
     for p in prange
         n = loading(model,p,T)
         n₀ = loading_ad(model,p,T)
@@ -53,7 +53,7 @@ end
         2.901
         0.021
         0.0]
-    
+
     m1,m2,m3 = from_vec(v,x1),from_vec(v,x2),from_vec(v,x3)
     models = (m1,m2,m3)
     y = [0.5,0.25,0.25]
@@ -61,7 +61,7 @@ end
     p = 1000
 
     q_tot = 5.331793232381403
-    x_res = [0.12076215703820294, 0.4075271543741945, 0.4717106885876027],
+    x_res = [0.12076215703820294, 0.4075271543741945, 0.4717106885876027]
     x0 = [0.12,0.41,0.47]
 
     @test iast(models,p,T,y)[1] ≈ q_tot
