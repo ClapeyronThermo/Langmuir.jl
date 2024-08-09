@@ -171,13 +171,16 @@ macro that allows to define an isotherm model with additional metadata, about pa
 ## Usage:
 
 ```julia
-
 AdsorbedSolutionTheory.@with_metadata struct MyIsotherm{T} <: IsothermModel{T}
     A::T,(0,1),"field A" #bounds and description provided
     B::T #nothing provided
     C::T,(1,10) #only bounds provided
     D::T,nothing,"field D" #only description provided
 end
+
+from_vec(MyIsotherm,(1,2,3,4)) #ok
+from_vec(MyIsotherm,(-1,2,3,4)) #ArgumentError: MyIsotherm: value for the field `A` (field A) is out of the parameter bounds: (0.0 <= -1 <= 1.0) == false
+from_vec(MyIsotherm,(1,2,-3,4)) #ArgumentError: MyIsotherm: value for the field `C` is out of the parameter bounds: (1.0 <= -3 <= 10.0) == false
 ```
 """
 macro with_metadata(_struct_def)
