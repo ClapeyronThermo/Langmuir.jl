@@ -9,6 +9,7 @@ using Integrals
 using Tables
 using Roots: Roots, solve
 import PolyLog
+import CommonSolve
 
 abstract type IsothermModel{T} end
 

@@ -19,10 +19,6 @@ function _model_length(model::Type{T}) where T <: IsothermModel
     return fieldcount(T)
 end
 
-function from_vec(m::IsothermModel,x)
-    return from_vec(typeof(m),x,true)
-end
-
 function isotherm_checkbounds(::Type{M},data) where M <: IsothermModel
     lb = isotherm_lower_bound(float(_eltype(data)),M)
     ub = isotherm_upper_bound(float(_eltype(data)),M)
@@ -46,6 +42,14 @@ function IsothermBoundsError(::Type{M},lb,ub,datai,i) where M <: IsothermModel
     throw(ArgumentError(lazy"$(nameof(M)): value for the field `$symbol` $(d)is out of the parameter bounds: ($lb <= $datai <= $ub) == false"))
 end
 
+function from_vec(m::IsothermModel,x)
+    return from_vec(typeof(m),x,true)
+end
+
+from_vec(m::IsothermModel,x,check) = from_vec(typeof(m),x,check)
+
+from_vec(::Type{M},p) where {M <: IsothermModel} = from_vec(M,p,true)
+
 function from_vec(::Type{M},p,check) where {M <: IsothermModel}
     data = ntuple(i -> p[i], model_length(M))
     check && isotherm_checkbounds(M,data)
@@ -57,9 +61,6 @@ function from_vec(::Type{M},p,check) where M <: IsothermModel{T} where T
     check && isotherm_checkbounds(M,data)
     return M(data...)
 end
-
-from_vec(isotherm::Type{M},p) where {M <: IsothermModel} = from_vec(isotherm,p,true)
-from_vec(isotherm::Type{M},p,check) where M <: IsothermModel{T} where T = from_vec(isotherm,p,true)
 
 function to_vec!(model::IsothermModel,x)
     for i in 1:model_length(model)

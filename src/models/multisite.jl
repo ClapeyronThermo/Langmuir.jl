@@ -6,12 +6,9 @@ isotherm_types(odel::MultiSite) = isotherm_types(typeof(model))
 
 const __MultiSite{I,T} = MultiSite{T,T}
 
-
 function isotherm_types(::Type{M}) where M <: MultiSite
     return fieldtypes(only(fieldtypes(M)))
 end
-
-
 
 function isotherm_types(::Type{__MultiSite{I}}) where {I}
     return fieldtypes(I)
@@ -92,9 +89,7 @@ function to_vec!(model::MultiSite,x)
     return x
 end
 
-const _MultiSite{I,T} = MultiSite{T,I} 
-
-
+const _MultiSite{I,T} = MultiSite{T,I}
 
 function from_vec(::Type{M},x,check) where M <: MultiSite
     MT = eltype(M)

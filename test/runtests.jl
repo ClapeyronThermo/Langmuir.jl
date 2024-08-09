@@ -1,7 +1,7 @@
 using AdsorbedSolutionTheory
-import AdsorbedSolutionTheory: loading_ad, sp_res, sp_res_numerical, isosteric_heat, Rgas
+import AdsorbedSolutionTheory: loading_ad, sp_res, sp_res_numerical, isosteric_heat, Rgas, from_vec
 using Test
-
+const AST = AdsorbedSolutionTheory
 #we test that definitions of loading and sp_res are consistent.
 
 function test_sp_res_loading(model, prange, T)
@@ -55,5 +55,18 @@ end
         0.0]
     
     m1,m2,m3 = from_vec(v,x1),from_vec(v,x2),from_vec(v,x3)
+    models = (m1,m2,m3)
+    y = [0.5,0.25,0.25]
+    T = 300
+    p = 1000
 
+    q_tot = 5.331793232381403
+    x_res = [0.12076215703820294, 0.4075271543741945, 0.4717106885876027],
+    x0 = [0.12,0.41,0.47]
+
+    @test iast(models,p,T,y)[1] ≈ q_tot
+    @test iast(models,p,T,y,x0 = x0)[1] ≈ q_tot
+    @test iast(models,p,T,y,FastIAS())[1] ≈ q_tot
+    @test iast(models,p,T,y,IASTNestedLoop())[1] ≈ q_tot
+    @test iast(models,p,T,y,IASTNestedLoop(),x0 = x0)[1] ≈ q_tot
 end
