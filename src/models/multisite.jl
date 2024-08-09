@@ -3,8 +3,14 @@ struct MultiSite{T,𝕀} <: IsothermModel{T}
 end
 
 isotherm_types(odel::MultiSite) = isotherm_types(typeof(model))
- 
-function isotherm_types(::Type{MultiSite{T,I}}) where {T,I}
+
+const __MultiSite{I,T} = MultiSite{T,T}
+
+function isotherm_types(::Type{M}) where M <: MultiSite
+    return fieldtypes(only(fieldtypes(M)))
+end
+
+function isotherm_types(::Type{__MultiSite{I}}) where {I}
     return fieldtypes(I)
 end
 #we suppose that the isotherms tuple was processed before this
@@ -83,19 +89,28 @@ function to_vec!(model::MultiSite,x)
     return x
 end
 
-function from_vec(::Type{M},x) where M <: MultiSite{T,I} where {T,I}
-    isotherms = zero(M).isotherms
+const _MultiSite{I,T} = MultiSite{T,I}
+
+function from_vec(::Type{M},x,check) where M <: MultiSite
+    MT = eltype(M)
+    if MT === Any
+        TT = _eltype(x)
+    else
+        TT = MT
+    end
+    iso_types = isotherm_types(M)
+    isotherms = isotherm_zero.(TT,iso_types)
     n_begin = 1
     for i in 1:length(isotherms)
         model_i = isotherms[i]
         ni = model_length(model_i)
         n_end = n_begin + ni - 1
         vec_i = @view(x[n_begin:n_end])
-        new_model_i = from_vec(model_i,vec_i)
+        new_model_i = from_vec(model_i,vec_i,check)
         isotherms = Base.setindex(isotherms,new_model_i,i)
         n_begin = n_end + 1
     end
-    return MultiSite{T,I}(isotherms)
+    return _multisite(isotherms)
 end
 
 function loading(model::MultiSite,p,T)
@@ -148,4 +163,34 @@ function isotherm_upper_bound(::Type{TT},::Type{MultiSite{T,I}}) where {TT,T,I}
     return tuplejoin(isotherm_upper_bound.(TT,isotherms))
 end
 
-export MultiSite
+"""
+    @MultiSite(isotherms)
+
+Utility macro to build `MultiSite` types.
+
+## Example:
+
+```julia-repl
+julia> v1 = @MultiSite{Langmuir,Langmuir} #abstract eltype
+MultiSite{T, Tuple{Langmuir{T}, Langmuir{T}}} where T
+
+julia> AdsorbedSolutionTheory.from_vec(v,[1,2,0,3,4,0])
+MultiSite{Int64, Tuple{Langmuir{Int64}, Langmuir{Int64}}}((Langmuir{Int64}(1, 2, 0), Langmuir{Int64}(3, 4, 0)))
+
+julia> v2 = @MultiSite{Langmuir,Langmuir}{Float64} #concrete eltype
+MultiSite{Float64, Tuple{Langmuir{Float64}, Langmuir{Float64}}}
+
+julia> AdsorbedSolutionTheory.from_vec(v2,[1,2,0,3,4,0])
+MultiSite{Float64, Tuple{Langmuir{Float64}, Langmuir{Float64}}}((Langmuir{Float64}(1.0, 2.0, 0.0), Langmuir{Float64}(3.0, 4.0, 0.0)))
+```
+"""
+macro MultiSite(isotherms)
+    isotherms.head == :braces || throw(ArgumentError("invalid argument for `@MultiSite`: $isotherms"))
+    IT = map(x-> Expr(:curly,x,:T),isotherms.args)
+    I = Expr(:tuple,IT...)
+    return quote
+        MultiSite{T,Tuple{($I)...}} where T
+    end |> esc
+end
+
+export MultiSite, @MultiSite

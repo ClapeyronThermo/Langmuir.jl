@@ -36,12 +36,6 @@ struct Langmuir{T} <: IsothermModel{T}
     M::T
     K₀::T
     E::T
-    function Langmuir(M::T, K₀::T, E::T) where T
-        if E > zero(T)
-            error("Adsorption Energy cannot be positive")
-        end
-        new{T}(M, K₀, E)
-    end
 end
 
 function sp_res(model::Langmuir, p, T)
@@ -51,6 +45,7 @@ function sp_res(model::Langmuir, p, T)
     K = K₀*exp(-E/(Rgas(model)*T))
     return M*log1p(K*p)
 end
+
 
 function loading(model::Langmuir, p, T)
     M = model.M
