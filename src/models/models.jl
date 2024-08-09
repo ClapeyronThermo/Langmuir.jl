@@ -4,10 +4,6 @@ function Base.eltype(::Type{M}) where M <: IsothermModel{T} where T
     return T
 end
 
-function (::Type{I})(p) where I <: IsothermModel
-    return from_vec(I,p)
-end
-
 Rgas(model) = 8.31446261815324
 
 """
@@ -24,16 +20,46 @@ function _model_length(model::Type{T}) where T <: IsothermModel
 end
 
 function from_vec(m::IsothermModel,x)
-    return from_vec(typeof(m),x)
+    return from_vec(typeof(m),x,true)
 end
 
-function from_vec(::Type{M},p::AbstractVector{K}) where {M <: IsothermModel,K}
-    return M(ntuple(i -> p[i], model_length(M))...)
+function isotherm_checkbounds(::Type{M},data) where M <: IsothermModel
+    lb = isotherm_lower_bound(float(_eltype(data)),M)
+    ub = isotherm_upper_bound(float(_eltype(data)),M)
+    @inbounds for i in 1:model_length(M)
+        if !(lb[i] <= data[i] <= ub[i])
+            IsothermBoundsError(M,lb[i],ub[i],data[i],i)
+        end
+    end
+    return nothing
 end
 
-function from_vec(::Type{M},p::NTuple{N,K}) where {M <: IsothermModel,N,K}
-    return M(ntuple(i -> p[i], model_length(M))...)
+
+function IsothermBoundsError(::Type{M},lb,ub,datai,i) where M <: IsothermModel
+    description = isotherm_descriptions(M)[i]
+    symbol = string(fieldname(M,i))
+    if length(description) != 0
+        d = lazy"($description) "
+    else
+        d = lazy""
+    end
+    throw(ArgumentError(lazy"$(nameof(M)): value for the field `$symbol` $(d)is out of the parameter bounds: ($lb <= $datai <= $ub) == false"))
 end
+
+function from_vec(::Type{M},p,check) where {M <: IsothermModel}
+    data = ntuple(i -> p[i], model_length(M))
+    check && isotherm_checkbounds(M,data)
+    return M(data...)
+end
+
+function from_vec(::Type{M},p,check) where M <: IsothermModel{T} where T
+    data = ntuple(i -> T(p[i]), model_length(M))
+    check && isotherm_checkbounds(M,data)
+    return M(data...)
+end
+
+from_vec(isotherm::Type{M},p) where {M <: IsothermModel} = from_vec(isotherm,p,true)
+from_vec(isotherm::Type{M},p,check) where M <: IsothermModel{T} where T = from_vec(isotherm,p,true)
 
 function to_vec!(model::IsothermModel,x)
     for i in 1:model_length(model)
@@ -55,12 +81,16 @@ end
 Base.zero(model::M) where M <: IsothermModel = Base.zero(M)
 
 function Base.zero(model::Type{M}) where M <: IsothermModel{T} where T
-    from_vec(M,ntuple(Returns(Base.zero(T)),model_length(model)))
+    isotherm_zero(T,model)
 end
 
 #when T is not defined (zero(Langmuir))
 function Base.zero(model::Type{M}) where M <: IsothermModel
-    from_vec(M,ntuple(Returns(0.0),model_length(model)))
+    isotherm_zero(Float64,model)
+end
+
+function isotherm_zero(::Type{T},model::Type{M}) where T <: Number where M <: IsothermModel
+    from_vec(M,ntuple(Returns(zero(T)),model_length(model)))
 end
 
 function Base.iszero(model::IsothermModel)
@@ -81,6 +111,10 @@ function x0_guess_fit(::Type{T}, data) where T <: IsothermModel
     return from_vec(T,v)
 end
 
+function isotherm_descriptions(::Type{T}) where T <: IsothermModel
+    return ntuple(Returns(""),model_length(M))
+end
+
 """
     isotherm_lower_bound(model::IsothermModel)
     isotherm_lower_bound(T,model::IsothermModel)
@@ -90,7 +124,11 @@ Returns the lower bound for the parameters of the isotherm model `model` of type
 The default assumes that all parameters are nonnegative.
 """
 function isotherm_lower_bound(model::IsothermModel)
-    return isotherm_lower_bound(eltype(model),typeof(model))
+    return isotherm_lower_bound(typeof(model))
+end
+
+function isotherm_lower_bound(::Type{T}) where T <: IsothermModel
+    return isotherm_lower_bound(_eltype(T),T)
 end
 
 function isotherm_lower_bound(::Type{T},m::IsothermModel) where T
@@ -98,7 +136,7 @@ function isotherm_lower_bound(::Type{T},m::IsothermModel) where T
 end
 
 function isotherm_lower_bound(::Type{T},::Type{M}) where T where M <: IsothermModel
-    ntuple(Returns(zero(T)),model_length(M))
+    ntuple(Returns(T(-Inf)),model_length(M))
 end
 
 """
@@ -110,7 +148,11 @@ Returns the upper bound for the parameters of the isotherm model `model` of type
 The default assumes no upper bound for the parameters.
 """
 function isotherm_upper_bound(model::T) where T <: IsothermModel
-    return isotherm_upper_bound(eltype(model),typeof(model))
+    return isotherm_upper_bound(typeof(model))
+end
+
+function isotherm_upper_bound(::Type{T}) where T <: IsothermModel
+    return isotherm_upper_bound(_eltype(T),T)
 end
 
 function isotherm_upper_bound(::Type{T},m::IsothermModel) where T
@@ -121,7 +163,99 @@ function isotherm_upper_bound(::Type{T},::Type{M}) where T where M <: IsothermMo
     ntuple(Returns(T(Inf)),model_length(M))
 end
 
+"""
+    @with_metadata(struct_expr)
+
+macro that allows to define an isotherm model with additional metadata, about parameter bounds and descriptions of parameters:
+
+## Usage:
+
+```julia
+
+AdsorbedSolutionTheory.@with_metadata struct MyIsotherm{T} <: IsothermModel{T}
+    A::T,(0,1),"field A" #bounds and description provided
+    B::T #nothing provided
+    C::T,(1,10) #only bounds provided
+    D::T,nothing,"field D" #only description provided
+end
+```
+"""
+macro with_metadata(_struct_def)
+    struct_def = copy(_struct_def)
+    struct_fields = struct_def.args[3]
+    _lb = Any[]
+    _ub = Any[]
+
+    #X{T} <: IsothermModel{T}
+    struct_head_def = struct_def.args[2]
+    if struct_head_def.head == :(<:)
+        struct_head = struct_head_def.args[1].args[1]
+    elseif struct_head_def.head == :curly
+        struct_head = struct_head_def.args[1]
+    else
+        throw(ParseError("invalid expression for struct head: $struct_head_def"))
+    end
+
+    descriptions = String[]
+    for i in 1:length(struct_fields.args)
+        #it could be a LineNumberNode
+        arg_i = struct_fields.args[i]
+
+        if arg_i isa Expr
+            if arg_i.head == :tuple
+                tuple_expr = arg_i.args
+            elseif arg_i.head == :(::)
+                tuple_expr = Any[arg_i,:nothing,""] #no metadata provided
+            end
+            if length(tuple_expr) > 1
+                bounds = tuple_expr[2] #bounds provided
+            else
+                bounds = :nothing #default, converted to (-Inf,Inf)
+            end
+
+            if length(tuple_expr) > 2
+                description_i = tuple_expr[3] #description provided
+            else
+                description_i = "" #default
+            end
+
+            if bounds isa Expr && bounds.head == :tuple
+                lb_i = bounds.args[1]
+                ub_i = bounds.args[2]
+                push!(_lb,lb_i)
+                push!(_ub,ub_i)
+            else
+                push!(_lb,-Inf)
+                push!(_ub,Inf)
+            end
+            push!(descriptions,description_i)
+            struct_fields.args[i] = tuple_expr[1]
+        end
+    end
+    float_lb = map(Float64,_lb)
+    float_ub = map(Float64,_ub)
+    lb_tuple = Expr(:tuple,float_lb...)
+    ub_tuple = Expr(:tuple,float_ub...)
+    descriptions_tuple = Expr(:tuple,descriptions...)
+    quote
+        $struct_def
+
+        function AdsorbedSolutionTheory.isotherm_lower_bound(::Type{TT},::Type{M}) where {TT,M <: $struct_head}
+            return TT.($lb_tuple)
+        end
+
+        function AdsorbedSolutionTheory.isotherm_upper_bound(::Type{TT},::Type{M}) where {TT,M <: $struct_head}
+            return TT.($ub_tuple)
+        end
+
+        function AdsorbedSolutionTheory.isotherm_descriptions(::Type{M}) where {M <: $struct_head}
+            return $descriptions_tuple
+        end
+    end |> esc
+end
+
 export isotherm_lower_bound, isotherm_upper_bound, model_length
+export IsothermModel
 
 include("freundlich.jl")
 include("langmuir.jl")

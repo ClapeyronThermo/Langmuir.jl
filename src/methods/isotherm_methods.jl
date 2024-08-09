@@ -155,13 +155,13 @@ end
 
 pressure_impl(model, x, T) = pressure_impl(model, x, T, sp_res, :exact)
 
-function pressure_x0(model::IsothermModel, x, T,::typeof(sp_res))
+function pressure_x0(model::IsothermModel, Π, T,::typeof(sp_res))
     Π/henry_coefficient(model, T)
 end
 
 function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), approx)
     if approx == :exact
-        p0 = pressure_x0(model, Π, T)
+        p0 = pressure_x0(model, Π, T, sp_res)
         f0(p,Π) = Π - sp_res(model, p, T)
         prob = Roots.ZeroProblem(f0, p0)
         return Roots.solve(prob,p = Π)
@@ -217,4 +217,5 @@ function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(mod
     return -T*(Vᵍ - Vᵃ)*∂n_∂T/∂n_∂p
 end
 
-export loading, henry_coefficient, isosteric_heat, sp_res
+export loading, sp_res, isosteric_heat
+export henry_coefficient, saturated_loading
