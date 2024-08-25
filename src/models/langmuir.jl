@@ -32,10 +32,10 @@ where:
 - T is the temperature.
 
 """
-struct Langmuir{T} <: IsothermModel{T}
-    M::T
-    K₀::T
-    E::T
+@with_metadata struct Langmuir{T} <: IsothermModel{T}
+    (M::T, (5.0e-324, 1.7976931348623157e308), "saturation loading")
+    (K₀::T, (5.0e-324, 1.7976931348623157e308), "affinity parameter") #Using Inf cause trouble in bboxoptimize
+    (E::T, (-1.7976931348623157e308, -5.0e-324), "energy parameter")
 end
 
 function sp_res(model::Langmuir, p, T)
@@ -64,7 +64,8 @@ pressure_impl(model::Langmuir, Π, T,::typeof(sp_res), approx) = expm1(Π/model.
 
 #TODO: include effects of temperature. at the moment, the fit procedure ignores temperature dependence.
 #probably requires separating the models by temperature and linearizing K to obtain T-dependence.
-function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Langmuir
+
+function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Langmuir
     # use first two data points to get the slope
 
 
@@ -74,10 +75,20 @@ function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Langmuir
     #M*k*p - l*k*p = l
     #p*(Mk) - l*p(k) = l
     
-    l,p = data.l,data.p
-    MK,K = hcat(p,-l .* p)\l
+    l, p, t = loading(data), pressure(data), temperature(data)
+    
+    is_tmax = findall(t .== findmax(t)[1])
+
+    l_min, p_min, t_max = l[is_tmax], p[is_tmax], t[is_tmax]
+
+    MK, K = hcat(p_min, -l_min .* p_min)\l_min
+
     M = MK/K
-    return Langmuir(M,K,zero(K))
+
+    #Better estimates for E can be done by finding poly(l, T) ≈ p
+    # then using  E ≈ RT²*∂lnP/∂T
+    
+    return Langmuir(M, K, prevfloat(zero(M)))
 end
 
 export Langmuir

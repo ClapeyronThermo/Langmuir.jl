@@ -4,6 +4,7 @@ authors = ["Andrés Riedemann <longemen3000@gmail.com>", "Vinicius Santana <vini
 version = "1.0.0"
 
 [deps]
+BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 CommonSolve = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Integrals = "de52edbc-65ea-441a-8357-d3a637375a31"

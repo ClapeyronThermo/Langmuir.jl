@@ -1,5 +1,6 @@
 using AdsorbedSolutionTheory
-import AdsorbedSolutionTheory: loading_ad, sp_res, sp_res_numerical, isosteric_heat, Rgas, from_vec
+import AdsorbedSolutionTheory: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
+import AdsorbedSolutionTheory: IsothermFittingProblem, DEIsothermFittingSolver
 using Test
 const AST = AdsorbedSolutionTheory
 #we test that definitions of loading and sp_res are consistent.
@@ -27,6 +28,27 @@ end
         # Isosteric heat
         V = Rgas(cL_test)*298.0/101325.0
         ΔH = isosteric_heat(cL_test, V, 101325.0, 298.) ≈ -cL_test.E
+    end
+end
+
+@testset "isotherm fitting" begin
+    @testset "langmuir" begin
+        p = range(0.0, 101325.0*1.0, length = 50) |> collect
+        t = range(31.6 + 273.15, 50.0 + 273.15, length = 5) |> collect
+        P = vec(p'.*ones(length(t)))
+        T = vec(ones(length(p))' .* t)
+        pt_ = hcat(P, T)
+        lang = Langmuir(5.073, 0.67e-10, -39300.55246960819)
+        σ = 0.01
+        l = map(pT -> loading(lang, pT[1], pT[2]) + σ*randn(), eachrow(pt_))
+        table = (;P,l,T)
+        d = isotherm_data(table, :P, :l, :T)
+
+        prob = IsothermFittingProblem(Langmuir, d, abs2)
+        alg = DEIsothermFittingSolver(logspace = true)
+        loss_fit, fitted_isotherm = fit(prob, alg)
+
+        @test (abs(sqrt(loss_fit) - σ)/σ)*100.0 < 5.0 #relative error smaller than 5% 
     end
 end
 
@@ -70,3 +92,4 @@ end
     @test iast(models,p,T,y,IASTNestedLoop())[1] ≈ q_tot
     @test iast(models,p,T,y,IASTNestedLoop(),x0 = x0)[1] ≈ q_tot
 end
+

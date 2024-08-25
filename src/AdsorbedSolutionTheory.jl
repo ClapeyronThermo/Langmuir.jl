@@ -10,6 +10,7 @@ using Tables
 using Roots: Roots, solve
 import PolyLog
 import CommonSolve
+using BlackBoxOptim
 
 abstract type IsothermModel{T} end
 

@@ -236,13 +236,15 @@ macro with_metadata(_struct_def)
             struct_fields.args[i] = tuple_expr[1]
         end
     end
+    replace!(_lb,:(-Inf)=>-Inf)
+    replace!(_ub,:(Inf)=>Inf)
     float_lb = map(Float64,_lb)
     float_ub = map(Float64,_ub)
     lb_tuple = Expr(:tuple,float_lb...)
     ub_tuple = Expr(:tuple,float_ub...)
     descriptions_tuple = Expr(:tuple,descriptions...)
     quote
-        $struct_def
+        Base.@__doc__ $struct_def
 
         function AdsorbedSolutionTheory.isotherm_lower_bound(::Type{TT},::Type{M}) where {TT,M <: $struct_head}
             return TT.($lb_tuple)

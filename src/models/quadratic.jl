@@ -1,9 +1,9 @@
-struct Quadratic{T} <: IsothermModel{T}
-    K₀a::T
-    K₀b::T
-    M::T
-    Ea::T
-    Eb::T
+@with_metadata struct Quadratic{T} <: IsothermModel{T}
+    (K₀a::T, (0.0, Inf), "Affinity parameter A")
+    (K₀b::T, (0.0, Inf), "Affinity parameter B")
+    (M::T, (0.0, Inf), "Saturation loading")
+    (Ea::T, (-Inf, 0.0), "Energy parameter A")
+    (Eb::T, (-Inf, 0.0), "Energy parameter B")
 end
 
 function sp_res(model::Quadratic, p, T)
