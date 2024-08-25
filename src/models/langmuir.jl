@@ -33,9 +33,9 @@ where:
 
 """
 @with_metadata struct Langmuir{T} <: IsothermModel{T}
-    (M::T, (5.0e-324, 1.7976931348623157e308), "saturation loading")
-    (K₀::T, (5.0e-324, 1.7976931348623157e308), "affinity parameter") #Using Inf cause trouble in bboxoptimize
-    (E::T, (-1.7976931348623157e308, -5.0e-324), "energy parameter")
+    (M::T, (0.0, Inf), "saturation loading")
+    (K₀::T, (0.0, Inf), "affinity parameter") #Using Inf cause trouble in bboxoptimize
+    (E::T, (-Inf, 0.0), "energy parameter")
 end
 
 function sp_res(model::Langmuir, p, T)
@@ -88,7 +88,7 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Langmuir
     #Better estimates for E can be done by finding poly(l, T) ≈ p
     # then using  E ≈ RT²*∂lnP/∂T
     
-    return Langmuir(M, K, prevfloat(zero(M)))
+    return Langmuir(M, K, -one(M))
 end
 
 export Langmuir

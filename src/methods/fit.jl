@@ -44,7 +44,7 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
     p = pressure(Ðₗ)
     l = loading(Ðₗ)
     T = temperature(Ðₗ)
-    lb_sign = sign.(prob.lb) #Assumes that parameters are either > 0 or < 0.
+    lb_sign = sign.(nextfloat.(prob.lb)) #Assumes that parameters are either > 0 or < 0.
 
     function ℓ(θ)
 
@@ -77,8 +77,8 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
     if alg.logspace
 
         x0 = log.(sign.(prob.x0) .* prob.x0)
-        lb = log.(sign.(prob.lb) .* prob.lb)
-        ub = log.(sign.(prob.ub) .* prob.ub)
+        lb = log.(sign.(nextfloat.(prob.lb)) .* nextfloat.(prob.lb))
+        ub = log.(sign.(prevfloat.(prob.ub)) .* prevfloat.(prob.ub))
     
         # Ensure lb and ub are mutable arrays
         lb = collect(lb)
@@ -86,15 +86,15 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
     
         # Swap lb and ub in logspace if the parameter is between -Inf and 0
         for i in eachindex(lb)
-            if prob.lb[i] < 0 && prob.ub[i] < 0
+            if lb[i] > ub[i]
                 lb[i], ub[i] = ub[i], lb[i]
             end
-    end
+        end
         
-        else
-            lb = prob.lb
-            ub = prob.ub
-            x0 = prob.x0
+    else
+        lb = prob.lb
+        ub = prob.ub
+        x0 = prob.x0
         
     end
 
