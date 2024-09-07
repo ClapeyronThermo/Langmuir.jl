@@ -21,8 +21,8 @@ function pressure_impl(model::Freundlich, Π, T,::typeof(sp_res), approx)
     return (Π/(K*v))^v
 end
 
-function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Freundlich
-    l,p = data.l, data.p
+function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Freundlich
+    l, p = data.l, data.p
     #l = M*p^f
     #log(l) = log(M) + f*log(p)
     logp, logl = log.(p), log.(l)

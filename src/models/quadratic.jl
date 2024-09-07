@@ -30,13 +30,13 @@ end
 
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Quadratic
     langmuir_model = x0_guess_fit(Langmuir,data)
-    M,K₀,E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
+    M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
     #l*(1 + p*(Ka + Kb*p)) = M*(Ka*p + 2*Kb*p*p)
     #p*Ka*l + Kb*p*p*l - M*Ka*p - 2*M*Kb*p*p = -l
     #-p*Ka*l - Kb*p*p*l + M*Ka*p + 2*M*Kb*p*p = l
     #-Ka*(p*l) -Kb*(p*p*l) + M*Ka*(p) + 2*M*Kb*(p*p) = l
 
-    l,p = data.l,data.p
+    l, p  = Tmax_data(data) #Still need to fix for several temperatures
     Kaneg,Kbneg,MKa,MKb2 = hcat(p .* l, p .* p .* l, p, p .*p ) \ l
     Ka = -Kaneg
     Kb = -Kbneg

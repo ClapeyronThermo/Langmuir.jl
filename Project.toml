@@ -14,6 +14,7 @@ NLSolvers = "337daf1e-9722-11e9-073e-8b9effe078ba"
 PolyLog = "85e3b03c-9856-11eb-0374-4dc1f8670e7f"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TableOperations = "ab02a1b2-a7df-11e8-156e-fb1833f50b87"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 
 [compat]

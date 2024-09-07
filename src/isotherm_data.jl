@@ -9,9 +9,22 @@ end
 
 const AdsIsoTData = AbsorbedIsothermData
 
-function isotherm_data(p::P,l::L,p_label::Symbol,l_label::Symbol) where {P,L}
+#= function isotherm_data(p::P,l::L,p_label::Symbol,l_label::Symbol) where {P,L}
     return AbsorbedIsothermData(p,l,zeros(eltype(p),length(p)),p_label,l_label,:T)
+end =#
+
+function isotherm_data(p::P, l::L, p_label::Symbol, l_label::Symbol; fill_T = zeros(eltype(p))) where {P, L}
+    
+    return AbsorbedIsothermData(p, l, fill(fill_T, length(p)), p_label, l_label, :T) 
+
 end
+
+function merge_isotherm_data(tables::AdsIsoTData{TT}...) where TT
+    row_tables = map(Tables.rowtable, tables)
+    concatenated_rows = vcat(row_tables...)
+    return Tables.columntable(concatenated_rows)
+end
+
 function isotherm_data(p::P,l::L,t::T,p_label::Symbol,l_label::Symbol,T_label::Symbol) where {P,L,T}
     @assert length(p) == length(l) == length(t)
     @assert p_label != l_label
@@ -43,6 +56,7 @@ end
 
 isotherm_data(p::AbstractVector,l::AbstractVector) = isotherm_data(p,l,zeros(eltype(p),length(p)))
 isotherm_data(p::AbstractVector,l::AbstractVector,T::AbstractVector) = isotherm_data(p,l,T,:p,:l,:T)
+
 function isotherm_data(table,p_label::String,l_label::String,T_label::String)
     return isotherm_data(table,Symbol(p_label),Symbol(l_label),Symbol(T_label))
 end
