@@ -93,11 +93,16 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Langmuir
 
     # log(K) = log(K0) - E/RT
 
-    _1 = one(eltype(T))
-    _1s = ones(eltype(T), length(Ts))
+    _1 = one(eltype(Ts))
+    _1s = ones(eltype(Ts), length(Ts))
 
-    logK, E = hcat(_1s, _1./ (Rgas(T).*Ts)) \ log.(Ks)
-    K = exp(logK)
+    if length(l_p) > 1
+        logK, E = hcat(_1s, _1./ (Rgas(T).*Ts)) \ log.(Ks)
+        K = exp(logK)
+    else
+        K = first(Ks)
+        E = _1
+    end
     
     return Langmuir(M, K, -E)
 end
