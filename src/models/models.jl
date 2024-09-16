@@ -112,6 +112,38 @@ function x0_guess_fit(::Type{T}, data) where T <: IsothermModel
     return from_vec(T,v)
 end
 
+#Get p, l for the highest temperature in the data set - used for xO_guess_fit
+function Tmax_data(data)
+    
+    l, p, t = loading(data), pressure(data), temperature(data)
+    
+    is_tmax = findall(t .== findmax(t)[1])
+
+    l_min, p_min = l[is_tmax], p[is_tmax]
+
+    return l_min, p_min
+
+end 
+
+function split_data_by_temperature(data::AdsIsoTData{TT}) where TT
+    l = loading(data)
+    p = pressure(data)
+    t = temperature(data)
+    
+    unique_temps = sort(unique(t))  # Sort unique temperatures in increasing order
+    temp_data = Vector{Tuple{Vector{TT}, Vector{TT}}}(undef, length(unique_temps))
+    
+    for (i, temp) in enumerate(unique_temps)
+        indices = findall(t .== temp)
+        l_temp = l[indices]
+        p_temp = p[indices]
+        temp_data[i] = (l_temp, p_temp)
+    end
+    
+    return unique_temps, temp_data
+end
+
+
 function isotherm_descriptions(::Type{T}) where T <: IsothermModel
     return ntuple(Returns(""),model_length(M))
 end

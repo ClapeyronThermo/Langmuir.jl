@@ -6,7 +6,7 @@ using ForwardDiff
 using LogExpFunctions
 using StaticArrays
 using Integrals
-using Tables
+using Tables, TableOperations
 using Roots: Roots, solve
 import PolyLog
 import CommonSolve

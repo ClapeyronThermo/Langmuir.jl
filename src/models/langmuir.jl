@@ -68,27 +68,43 @@ pressure_impl(model::Langmuir, Π, T,::typeof(sp_res), approx) = expm1(Π/model.
 function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Langmuir
     # use first two data points to get the slope
 
-
     #l = M*k*p/(1 + k*p)
     #l*(1 + k*p) = M*k*p
     #l + l*k*p = M*k*p
     #M*k*p - l*k*p = l
     #p*(Mk) - l*p(k) = l
     
-    l, p, t = loading(data), pressure(data), temperature(data)
+    # Split data by temperature
+    Ts, l_p = split_data_by_temperature(data)
+
+    # Initialize vectors to store MK and K values
+    MKs = Vector{eltype(Ts)}(undef, length(l_p))
+    Ks = Vector{eltype(Ts)}(undef, length(l_p))
+
+    # Perform the fitting for each (l, p) tuple
+    for i in 1:length(l_p)
+        l_min, p_min = l_p[i]
+        MK, K = hcat(p_min, -l_min .* p_min) \ l_min
+        MKs[i] = MK
+        Ks[i] = K
+    end
+
+    M = sum(MKs./Ks)/length(Ks) #Mean of all values
+
+    # log(K) = log(K0) - E/RT
+
+    _1 = one(eltype(Ts))
+    _1s = ones(eltype(Ts), length(Ts))
+
+    if length(l_p) > 1
+        logK, E = hcat(_1s, _1./ (Rgas(T).*Ts)) \ log.(Ks)
+        K = exp(logK)
+    else
+        K = first(Ks)
+        E = _1
+    end
     
-    is_tmax = findall(t .== findmax(t)[1])
-
-    l_min, p_min, t_max = l[is_tmax], p[is_tmax], t[is_tmax]
-
-    MK, K = hcat(p_min, -l_min .* p_min)\l_min
-
-    M = MK/K
-
-    #Better estimates for E can be done by finding poly(l, T) ≈ p
-    # then using  E ≈ RT²*∂lnP/∂T
-    
-    return Langmuir(M, K, -one(M))
+    return Langmuir(M, K, -E)
 end
 
 export Langmuir

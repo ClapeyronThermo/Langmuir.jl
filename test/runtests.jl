@@ -1,6 +1,7 @@
 using AdsorbedSolutionTheory
 import AdsorbedSolutionTheory: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
 import AdsorbedSolutionTheory: IsothermFittingProblem, DEIsothermFittingSolver
+import AdsorbedSolutionTheory: merge_isotherm_data, split_data_by_temperature
 using Test
 const AST = AdsorbedSolutionTheory
 #we test that definitions of loading and sp_res are consistent.
@@ -40,7 +41,7 @@ end
         pt_ = hcat(P, T)
         lang = Langmuir(5.073, 0.67e-10, -39300.55246960819)
         σ = 0.05
-        l = map(pT -> loading(lang, pT[1], pT[2]) + σ*randn(), eachrow(pt_))
+        l = map(pT -> abs(loading(lang, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
         table = (;P,l,T)
         d = isotherm_data(table, :P, :l, :T)
 
