@@ -17,7 +17,8 @@ function loading(model::Quadratic, p, T)
     K₀a, K₀b, M, Ea, Eb = model.K₀a, model.K₀b, model.M, model.Ea, model.Eb
     Ka = K₀a*exp(-Ea/(Rgas(model)*T))
     Kb = K₀b*exp(-Eb/(Rgas(model)*T))
-    return M*(Ka + 2*Kb*p)*p/(1 + p*(Ka + Kb*p))
+    _1 = one(eltype(p))
+    return M*(Ka + 2.0*Kb*p)*p/(_1 + p*(Ka + Kb*p))
 end
 
 function pressure_impl(model::Quadratic, Π, T, ::typeof(sp_res), approx)
@@ -28,26 +29,55 @@ function pressure_impl(model::Quadratic, Π, T, ::typeof(sp_res), approx)
     return -0.5*Kab + sqrt(0.25*Kab*Kab + expm1(Π/M)/Kb)
 end
 
-function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Quadratic
-    langmuir_model = x0_guess_fit(Langmuir,data)
-    M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
+function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Quadratic
+    #langmuir_model = x0_guess_fit(Langmuir,data)
+    #M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
+
     #l*(1 + p*(Ka + Kb*p)) = M*(Ka*p + 2*Kb*p*p)
     #p*Ka*l + Kb*p*p*l - M*Ka*p - 2*M*Kb*p*p = -l
     #-p*Ka*l - Kb*p*p*l + M*Ka*p + 2*M*Kb*p*p = l
     #-Ka*(p*l) -Kb*(p*p*l) + M*Ka*(p) + 2*M*Kb*(p*p) = l
 
-    l, p  = Tmax_data(data) #Still need to fix for several temperatures
-    Kaneg,Kbneg,MKa,MKb2 = hcat(p .* l, p .* p .* l, p, p .*p ) \ l
-    Ka = -Kaneg
-    Kb = -Kbneg
-    Ma = MKa/Ka
-    Mb = 0.5*MKb2/Kb
-    M = 0.5*(Ma + Mb)
-    MK,K = hcat(p,-l .* p)\l
-    M = MK/K
-    _1 = one(eltype(langmuir_model))
-    _0 = zero(eltype(langmuir_model))
-    Quadratic(Ka, Kb, M, _0, _0)
+    # Split data by temperature
+    Ts, l_p = split_data_by_temperature(data)
+
+    # Initialize vectors for Ka, Kb, and M values
+    Kas = Vector{eltype(Ts)}(undef, length(l_p))
+    Kbs = Vector{eltype(Ts)}(undef, length(l_p))
+    Ms = Vector{eltype(Ts)}(undef, length(l_p))
+   
+    # Perform fitting for each (l, p) tuple
+    for i in 1:length(l_p)
+        l_i, p_i = l_p[i]
+        Kaneg, Kbneg, MKa, MKb2 = hcat(p_i .* l_i, p_i .* p_i .* l_i, p_i, p_i .* p_i) \ l_i
+
+        Ka = abs(Kaneg)
+        Kb = abs(Kbneg)
+        Ma = MKa / Ka
+        Mb = abs(0.5 * MKb2 / Kb)
+        Ms[i] = 0.5 * (Ma + Mb)
+        Kas[i] = Ka
+        Kbs[i] = Kb
+    end
+
+    M = sum(Ms)/length(Ms) #Mean of all values
+
+    _1 = one(eltype(Ts))
+    _1s = ones(eltype(Ts), length(Ts))
+
+    if length(l_p) > 1
+        logKa, Ea = hcat(_1s, _1s./ (Rgas(T).*Ts)) \ log.(Kas)
+        Ka = exp(logKa)
+        logKb, Eb = hcat(_1s, _1s./(Rgas(T).*Ts)) \ log.(Kbs)
+        Kb = exp(logKb)
+    else
+        Ka = first(Kas)
+        Kb = first(Kbs)
+        Ea = _1
+        Eb = _1
+    end
+
+    Quadratic(Ka, Kb, M, -Ea, -Eb)
 end
 
 export Quadratic
