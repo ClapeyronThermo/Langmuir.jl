@@ -4,7 +4,7 @@ function Base.eltype(::Type{M}) where M <: IsothermModel{T} where T
     return T
 end
 
-Rgas(model) = 8.31446261815324
+Rgas(model) = 8.31446261815324 #J.mol⁻¹.K⁻¹
 
 """
     model_length(model::IsothermModel)

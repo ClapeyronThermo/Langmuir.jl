@@ -42,7 +42,7 @@ saturated_loading(model::Toth, T) = model.M #Some depend on T, some don't
 
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Toth
     langmuir_model = x0_guess_fit(Langmuir,data)
-    M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
+    M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E    
     _0 = zero(M)
     _1 = one(M)
     return T(M, K₀, E, _1, _0)

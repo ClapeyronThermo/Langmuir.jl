@@ -122,7 +122,7 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
 end
 
 function CommonSolve.solve(solver::NewtonIsothermFittingSolver)
-        nothing
+        nothing #TODO
 end
 
 function fit(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB},

@@ -13,8 +13,9 @@ makedocs(;
   ),
   pages = [
     "Home" => "index.md",
+    "Getting Started" => "tutorials/getting_started.md",
     "Reference" => "reference.md"
   ],
 )
 
-deploydocs(; repo = "github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl.git")
+deploydocs(; repo = "github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl.git", push_preview = false)
