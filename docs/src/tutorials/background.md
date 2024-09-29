@@ -8,7 +8,7 @@ In thermodynamics, just as equations of state are used to describe the equilibri
 DoF = N_{species} - N_{phases} + 2
 ```
 
-DoF is the number of so-called intensive state properties (or, in other words, those that are independent of system size)that we need to provide to fully specify the intensive properties of the a system in equilibrium.
+DoF is the number of so-called intensive state properties (or, in other words, those that are independent of system size) that we need to provide to fully specify the intensive properties of the a system in equilibrium.
 
 Adsorption is a process involving 2 phases - fluid and solid (adsorbent). This leads to:
 
