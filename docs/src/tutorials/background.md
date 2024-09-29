@@ -1,19 +1,30 @@
 # Models in adsorption equilibrium
 
-Adsorption is a surface phenomenon where atoms, ions, or molecules from a gas, liquid, or dissolved solid adhere to the surface of another material. This process results in the formation of a thin film of the adsorbed substance (the adsorbate) on the surface of the material it adheres to (the adsorbent) ([Wikipedia](https://en.wikipedia.org/wiki/Adsorption)).
+Adsorption is a surface phenomenon where atoms, ions, or molecules from a gas, liquid, or dissolved solid adhere to the surface of another material. This process leads to the formation of a thin film of the adsorbed substance, known as the adsorbate, on the surface of the material it adheres to, called the adsorbent.
 
-In thermodynamics, just as equations of state are used to describe the equilibrium properties of fluids in single and multiphase systems, adsorption models are employed to characterize the equilibrium thermodynamics of adsorption processes. The number of degrees of freedom (DoF) required to fully specify the equilibrium condition is determined by the **Gibbs phase rule**:
+In thermodynamics, adsorption models play a similar role to equations of state in fluid systems, describing the equilibrium properties of adsorption processes. These models are crucial for understanding and predicting the thermodynamics of adsorption in both single and multiphase systems.
 
-```math
-DoF = N_{species} - N_{phases} + 2
-```
+## Single-component adsorption
 
-DoF is the number of so-called intensive state properties (or, in other words, those that are independent of system size) that we need to provide to fully specify the intensive properties of the a system in equilibrium.
+Over the last decade, three fundamental approaches have led to the development of a wide range of adsorption isotherm models, including well-known ones such as Langmuir, Freundlich, Dubinin-Radushkevich, Temkin, Toth, and many others.
 
-Adsorption is a process involving 2 phases - fluid and solid (adsorbent). This leads to:
+The first approach focuses on kinetics, where adsorption and desorption rates are equal, establishing adsorption equilibrium as a dynamic process. The second approach is rooted in thermodynamics, offering a basis for deriving various forms of adsorption isotherm models. The third approach emphasizes the generation of characteristic curves to describe adsorption behavior.
 
-```math
-DoF = N_{species}
-```
+### Isosteric heat of adsorption
+
+The heat of adsorption is a critical design parameter in adsorptive gas separation units. During adsorption, heat is released as adsorbate molecules transition to a lower energy state on the surface of the adsorbent compared to their higher energy state in the bulk gas phase. This exothermic process significantly impacts both the efficiency and operational conditions of adsorption systems. For a single component, the isosteric heat is given by:
+
+$Q_{st} = -T*(V_g - V_a)*\left( \frac{dP_i}{dT} \right)\rvert_{(N_i,A)}$ 
+
+where $Q_st$ is the isosteric heat, $T$ is the temperature, $V_g$ is the molar volume of the component in gas phase, $V_a$ is the molar volume of the component in adsorbed phase, $N_i$ is the amount of component adsorbed of the component
+
+When the isotherm is of the form $N_i = f(T, P_i)$, one can write:
+
+$Q_{st} = -T*(V_g - V_a)*\left( \frac{\frac{\partial N_i}{\partial T}\rvert_P}{\frac{\partial N_i}{\partial P}\rvert_T} \right)$ 
+
+
+## Multi component adsorption
+
+
 
 
