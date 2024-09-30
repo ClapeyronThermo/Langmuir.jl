@@ -9,7 +9,7 @@ makedocs(;
   format = Documenter.HTML(;
     prettyurls = true,
     canonical = "https://ClapeyronThermo.github.io/AdsorbedSolutionTheory.jl/",
-    assets = ["assets/themes/documenter-dark.css"],
+    assets = ["assets/logo.ico"],
   ),
   pages = [
     "Home" => "index.md",
@@ -19,4 +19,4 @@ makedocs(;
   ],
 )
 
-deploydocs(; repo = "github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl.git", push_preview = true)
+deploydocs(; repo = "github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl.git", push_preview = false)
