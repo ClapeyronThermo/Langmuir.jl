@@ -177,7 +177,7 @@ MultiSite{T, Tuple{Langmuir{T}, Langmuir{T}}} where T
 julia> AdsorbedSolutionTheory.from_vec(v,[1,2,0,3,4,0])
 MultiSite{Int64, Tuple{Langmuir{Int64}, Langmuir{Int64}}}((Langmuir{Int64}(1, 2, 0), Langmuir{Int64}(3, 4, 0)))
 
-julia> v2 = @MultiSite{Langmuir,Langmuir}{Float64} #concrete eltype
+julia> v2 = @MultiSite{Langmuir, Langmuir}{Float64} #concrete eltype
 MultiSite{Float64, Tuple{Langmuir{Float64}, Langmuir{Float64}}}
 
 julia> AdsorbedSolutionTheory.from_vec(v2,[1,2,0,3,4,0])

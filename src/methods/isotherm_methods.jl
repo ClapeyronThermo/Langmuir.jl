@@ -36,6 +36,11 @@ function loading(model::IsothermModel, p, T)
     return loading_ad(model,p,T)
 end
 
+function loading_at_T(model::IsothermModel, p, T)
+
+    return map(p-> loading(model, p, T),  p)
+end
+
 function loading_ad(model,p,T)
     return p*ForwardDiff.derivative(p -> sp_res(model, p, T), p)
 end
@@ -208,6 +213,7 @@ This equation is derived based on the Clausius-Clapeyron relation, which relates
 1. Pan, H., Ritter, J. A., & Balbuena, P. B. (1998). Examination of the approximations used in determining the isosteric heat of adsorption from the Clausius−Clapeyron equation. Langmuir: The ACS Journal of Surfaces and Colloids, 14(21), 6323–6327. [doi:10.1021/la9803373](https://doi.org/10.1021/la9803373)
 """
 function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model)))
+    
     f(∂p,∂T) = loading(model, ∂p, ∂T)
     
     _f,_df = fgradf2(f, p, T)
@@ -240,5 +246,5 @@ function pseudo_langmuir_params(model, p, T, Πmin, Πmax)
     end
 end
 
-export loading, sp_res, isosteric_heat
+export loading, loading_at_T, sp_res, isosteric_heat
 export henry_coefficient, saturated_loading

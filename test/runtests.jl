@@ -51,7 +51,32 @@ end
 
         @test (abs(sqrt(loss_fit) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
     end
+
+    @testset "quadratic" begin
+        p = range(0.0, 101325.0*1.0, length = 50) |> collect
+        t = range(31.6 + 273.15, 50.0 + 273.15, length = 5) |> collect
+        P = vec(p'.*ones(length(t)))
+        T = vec(ones(length(p))' .* t)
+        pt_ = hcat(P, T)
+        quad_ = Quadratic(0.67e-10, 0.37e-11, 4.073, -37300.9, -23300.55)
+        σ = 0.05
+        l = map(pT -> abs(loading(quad_, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        table = (;P,l,T)
+        d = isotherm_data(table, :P, :l, :T)
+
+        x0 = to_vec(x0_guess_fit(Quadratic, d))
+        lb = (1e-35, 1e-35, 1e-29, -5_000., -5_000.)
+        ub = (1e-3, 1e-3, 100., -80_000., -80_000.)
+        prob = IsothermFittingProblem(Quadratic{eltype(d)}, d, nothing, abs2, x0, lb, ub) #Bounds have to be manually tweaked. Default interval is too large
+        alg = DEIsothermFittingSolver(max_steps = 5000, logspace = true)
+        loss_fit, fitted_isotherm = fit(prob, alg)
+
+        @test (abs(sqrt(loss_fit) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
+    end
 end
+
+
+
 
 @testset "IAST" begin
     #10.1002/aic.14684, S.I
@@ -93,4 +118,3 @@ end
     @test iast(models,p,T,y,IASTNestedLoop())[1] ≈ q_tot
     @test iast(models,p,T,y,IASTNestedLoop(),x0 = x0)[1] ≈ q_tot
 end
-
