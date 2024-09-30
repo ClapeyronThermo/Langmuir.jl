@@ -16,14 +16,38 @@ The heat of adsorption is a critical design parameter in adsorptive gas separati
 
 $Q_{st} = -T*(V_g - V_a)*\left( \frac{dP_i}{dT} \right)\rvert_{(N_i,A)}$ 
 
-where $Q_st$ is the isosteric heat, $T$ is the temperature, $V_g$ is the molar volume of the component in gas phase, $V_a$ is the molar volume of the component in adsorbed phase, $N_i$ is the amount of component adsorbed of the component
+where $Q_st$ is the isosteric heat of the component being adsorbed, $T$ is the temperature, $V_g$ is the molar volume of the component in gas phase, $V_a$ is the molar volume of the component in adsorbed phase, $N_i$ is the amount of component adsorbed of the component
 
 When the isotherm is of the form $N_i = f(T, P_i)$, one can write:
 
-$Q_{st} = -T*(V_g - V_a)*\left( \frac{\frac{\partial N_i}{\partial T}\rvert_P}{\frac{\partial N_i}{\partial P}\rvert_T} \right)$ 
+$Q_{st, i} = -T*(V_g - V_a)*\left( \frac{\frac{\partial N_i}{\partial T}\rvert_P}{\frac{\partial N_i}{\partial P}\rvert_T} \right)$ 
 
 
 ## Multi component adsorption
+
+The basic equations of the IAST are the analogue of Raoult's law in vapour–liquid equilibrium:
+
+$Py_i = P_i^0(\pi)x_i$ (1)
+
+where
+
+$\pi = \pi_i = \int_{0}^{P_i^0} \frac{N_i^0(P)}{P}dP$ for $i = 1,...,N_c$ (2)
+
+$\sum_i^{N_c} x_i = 1$ (3)
+
+
+Combining (1) and (3), the following nonlinear solve is set to:
+
+$f(\pi) = 1 - \sum_1^{N_c}\frac{Py_i}{P_i^0\left(\pi\right)}$ = 0 (4)
+
+
+
+
+
+
+
+
+
 
 
 
