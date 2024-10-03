@@ -23,7 +23,7 @@ end
 
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: TemkinApprox
     #unilan ≈ langmuir with f = 1
-    langmuir_model = x0_guess_fit(Langmuir,data)
+    langmuir_model = x0_guess_fit(LangmuirS1,data)
     M,K₀,E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
     return TemkinApprox(M, K₀,zero(eltype(langmuir_model)),E)
 end

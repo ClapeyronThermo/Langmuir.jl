@@ -1,9 +1,9 @@
-using AdsorbedSolutionTheory
-import AdsorbedSolutionTheory: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
-import AdsorbedSolutionTheory: IsothermFittingProblem, DEIsothermFittingSolver
-import AdsorbedSolutionTheory: merge_isotherm_data, split_data_by_temperature
+using Langmuir
+import Langmuir: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
+import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
+import Langmuir: merge_isotherm_data, split_data_by_temperature
 using Test
-const AST = AdsorbedSolutionTheory
+const LG = Langmuir
 #we test that definitions of loading and sp_res are consistent.
 
 function test_sp_res_loading(model, prange, T)
@@ -21,7 +21,7 @@ end
 @testset "isotherm consistency" begin
     #Langmuir testing
     @testset "langmuir" begin
-        cL_test = Langmuir(1.727, 16.71e-10, -16152.50)
+        cL_test = LangmuirS1(1.727, 16.71e-10, -16152.50)
 
         # Loading
         test_sp_res_loading(cL_test, [1e5, 2e5, 3e5], 298.)
@@ -39,13 +39,13 @@ end
         P = vec(p'.*ones(length(t)))
         T = vec(ones(length(p))' .* t)
         pt_ = hcat(P, T)
-        lang = Langmuir(5.073, 0.67e-10, -39300.55246960819)
+        lang = LangmuirS1(5.073, 0.67e-10, -39300.55246960819)
         σ = 0.05
         l = map(pT -> abs(loading(lang, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
         table = (;P,l,T)
         d = isotherm_data(table, :P, :l, :T)
 
-        prob = IsothermFittingProblem(Langmuir, d, abs2)
+        prob = IsothermFittingProblem(LangmuirS1, d, abs2)
         alg = DEIsothermFittingSolver(logspace = true)
         loss_fit, fitted_isotherm = fit(prob, alg)
 
@@ -80,7 +80,7 @@ end
 
 @testset "IAST" begin
     #10.1002/aic.14684, S.I
-    v = @MultiSite{Langmuir,Langmuir}
+    v = @MultiSite{LangmuirS1,LangmuirS1}
     x1 = [1.468
         0.024
         0

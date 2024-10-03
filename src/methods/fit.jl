@@ -157,7 +157,7 @@ end
     while loading(model(θ),p,T) could be defined over θ,p,T ∈ ℝ,
     this is not true for sp_res(model(θ),p,T).
 
-    for example. for langmuir, loading is defined over θ,p,T ∈ ℝ
+    for example. for LangmuirS1, loading is defined over θ,p,T ∈ ℝ
     but sp_res has the restriction K*p > -1
     if loading is calculated via AD, we have to keep an eye on those situations.
     =#

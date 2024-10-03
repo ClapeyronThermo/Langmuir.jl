@@ -1,9 +1,9 @@
 """
-    `Langmuir(M, K₀, E)`
+    `LangmuirS1(M, K₀, E)`
 
-    Langmuir <: IsothermModel
+    LangmuirS1 <: IsothermModel
 
-Langmuir(M, K₀, E) represents the Langmuir isotherm model, which describes the adsorption of a gas on a solid surface.
+LangmuirS1(M, K₀, E) represents the LangmuirS1 isotherm model, which describes the adsorption of a gas on a solid surface.
 
 ## Inputs
 
@@ -13,7 +13,7 @@ Langmuir(M, K₀, E) represents the Langmuir isotherm model, which describes the
 
 ## Description
 
-The Langmuir equation is given by:
+The LangmuirS1 equation is given by:
 
 n = (M * K₀ * p) / (1 + K₀ * p)
 
@@ -32,13 +32,13 @@ where:
 - T is the temperature.
 
 """
-@with_metadata struct Langmuir{T} <: IsothermModel{T}
+@with_metadata struct LangmuirS1{T} <: IsothermModel{T}
     (M::T, (0.0, Inf), "saturation loading")
     (K₀::T, (0.0, Inf), "affinity parameter") #Using Inf cause trouble in bboxoptimize
     (E::T, (-Inf, 0.0), "energy parameter")
 end
 
-function sp_res(model::Langmuir, p, T)
+function sp_res(model::LangmuirS1, p, T)
     M = model.M
     K₀ = model.K₀
     E = model.E
@@ -47,7 +47,7 @@ function sp_res(model::Langmuir, p, T)
 end
 
 
-function loading(model::Langmuir, p, T)
+function loading(model::LangmuirS1, p, T)
     M = model.M
     K₀ = model.K₀
     E = model.E
@@ -57,15 +57,15 @@ function loading(model::Langmuir, p, T)
     return M * K *p / (_1 + K*p)
 end
 
-#optimizations for Langmuir, not necessary, but improve performance
-henry_coefficient(model::Langmuir, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
-saturated_loading(model::Langmuir, T) = model.M #Some depend on T, some don't
-pressure_impl(model::Langmuir, Π, T,::typeof(sp_res), approx) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
+#optimizations for LangmuirS1, not necessary, but improve performance
+henry_coefficient(model::LangmuirS1, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
+saturated_loading(model::LangmuirS1, T) = model.M #Some depend on T, some don't
+pressure_impl(model::LangmuirS1, Π, T,::typeof(sp_res), approx) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
 
 #TODO: include effects of temperature. at the moment, the fit procedure ignores temperature dependence.
 #probably requires separating the models by temperature and linearizing K to obtain T-dependence.
 
-function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Langmuir
+function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: LangmuirS1
     # use first two data points to get the slope
 
     #l = M*k*p/(1 + k*p)
@@ -104,7 +104,7 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Langmuir
         E = _1
     end
     
-    return Langmuir(M, K, -E)
+    return LangmuirS1(M, K, -E)
 end
 
-export Langmuir
+export LangmuirS1

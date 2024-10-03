@@ -41,7 +41,7 @@ henry_coefficient(model::Toth, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)
 saturated_loading(model::Toth, T) = model.M #Some depend on T, some don't
 
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Toth
-    langmuir_model = x0_guess_fit(Langmuir,data)
+    langmuir_model = x0_guess_fit(LangmuirS1,data)
     M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E    
     _0 = zero(M)
     _1 = one(M)

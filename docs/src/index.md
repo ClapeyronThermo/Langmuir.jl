@@ -1,10 +1,10 @@
 ```@meta
-CurrentModule = AdsorbedSolutionTheory
+CurrentModule = Langmuir
 ```
 
-# Adsorbed Solution Theory
+# Langmuir
 
-Adsorbed Solution Theory
+Langmuir.jl is a library for describing multi and single component adsorption equilibrium.   
 
 
 ### Authors
