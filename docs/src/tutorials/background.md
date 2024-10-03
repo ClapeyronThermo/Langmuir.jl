@@ -2,7 +2,7 @@
 
 Adsorption is a surface phenomenon where atoms, ions, or molecules from a gas, liquid, or dissolved solid adhere to the surface of another material. This process leads to the formation of a thin film of the adsorbed substance, known as the adsorbate, on the surface of the material it adheres to, called the adsorbent.
 
-In thermodynamics, adsorption models play a similar role to equations of state in fluid systems, describing the equilibrium properties of adsorption processes. These models are crucial for understanding and predicting the thermodynamics of adsorption in both single and multiphase systems.
+In thermodynamics, adsorption models play a similar role to equations of state in fluid systems, describing the equilibrium properties of adsorption processes. These models are crucial for understanding and predicting the thermodynamics of adsorption in both single and multicomponent systems.
 
 ## Single-component adsorption
 

@@ -19,4 +19,4 @@ makedocs(;
   ],
 )
 
-deploydocs(; repo = "github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl.git", push_preview = false)
+deploydocs(; repo = "github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl.git", push_preview = true)

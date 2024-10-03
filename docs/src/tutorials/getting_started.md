@@ -71,7 +71,7 @@ When it comes to estimating properties in multicomponent adsorption, the Ideal A
 
 When formulated, estimating the loading with IAST becomes a nonlinear solve problem which can be solved in different ways. Here, we support the **Nested Loop** and **FastIAS** methods. To know more about the two and which one to choose, refer to this paper: 10.1002/aic.14684.
 
-It can be shown analytically that IAST estimation of multicomponent loading is the same as the extendend Langmuir method when the parameter $M_i$ (saturation loading) are the same for all components, i.e., $n_i = \frac{M_i \times K_{i,0} \exp{\frac{\Delta H}{RT}}}{1 + \sum_i K_i \times P_i}$. Below you can see a numerical example of it.
+It can be shown analytically that IAST estimation of multicomponent loading is the same as the extendend Langmuir method when the parameter $M_i$ (saturation loading) are the same for all components, i.e., $M_1 = M_2 = ... = M_{N_c}$. The extended langmuir has the form $n_i = \frac{M_i \times K_{i,0} \exp{\frac{\Delta H}{RT}}}{1 + \sum_i K_i \times P_i}$. Below you can see a numerical verification of IAST for that condition.
 
 ```@example multi1
 using AdsorbedSolutionTheory
