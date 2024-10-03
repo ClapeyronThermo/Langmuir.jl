@@ -28,7 +28,7 @@ end
 saturated_loading(model::LangmuirFreundlich, T) = model.M #Some depend on T, some don't
 
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: LangmuirFreundlich
-    langmuir_model = x0_guess_fit(Langmuir,data)
+    langmuir_model = x0_guess_fit(LangmuirS1,data)
     M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
     _1 = one(M)
     return T(M, K₀, E, _1)

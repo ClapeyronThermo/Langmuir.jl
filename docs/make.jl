@@ -1,14 +1,14 @@
 using Documenter
-using AdsorbedSolutionTheory
+using Langmuir
 
 
 makedocs(;
-  modules = AdsorbedSolutionTheory,
+  modules = Langmuir,
   authors = "Andres Riedemann, Vinicius Viena Santana and contributors",
-  sitename = "AdsorbedSolutionTheory.jl",
+  sitename = "Langmuir.jl",
   format = Documenter.HTML(;
     prettyurls = true,
-    canonical = "https://ClapeyronThermo.github.io/AdsorbedSolutionTheory.jl/",
+    canonical = "https://ClapeyronThermo.github.io/Langmuir.jl/",
     assets = ["assets/logo.ico"],
   ),
   pages = [
@@ -19,4 +19,4 @@ makedocs(;
   ],
 )
 
-deploydocs(; repo = "github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl.git", push_preview = true)
+deploydocs(; repo = "github.com/ClapeyronThermo/Langmuir.jl.git", push_preview = true)

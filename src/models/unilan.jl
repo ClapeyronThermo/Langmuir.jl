@@ -80,7 +80,7 @@ saturated_loading(model::Unilan, T) = model.M
 
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Unilan
     #unilan ≈ langmuir with f = 1
-    langmuir_model = x0_guess_fit(Langmuir,data)
+    langmuir_model = x0_guess_fit(LangmuirS1,data)
     M,K₀,E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
     return Unilan(M, K₀, E, one(eltype(langmuir_model)))
 end

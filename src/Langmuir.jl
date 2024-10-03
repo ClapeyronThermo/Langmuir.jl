@@ -1,4 +1,4 @@
-module AdsorbedSolutionTheory
+module Langmuir
 
 using NLSolvers
 using LinearAlgebra

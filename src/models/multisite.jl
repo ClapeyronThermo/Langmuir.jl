@@ -35,11 +35,11 @@ end
 given a list of isotherms, create a multisite isotherm model.
 
 ```julia
-model1 = Langmuir(3.0,1.0,0.0)
-model2 = Langmuir(3.0,0.9,3000.0)
-double_site_langmuir = MultiSite(model1,model2) #create a multisite model with two langmuir isotherms
+model1 = LangmuirS1(3.0,1.0,0.0)
+model2 = LangmuirS1(3.0,0.9,3000.0)
+double_site_LangmuirS1 = MultiSite(model1,model2) #create a multisite model with two LangmuirS1 isotherms
 
-@assert loading(model1,1.0,3000.0) + loading(model2,1.0,3000.0) = loading(double_site_langmuir,1.0,3000.0)
+@assert loading(model1,1.0,3000.0) + loading(model2,1.0,3000.0) = loading(double_site_LangmuirS1,1.0,3000.0)
 ```
 """
 
@@ -171,17 +171,17 @@ Utility macro to build `MultiSite` types.
 ## Example:
 
 ```julia-repl
-julia> v1 = @MultiSite{Langmuir,Langmuir} #abstract eltype
-MultiSite{T, Tuple{Langmuir{T}, Langmuir{T}}} where T
+julia> v1 = @MultiSite{LangmuirS1,LangmuirS1} #abstract eltype
+MultiSite{T, Tuple{LangmuirS1{T}, LangmuirS1{T}}} where T
 
-julia> AdsorbedSolutionTheory.from_vec(v,[1,2,0,3,4,0])
-MultiSite{Int64, Tuple{Langmuir{Int64}, Langmuir{Int64}}}((Langmuir{Int64}(1, 2, 0), Langmuir{Int64}(3, 4, 0)))
+julia> Langmuir.from_vec(v,[1,2,0,3,4,0])
+MultiSite{Int64, Tuple{LangmuirS1{Int64}, LangmuirS1{Int64}}}((LangmuirS1{Int64}(1, 2, 0), LangmuirS1{Int64}(3, 4, 0)))
 
-julia> v2 = @MultiSite{Langmuir, Langmuir}{Float64} #concrete eltype
-MultiSite{Float64, Tuple{Langmuir{Float64}, Langmuir{Float64}}}
+julia> v2 = @MultiSite{LangmuirS1, LangmuirS1}{Float64} #concrete eltype
+MultiSite{Float64, Tuple{LangmuirS1{Float64}, LangmuirS1{Float64}}}
 
-julia> AdsorbedSolutionTheory.from_vec(v2,[1,2,0,3,4,0])
-MultiSite{Float64, Tuple{Langmuir{Float64}, Langmuir{Float64}}}((Langmuir{Float64}(1.0, 2.0, 0.0), Langmuir{Float64}(3.0, 4.0, 0.0)))
+julia> Langmuir.from_vec(v2,[1,2,0,3,4,0])
+MultiSite{Float64, Tuple{LangmuirS1{Float64}, LangmuirS1{Float64}}}((LangmuirS1{Float64}(1.0, 2.0, 0.0), LangmuirS1{Float64}(3.0, 4.0, 0.0)))
 ```
 """
 macro MultiSite(isotherms)

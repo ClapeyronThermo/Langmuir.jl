@@ -204,7 +204,7 @@ macro that allows to define an isotherm model with additional metadata, about pa
 ## Usage:
 
 ```julia
-AdsorbedSolutionTheory.@with_metadata struct MyIsotherm{T} <: IsothermModel{T}
+Langmuir.@with_metadata struct MyIsotherm{T} <: IsothermModel{T}
     A::T,(0,1),"field A" #bounds and description provided
     B::T #nothing provided
     C::T,(1,10) #only bounds provided
@@ -278,15 +278,15 @@ macro with_metadata(_struct_def)
     quote
         Base.@__doc__ $struct_def
 
-        function AdsorbedSolutionTheory.isotherm_lower_bound(::Type{TT},::Type{M}) where {TT,M <: $struct_head}
+        function Langmuir.isotherm_lower_bound(::Type{TT},::Type{M}) where {TT,M <: $struct_head}
             return TT.($lb_tuple)
         end
 
-        function AdsorbedSolutionTheory.isotherm_upper_bound(::Type{TT},::Type{M}) where {TT,M <: $struct_head}
+        function Langmuir.isotherm_upper_bound(::Type{TT},::Type{M}) where {TT,M <: $struct_head}
             return TT.($ub_tuple)
         end
 
-        function AdsorbedSolutionTheory.isotherm_descriptions(::Type{M}) where {M <: $struct_head}
+        function Langmuir.isotherm_descriptions(::Type{M}) where {M <: $struct_head}
             return $descriptions_tuple
         end
     end |> esc
@@ -296,7 +296,7 @@ export isotherm_lower_bound, isotherm_upper_bound, model_length
 export IsothermModel
 
 include("freundlich.jl")
-include("langmuir.jl")
+include("langmuirs1.jl")
 include("langmuir_freundlich.jl")
 include("redlich_peterson.jl")
 include("sips.jl")
