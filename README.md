@@ -4,8 +4,8 @@
 
 This package implements single adsorption and multicomponent adsorption through Ideal Absorbed Solution Theory (IAST). Some major features are:
 
-    - Explicit single component adsorption properties: loading, bulk phase properties
-    - Multicomponent adsorption 
+- Explicit single component adsorption properties: loading, bulk phase properties
+- Multicomponent adsorption 
 
 ## Examples:
 
