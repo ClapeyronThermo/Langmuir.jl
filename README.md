@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl/actions/workflows/CI.yml?query=branch%3Amain) [![codecov](https://codecov.io/gh/ClapeyronThermo/AdsorbedSolutionTheory.jl/branch/main/graph/badge.svg?token=ZVGGR4AAFB)](https://codecov.io/gh/ClapeyronThermo/AdsorbedSolutionTheory.jl) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://clapeyronthermo.github.io/AdsorbedSolutionTheory.jl/dev)
+[![Build Status](https://github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl/actions/workflows/CI.yml?query=branch%3Amain) [![codecov](https://codecov.io/gh/ClapeyronThermo/AdsorbedSolutionTheory.jl/branch/main/graph/badge.svg?token=ZVGGR4AAFB)](https://codecov.io/gh/ClapeyronThermo/AdsorbedSolutionTheory.jl) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://clapeyronthermo.github.io/Langmuir.jl/dev)
 
 ![logo](/docs/Langmuir_logo.svg)
 
