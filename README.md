@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ClapeyronThermo/AdsorbedSolutionTheory.jl/actions/workflows/CI.yml?query=branch%3Amain) [![codecov](https://codecov.io/gh/ClapeyronThermo/AdsorbedSolutionTheory.jl/branch/main/graph/badge.svg?token=ZVGGR4AAFB)](https://codecov.io/gh/ClapeyronThermo/AdsorbedSolutionTheory.jl) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://clapeyronthermo.github.io/Langmuir.jl/dev)
+[![Build Status](https://github.com/ClapeyronThermo/Langmuir.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/ClapeyronThermo/Langmuir.jl/actions/workflows/CI.yml?query=branch%3Amain) [![codecov](https://codecov.io/gh/ClapeyronThermo/Langmuir.jl/branch/main/graph/badge.svg?token=ZVGGR4AAFB)](https://codecov.io/gh/ClapeyronThermo/Langmuir.jl) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://clapeyronthermo.github.io/Langmuir.jl/dev)
 
 ![logo](/docs/Langmuir_logo.svg)
 
@@ -10,12 +10,11 @@ This package implements single adsorption and multicomponent adsorption through 
 ## Examples:
 
 ```julia
-using AdsorbedSolutionTheory
-const AST = AdsorbedSolutionTheory
+using Langmuir
 
 #example from doi.org/10.1002/aic.14684
 
-v = @MultiSite{Langmuir,Langmuir} #we create a multisite model, consisting
+v = @MultiSite{LangmuirS1,LangmuirS1} #we create a multisite model, consisting
 
     x1 = [1.468
         0.024
@@ -39,9 +38,9 @@ v = @MultiSite{Langmuir,Langmuir} #we create a multisite model, consisting
         0.0]
 
     #creation of isotherms from vectors or other iterables.
-    #you can also use AdsorbedSolutionTheory.from_vec! or AdsorbedSolutionTheory.from_vec
+    #you can also use Langmuir.from_vec! or Langmuir.from_vec
     #to create (or fill) vectors from isotherm models
-    m1,m2,m3 = AST.from_vec(v,x1),AST.from_vec(v,x2),AST.from_vec(v,x3)
+    m1,m2,m3 = Langmuir.from_vec(v,x1),Langmuir.from_vec(v,x2),AST.from_vec(v,x3)
     models = (m1,m2,m3)
 
     #calculate loading of a single isotherm
