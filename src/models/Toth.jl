@@ -17,24 +17,27 @@
 Toth isotherm model: 
 
 K = K₀*exp(-E/(RT))
-f = f₀ + β/T
-nᵢ = M*K*P/(1 + (K*P)ᶠ)¹/ᶠ
+
+f = f₀ - β/T
+
+n = M*K*P/(1 + (K*P)ᶠ)¹/ᶠ
 
 """
-struct Toth{T} <: IsothermModel{T}
-    M::T
-    K₀::T
-    E::T
-    f₀::T
-    β::T
+@with_metadata struct Toth{T} <: IsothermModel{T}
+    (M::T, (0.0, Inf), "saturation loading")
+    (K₀::T, (0.0, Inf), "affinity parameter")
+    (E::T, (-Inf, 0.0), "energy parameter")
+    (f₀::T, (0.0, Inf), "surface heterogeneity parameter at T → ∞")
+    (β::T, (0.0, Inf), "surface heterogeneity coefficient")
 end
 
 function loading(model::Toth, p, T)
     M = model.M
     K = model.K₀*exp(-model.E/(Rgas(model)*T))
-    f = model.f₀ + model.β/T
-    Kpf = abs(K*p)^f
-    return M*K*p/(1 + Kpf)^(1/f)
+    f = model.f₀ - model.β/T
+    Kpf = abs(K*p)^f #f has to be between 0 and 1
+    _1 = one(eltype(p))
+    return M*K*p/(_1 + Kpf)^(_1/f)
 end
 
 henry_coefficient(model::Toth, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))

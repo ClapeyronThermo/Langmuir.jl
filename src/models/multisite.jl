@@ -1,3 +1,18 @@
+"""
+    MultiSite(isotherms...)
+
+    MultiSite <: IsothermModel
+
+The `MultiSite` isotherm model allows combining multiple single-site isotherms to model adsorption on surfaces with multiple distinct types of adsorption sites.
+
+## Inputs
+
+- `isotherms::Tuple{IsothermModel}`: A tuple of isotherm models representing the different adsorption sites.
+
+## Description
+
+The `MultiSite` model combines multiple isotherm models (e.g., Langmuir) to represent systems where adsorption occurs at different types of sites, each described by its own isotherm. This model is useful when the adsorbent has heterogeneous surface characteristics, with different regions or adsorption sites behaving according to different isotherm models.
+"""
 struct MultiSite{T,𝕀} <: IsothermModel{T}
     isotherms::𝕀
 end

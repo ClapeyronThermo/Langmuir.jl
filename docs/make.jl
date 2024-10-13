@@ -15,7 +15,8 @@ makedocs(;
     "Home" => "index.md",
     "Background" => "tutorials/background.md",
     "Getting Started" => "tutorials/getting_started.md",
-    "Reference" => "reference.md"
+    "Supported models" => "models/models.md",
+    "Reference" => "reference.md",
   ],
 )
 

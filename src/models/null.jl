@@ -1,8 +1,3 @@
-#useful for defining carrier gas
-
-struct ZeroIsotherm{T} <: IsothermModel{T} end
-
-
 """
     `ZeroIsotherm()`
 
@@ -14,11 +9,15 @@ ZeroIsotherm represents an isotherm that has no adsorption. it can be used to de
 
 A zero isotherm is defined by:
 
-n == 0
+n = 0
 
 where:
+
 - n is the loading of the adsorbate on the adsorbent
+
 """
+struct ZeroIsotherm{T} <: IsothermModel{T} end
+
 ZeroIsotherm() = ZeroIsotherm{Float64}()
 ZeroIsotherm(T) = ZeroIsotherm{T}()
 

@@ -36,11 +36,12 @@ where:
 - T is the temperature.
 
 """
-struct Unilan{T} <: IsothermModel{T}
-    M::T
-    K₀::T
-    E::T
-    f::T
+@with_metadata struct Unilan{T} <: IsothermModel{T}
+    (M::T, (0.0, Inf), "saturation loading")
+    (K₀::T, (0.0, Inf), "affinity parameter")
+    (E::T, (-Inf, 0.0), "energy parameter")
+    (f₀::T, (0.0, Inf), "surface heterogeneity parameter at T → ∞")
+    (β::T, (0.0, Inf), "surface heterogeneity coefficient")
 end
 
 #b = K
@@ -48,7 +49,7 @@ function loading(model::Unilan, p, T)
     M = model.M
     K₀ = model.K₀
     E = model.E
-    f = model.f
+    f = model.f₀ - model.β/T
     K = K₀*exp(-E/(Rgas(model)*T))
     Kfp1 = log1p(K*exp(f)*p)
     Kfp2 = log1p(K*exp(-f)*p)
@@ -59,7 +60,7 @@ function sp_res(model::Unilan, p, T)
     M = model.M
     K₀ = model.K₀
     E = model.E
-    f = model.f
+    f = model.f₀ - model.β/T
     K = K₀*exp(-E/(Rgas(model)*T))
     Li₂Kfp1 = PolyLog.reli2(-K*exp(-f)*p)
     Li₂Kfp2 = PolyLog.reli2(-K*exp(f)*p)
@@ -71,7 +72,7 @@ function henry_coefficient(model::Unilan, T)
     M = model.M
     K₀ = model.K₀
     E = model.E
-    f = model.f
+    f = model.f₀ - model.β/T
     K = K₀*exp(-E/(Rgas(model)*T))
     (K*M/(2*f))*(exp(f) - exp(-f))
 end
@@ -81,8 +82,8 @@ saturated_loading(model::Unilan, T) = model.M
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Unilan
     #unilan ≈ langmuir with f = 1
     langmuir_model = x0_guess_fit(LangmuirS1,data)
-    M,K₀,E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
-    return Unilan(M, K₀, E, one(eltype(langmuir_model)))
+    M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
+    return Unilan(M, K₀, E, one(eltype(langmuir_model)), zero(eltype(langmuir_model)))
 end
 
 export Unilan

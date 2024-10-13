@@ -82,7 +82,7 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: LangmuirS1
     Ks = Vector{eltype(Ts)}(undef, length(l_p))
 
     # Perform the fitting for each (l, p) tuple
-    for i in 1:length(l_p)
+    for i in eachindex(l_p)
         l_min, p_min = l_p[i]
         MK, K = hcat(p_min, -l_min .* p_min) \ l_min
         MKs[i] = MK
