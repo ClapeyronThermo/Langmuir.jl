@@ -3,28 +3,22 @@ LangmuirFreundlich(M, K₀, E, f₀, β)
 
     LangmuirFreundlich <: IsothermModel
 
-The Langmuir-Freundlich isotherm model is used to represent adsorption on heterogeneous surfaces. It combines elements of both the Langmuir and Freundlich models.
-
 ## Inputs
 
-- `M::T`: Saturation loading, `[mol/kg]`
-- `K₀::T`: Affinity parameter, `[1/Pa]`
-- `E::T`: Adsorption energy, `[J/mol]`
-- `f₀::T`: Surface heterogeneity parameter at high temperature, `[-]`
-- `β::T`: Surface heterogeneity coefficient, `[K]`
+- `M::T`: saturation loading, `[mol/kg]`
+- `K₀::T`: affinity parameter, `[1/Pa]`
+- `E::T`: adsorption energy, `[J/mol]`
+- `f₀::T`: surface heterogeneity parameter at high temperature, `[-]`
+- `β::T`: surface heterogeneity coefficient, `[K]`
 
 ## Description
 
-The Langmuir-Freundlich isotherm can be used to model adsorption processes with both heterogeneous surface interactions and a saturation limit. The general form of the isotherm is:
+The Langmuir-Freundlich form of the isotherm is:
 
-q = M × log(1 + (K × p^f)) / f
+n = M × K × pᶠ /(1 + K × pᶠ)
 
 Where:
-- `q` is the loading of the adsorbate on the adsorbent,
-- `M` is the saturation loading,
-- `K` is the affinity parameter (temperature dependent),
-- `p` is the pressure of the gas,
-- `f` is the surface heterogeneity parameter, which describes how the adsorption sites deviate from uniformity.
+- `n` is the loading of the adsorbate on the adsorbent,
 
 ### Temperature dependence:
 The affinity parameter `K` is temperature-dependent and can be expressed as:

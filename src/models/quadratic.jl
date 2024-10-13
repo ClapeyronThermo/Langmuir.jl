@@ -3,8 +3,6 @@
 
     Quadratic <: IsothermModel
 
-The `Quadratic` isotherm model is used to describe adsorption with two types of adsorption sites, where the adsorption energy for the two sites differs. The quadratic term accounts for cooperative effects between adsorbed molecules.
-
 ## Inputs
 
 - `K₀a::T`: Affinity parameter A, `[1/Pa]`
@@ -15,7 +13,9 @@ The `Quadratic` isotherm model is used to describe adsorption with two types of 
 
 ## Description
 
-The `Quadratic` isotherm model extends the Langmuir model by considering two distinct affinity parameters `K₀a` and `K₀b`, and two adsorption energies `Ea` and `Eb`, which correspond to two types of adsorption sites. This model includes a quadratic term that accounts for interactions between adsorbed molecules on neighboring sites.
+The `Quadratic` isotherm model is given by:
+
+n = M × (Ka + 2Kb × p) × p / (1 + p × (Ka + Kb × p))
 
 The model assumes that the affinity parameters `Ka` and `Kb` are temperature-dependent and follow the relation:
 
@@ -28,9 +28,6 @@ Where:
 - `R` is the gas constant,
 - `T` is the absolute temperature.
 
-The adsorbed amount `n` is computed as:
-
-n = M × (Ka + 2Kb × p) × p / (1 + p × (Ka + Kb × p))
 """
 @with_metadata struct Quadratic{T} <: IsothermModel{T}
     (K₀a::T, (0.0, Inf), "Affinity parameter A")

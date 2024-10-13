@@ -6,21 +6,30 @@
 
 ## Inputs
 
- - `M`::T: maximum loading capacity of the adsorbent, `[mol/kg]`
- - `K₀::T: equilibrium constant at zero coverage, `[1/Pa]`
- - `E`::T: adsorption energy, `[J/mol]`
- - `f₀`::T: Empirical parameter, `-`
- - `β`::T: Empirical parameter, `K`
+ - `M::T`: maximum loading capacity of the adsorbent, `[mol/kg]`
+ - `K₀::T`: affinity parameter, `f(Pa)`
+ - `E::T`: energy parameter, `[J/mol]`
+ - `f₀::T`: Surface heterogeneity parameter at high temperature, `[-]`
+ - `β::T`: Surface heterogeneity coefficient, `[K]`
 
 ## Description
 
 Toth isotherm model: 
 
-K = K₀*exp(-E/(RT))
+n = M*K*P/(1 + (K*P)ᶠ)¹/ᶠ
+
+The adsorption energy E is related to the equilibrium constant K₀ by the equation:
+
+K = K₀ × exp(-E / (R * T))
+
+The exponent f is also temperature dependent and can be expressed as: 
 
 f = f₀ - β/T
 
-n = M*K*P/(1 + (K*P)ᶠ)¹/ᶠ
+where:
+- R is the gas constant,
+- T is the temperature.
+
 
 """
 @with_metadata struct Toth{T} <: IsothermModel{T}

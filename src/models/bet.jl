@@ -1,40 +1,34 @@
 """
-    loading(model::BrunauerEmmettTeller, p, T)
+BrunauerEmmettTeller(K₀a, K₀b, M, E)
 
-Calculates the loading `n` of adsorbate on the adsorbent based on the BET isotherm model.
+    BrunauerEmmettTeller <: IsothermModel
+
+The Brunauer-Emmett-Teller (BET) isotherm model describes multilayer adsorption on a homogeneous surface. It is widely used to characterize adsorption behavior in mesoporous materials.
 
 ## Inputs
 
-- `model`::BrunauerEmmettTeller: A BET model instance containing the parameters K₀a, K₀b, M, and E.
-- `p`::T: Partial pressure of the gas, `[Pa]`.
-- `T`::T: Temperature, `[K]`.
-
-## Outputs
-
-- `n`::T: The loading of the adsorbate on the adsorbent, `[mol/kg]`.
+- `K₀a::T`: Affinity parameter for adsorption, `[1/Pa]`
+- `K₀b::T`: Affinity parameter for multilayer adsorption, `f(Pa)`
+- `M::T`: Saturation loading, `[mol/kg]`
+- `E::T`: Adsorption energy, `[J/mol]`
 
 ## Description
 
-This function computes the amount of gas adsorbed (`n`) based on the BET (Brunauer-Emmett-Teller) isotherm model. The BET model extends the Langmuir adsorption model to account for multilayer adsorption, which is important for modeling physical adsorption processes.
+The BET equation is given by:
 
-The function uses the following steps:
-1. The equilibrium constants `Ka` and `Kb` for the first and subsequent layers are computed using the affinity parameters `K₀a` and `K₀b`, as well as the energy parameter `E`:
-   
-   Ka = K₀a * exp(-E / (R * T))
+n = M × K₀a × p / (1 - K₀b × p) × (1 + (K₀a - K₀b) × p)
 
-   Kb = K₀b * exp(-E / (R * T))
 
-   where `R` is the universal gas constant.
+### Temperature dependence:
+The affinity parameters `K₀a` and `K₀b` depend on temperature and are given by the following expressions:
 
-2. The loading `n` is then calculated using the equation:
+K₀a = K₀a × exp(-E / (RT))
 
-   n = M * (Ka * p) / ((1 - Kb * p) * (1 - Kb + Ka * p))
+K₀b = K₀b × exp(-E / (RT))
 
-   where:
-   - `M` is the saturation loading (maximum loading capacity of the first layer),
-   - `p` is the partial pressure of the gas.
-
-The function accounts for the adsorption in multiple layers, with the affinity parameters determining the strength of adsorption for each layer.
+Where:
+- `R` is the gas constant,
+- `T` is the absolute temperature.
 """
 @with_metadata struct BrunauerEmmettTeller{T} <: IsothermModel{T}
     (K₀a::T,  (0.0, Inf), "affinity parameter")

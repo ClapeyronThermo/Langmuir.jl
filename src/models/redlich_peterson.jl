@@ -1,23 +1,21 @@
 """
-    `RedlichPeterson(M, K₀, E, f)`
+    `RedlichPeterson(M, K₀, E, f₀, β)`
 
     RedlichPeterson <: IsothermModel
 
-RedlichPeterson(M, K₀, E, f) represents the Redlich-Peterson isotherm model, which describes the adsorption of a gas on a solid surface.
-
 ## Inputs
 
-- `M`::T: maximum loading capacity of the adsorbent, `[mol/kg]`
-- `K₀`::T: equilibrium constant at zero coverage, `[1/Pa]`
-- `E`::T: adsorption energy, `[J/mol]`
-- `f₀`::T: parameter characterising the heterogeneity of the system  (no units)
-- `β`::T: coefficient characterising the heterogeneity of the system  (K)
+- `M::T`: maximum loading capacity of the adsorbent, `[mol/kg]`
+- `K₀::T`: affinity parameter at high temperature, `f(Pa)`
+- `E::T`:  adsorption energy, `[J/mol]`
+- `f₀::T`: parameter characterising the heterogeneity of the system  (no units)
+- `β::T`: coefficient characterising the heterogeneity of the system  (K)
 
 ## Description
 
 The RedlichPeterson equation is given by:
 
-n = M * p / (1 + (K₀ * p)^f)
+n = M * p / (1 + K₀ * p^f)
 
 The adsorption energy E is related to the equilibrium constant K₀ by the equation:
 

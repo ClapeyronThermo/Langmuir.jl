@@ -1,35 +1,31 @@
 #general multisite langmuir.
 
 """
-    `Unilan(M, K₀, E)`
+    `Unilan(M, K₀, E, f₀, β)`
 
     Unilan <: IsothermModel
 
-`Unilan(M, K₀, E, f)` represents the Unilan (UNIform distribution LANgmuir) isotherm model, which describes the adsorption of a gas on a solid surface.
-
 ## Inputs
 
-- `M`::T: maximum loading capacity of the adsorbent, `[mol/kg]`
-- `K₀`::T: equilibrium constant at zero coverage, `[1/Pa]`
-- `E`::T: adsorption energy, `[J/mol]`
-- `f`::T: heterogeneity of the adsorbent (no units)
+- `M::T`: Maximum loading capacity of the adsorbent, `[mol/kg]`
+- `K₀::T`: Affinity parameter `f(Pa)`
+- `E::T`: Energy parameter, `[J/mol]`
+- `f₀::T`: Surface heterogeneity parameter at high temperature, `[-]`
+- `β::T`: Surface heterogeneity coefficient `[K]`
 
 ## Description
 
 The UNILAN equation is given by:
 
-n = M * log((1 + K₀* exp(f) * p)/(1 + K₀ * exp(-f) * p)) / (2 * f)
-
-where:
-- n is the loading of the adsorbate on the adsorbent,
-- M is the maximum loading capacity of the adsorbent,
-- K₀ is the equilibrium constant at zero coverage,
-- p is the pressure of the gas.
-- f is the heterogeneity of the adsorbent. at the limit f -> 0, the langmuir isotherm is recovered.
+n = M * log((1 + K* exp(f) * p)/(1 + K * exp(-f) * p)) / (2 * f)
 
 The adsorption energy E is related to the equilibrium constant K₀ by the equation:
 
-K₀ = exp(-E / (R * T))
+K = K₀ × exp(-E / (R * T))
+
+The surface heterogeneity parameter `f` is also temperature-dependent and can be expressed as:
+
+f = f₀ - β / T
 
 where:
 - R is the gas constant,

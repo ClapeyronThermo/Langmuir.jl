@@ -3,7 +3,6 @@
 
     Freundlich <: IsothermModel
 
-The Freundlich isotherm model represents the adsorption of a gas on a heterogeneous surface.
 
 ## Inputs
 
@@ -16,16 +15,9 @@ The Freundlich isotherm model represents the adsorption of a gas on a heterogene
 
 The Freundlich isotherm is given by:
 
-n = K_f × p^{1/f}
+n = K_f × pᶠ
 
-Where:
-- `n` is the loading of the adsorbate on the adsorbent,
-- `K_f` is the affinity parameter,
-- `p` is the pressure of the gas,
-- `β` is the surface heterogeneity coefficient, which represents the deviation from ideal behavior,
-- `E` is the adsorption energy.
-
-The affinity parameter `K_f` is a temperature dependent and can be linked to adsorption energy `E` by an exponential relationship:
+The affinity parameter `K_f` is a temperature dependent and can be linked to adsorption energy `E` by:
 
 K_f = K₀ × exp(-E / (RT))
 
@@ -36,8 +28,6 @@ f = f₀ - β/T
 Where:
 - `R` is the gas constant,
 - `T` is the temperature.
-
-The Freundlich model is suitable for describing adsorption on heterogeneous surfaces, where the adsorption sites have varying energies.
 """
 @with_metadata struct Freundlich{T} <: IsothermModel{T}
     (K₀::T, (0.0, Inf), "Affinity parameter")

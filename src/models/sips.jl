@@ -1,29 +1,21 @@
 """
-    `Sips(M, K₀, E, f)`
+    `Sips(M, K₀, E, f₀, β)`
 
     Sips <: IsothermModel
 
-Sips(M, K₀, E, f) represents the Sips isotherm model, which describes the adsorption of a gas on a solid surface.
-
 ## Inputs
 
-- `M`::T: maximum loading capacity of the adsorbent, `[mol/kg]`
-- `K₀`::T: equilibrium constant at zero coverage, `[1/Pa]`
-- `E`::T: adsorption energy, `[J/mol]`
-- `f₀`::T: parameter characterising the heterogeneity of the system  (no units)
-- `β`::T: coefficient characterising the heterogeneity of the system  (K)
+- `M::T`: maximum loading capacity of the adsorbent, `[mol/kg]`
+- `K₀::T`: affinity parameter at high temperature, `f(Pa)`
+- `E::T`: adsorption energy, `[J/mol]`
+- `f₀::T`: Surface heterogeneity parameter at high temperature, `[-]`
+- `β::T`: Surface heterogeneity coefficient, `[K]`
 
 ## Description
 
 The Sips equation is given by:
 
-n = M * (K * p)^f / (1 + (K * p)^f)
-
-where:
-- n is the loading of the adsorbate on the adsorbent,
-- M is the maximum loading capacity of the adsorbent,
-- K₀ is the equilibrium constant at zero coverage,
-- p is the pressure of the gas.
+n = M * (K * p)ᶠ / (1 + (K * p)ᶠ)
 
 The adsorption energy E is related to the equilibrium constant K₀ by the equation:
 
