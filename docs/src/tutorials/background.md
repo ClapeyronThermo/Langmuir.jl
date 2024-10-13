@@ -27,18 +27,18 @@ $Q_{st, i} = -T*(V_g - V_a)*\left( \frac{\frac{\partial N_i}{\partial T}\rvert_P
 
 The basic equations of the IAST are the analogue of Raoult's law in vapour–liquid equilibrium:
 
-$Py_i = P_i^0(\pi)x_i$ (1)
+$Py_i = P_i^0(\pi)x_i$ 
 
 where
 
-$\pi = \pi_i = \int_{0}^{P_i^0} \frac{N_i^0(P)}{P}dP$ for $i = 1,...,N_c$ (2)
+$\pi = \pi_i = \int_{0}^{P_i^0} \frac{N_i^0(P)}{P}dP$ for $i = 1,...,N_c$ 
 
-$\sum_i^{N_c} x_i = 1$ (3)
+$\sum_i^{N_c} x_i = 1$ 
 
 
 Combining (1) and (3), the following nonlinear solve is set to:
 
-$f(\pi) = 1 - \sum_1^{N_c}\frac{Py_i}{P_i^0\left(\pi\right)}$ = 0 (4)
+$f(\pi) = 1 - \sum_1^{N_c}\frac{Py_i}{P_i^0\left(\pi\right)}$ = 0 
 
 
 

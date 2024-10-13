@@ -42,7 +42,7 @@ Langmuir.Quadratic
 Langmuir.BrunauerEmmettTeller
 ```
 
-## Four and more parameters Isother Models
+## Four and more parameters Isotherm Models
 
 ```@docs
 Langmuir.MultiSite
