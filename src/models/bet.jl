@@ -1,5 +1,5 @@
 """
-BrunauerEmmettTeller(K₀a, K₀b, M, E)
+    `BrunauerEmmettTeller(K₀a, K₀b, M, E)`
 
     BrunauerEmmettTeller <: IsothermModel
 

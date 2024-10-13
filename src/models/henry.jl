@@ -1,5 +1,5 @@
 """
-    Henry(Kh, E)
+    `Henry(Kh, E)`
 
     Henry <: IsothermModel
 

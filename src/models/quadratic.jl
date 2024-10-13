@@ -1,5 +1,5 @@
 """
-    Quadratic(K₀a, K₀b, M, Ea, Eb)
+    `Quadratic(K₀a, K₀b, M, Ea, Eb)`
 
     Quadratic <: IsothermModel
 

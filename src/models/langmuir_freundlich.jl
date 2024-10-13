@@ -1,5 +1,5 @@
 """
-LangmuirFreundlich(M, K₀, E, f₀, β)
+    `LangmuirFreundlich(M, K₀, E, f₀, β)`
 
     LangmuirFreundlich <: IsothermModel
 

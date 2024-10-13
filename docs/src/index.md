@@ -6,7 +6,7 @@ CurrentModule = Langmuir
 
 Langmuir.jl is a powerful Julia library designed to model adsorption equilibria for both single and multi-component systems.
 
-For single-component adsorption, the library offers a wide range of isotherms, from simple one-parameter models like Henry's law to more complex two- and three-parameter models such as the Langmuir (Single and MultiSite), Freundlich, Temkin, Redlich-Peterson, Toth, and Sips isotherms. These models include temperature-dependent parameters, which are essential for estimating the isosteric heat of adsorption from pressure-loading data sets at varying temperatures. For a complete list of available models, refer to ___.
+For single-component adsorption, the library offers a wide range of isotherms, from simple one-parameter models like Henry's law to more complex two- and three-parameter models such as the Langmuir (Single and MultiSite), Freundlich, Temkin, Redlich-Peterson, Toth, and Sips isotherms. These models include temperature-dependent parameters, which are essential for estimating the isosteric heat of adsorption from pressure-loading data sets at varying temperatures. For a complete list of available models, refer to the list of supported models [`supported_models`](@ref).
 
 For multicomponent systems, Langmuir.jl employs the Ideal Adsorption Solution Theory (IAST) to predict the loading of different components, given their bulk pressure, temperature and individual isotherms. This approach allows for predictive modeling of multicomponent adsorption.
 

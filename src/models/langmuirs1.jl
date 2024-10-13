@@ -3,7 +3,7 @@
 
     LangmuirS1 <: IsothermModel
 
-LangmuirS1(M, K₀, E) represents the single site Langmuir isotherm model, which describes the adsorption of a gas on a solid surface.
+`LangmuirS1(M, K₀, E)` represents the single site Langmuir isotherm model.
 
 ## Inputs
 

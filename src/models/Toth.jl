@@ -1,8 +1,9 @@
 
 """
+    `Toth(M, K₀, E, f₀, β)`
+    
     Toth <: IsothermModel
 
-    Toth(M, K₀, E, f₀, β)
 
 ## Inputs
 

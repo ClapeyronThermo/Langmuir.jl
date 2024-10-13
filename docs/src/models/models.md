@@ -2,7 +2,7 @@
 CurrentModule = Langmuir
 ```
 
-# Supported Isotherms
+# [Supported Isotherms](@id supported_models)
 
 Here you can find the list of supported isotherm models.
 

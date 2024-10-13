@@ -1,7 +1,7 @@
 """
-    Freundlich(K₀, f₀, β, E)
+    `Freundlich(K₀, f₀, β, E)`
 
-    Freundlich <: IsothermModel
+     Freundlich <: IsothermModel
 
 
 ## Inputs
