@@ -1,4 +1,3 @@
-using Revise
 using Langmuir
 import Langmuir: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
 import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
