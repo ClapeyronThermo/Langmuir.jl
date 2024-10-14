@@ -1,3 +1,34 @@
+"""
+    `Quadratic(K₀a, K₀b, M, Ea, Eb)`
+
+    Quadratic <: IsothermModel
+
+## Inputs
+
+- `K₀a::T`: Affinity parameter A, `[1/Pa]`
+- `K₀b::T`: Affinity parameter B, `[1/Pa^2]`
+- `M::T`: Saturation loading, `[mol/kg]`
+- `Ea::T`: Adsorption energy A, `[J/mol]`
+- `Eb::T`: Adsorption energy B, `[J/mol]`
+
+## Description
+
+The `Quadratic` isotherm model is given by:
+
+n = M × (Ka + 2Kb × p) × p / (1 + p × (Ka + Kb × p))
+
+The model assumes that the affinity parameters `Ka` and `Kb` are temperature-dependent and follow the relation:
+
+Ka = K₀a * exp(-Ea / (RT))
+
+Kb = K₀b * exp(-Eb / (RT))
+
+Where:
+- `Ka` and `Kb` are the affinity parameters at temperature `T`,
+- `R` is the gas constant,
+- `T` is the absolute temperature.
+
+"""
 @with_metadata struct Quadratic{T} <: IsothermModel{T}
     (K₀a::T, (0.0, Inf), "Affinity parameter A")
     (K₀b::T, (0.0, Inf), "Affinity parameter B")

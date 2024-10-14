@@ -3,29 +3,23 @@
 
     LangmuirS1 <: IsothermModel
 
-LangmuirS1(M, K₀, E) represents the LangmuirS1 isotherm model, which describes the adsorption of a gas on a solid surface.
+`LangmuirS1(M, K₀, E)` represents the single site Langmuir isotherm model.
 
 ## Inputs
 
-- `M`::T: maximum loading capacity of the adsorbent, `[mol/kg]`
-- `K₀`::T: equilibrium constant at zero coverage, `[1/Pa]`
-- `E`::T: adsorption energy, `[J/mol]`
+- `M::T`: maximum loading capacity of the adsorbent, `[mol/kg]`
+- `K₀::T`: equilibrium constant at zero coverage, `[1/Pa]`
+- `E::T`: adsorption energy, `[J/mol]`
 
 ## Description
 
 The LangmuirS1 equation is given by:
 
-n = (M * K₀ * p) / (1 + K₀ * p)
-
-where:
-- n is the loading of the adsorbate on the adsorbent,
-- M is the maximum loading capacity of the adsorbent,
-- K₀ is the equilibrium constant at zero coverage,
-- p is the pressure of the gas.
+n = (M * K * p) / (1 + K * p)
 
 The adsorption energy E is related to the equilibrium constant K₀ by the equation:
 
-K₀ = exp(-E / (R * T))
+K = K₀*exp(-E / (R * T))
 
 where:
 - R is the gas constant,
@@ -82,7 +76,7 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: LangmuirS1
     Ks = Vector{eltype(Ts)}(undef, length(l_p))
 
     # Perform the fitting for each (l, p) tuple
-    for i in 1:length(l_p)
+    for i in eachindex(l_p)
         l_min, p_min = l_p[i]
         MK, K = hcat(p_min, -l_min .* p_min) \ l_min
         MKs[i] = MK
