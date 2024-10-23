@@ -212,7 +212,7 @@ This equation is derived based on the Clausius-Clapeyron relation, which relates
 ## References:
 1. Pan, H., Ritter, J. A., & Balbuena, P. B. (1998). Examination of the approximations used in determining the isosteric heat of adsorption from the Clausius−Clapeyron equation. Langmuir: The ACS Journal of Surfaces and Colloids, 14(21), 6323–6327. [doi:10.1021/la9803373](https://doi.org/10.1021/la9803373)
 """
-function isosteric_heat(model::IsothermModel, Vᵍ, p, T; Vᵃ = zero(eltype(model)))
+function isosteric_heat(model::IsothermModel, p, T; Vᵃ = zero(eltype(p)), Vᵍ = Rgas(model)*T/p)
     
     f(∂p,∂T) = loading(model, ∂p, ∂T)
     

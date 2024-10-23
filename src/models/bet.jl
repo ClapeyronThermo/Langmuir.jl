@@ -7,8 +7,8 @@ The Brunauer-Emmett-Teller (BET) isotherm model describes multilayer adsorption 
 
 ## Inputs
 
-- `K₀a::T`: Affinity parameter for adsorption, `[1/Pa]`
-- `K₀b::T`: Affinity parameter for multilayer adsorption, `f(Pa)`
+- `K₀a::T`: Affinity parameter A at T → ∞, `[1/Pa]`
+- `K₀b::T`: Affinity parameter A at T → ∞, `[1/Pa]`
 - `M::T`: Saturation loading, `[mol/kg]`
 - `E::T`: Adsorption energy, `[J/mol]`
 

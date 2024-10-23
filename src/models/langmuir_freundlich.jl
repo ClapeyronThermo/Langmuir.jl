@@ -5,11 +5,11 @@
 
 ## Inputs
 
-- `M::T`: saturation loading, `[mol/kg]`
-- `K₀::T`: affinity parameter, `[1/Pa]`
-- `E::T`: adsorption energy, `[J/mol]`
-- `f₀::T`: surface heterogeneity parameter at high temperature, `[-]`
-- `β::T`: surface heterogeneity coefficient, `[K]`
+- `M::T`: Saturation loading, `[mol/kg]`
+- `K₀::T`: Affinity parameter at T → ∞, `[1/Pa]`
+- `E::T`: Adsorption energy, `[J/mol]`
+- `f₀::T`: Surface heterogeneity parameter at T → ∞, `[-]`
+- `β::T`: Surface heterogeneity coefficient, `[K]`
 
 ## Description
 
@@ -39,7 +39,7 @@ Where:
     (K₀::T, (0.0, Inf), "Affinity parameter")
     (E::T, (-Inf, 0.0), "Energy parameter")
     (f₀::T, (0.0, Inf), "Surface heterogeneity parameter at T → ∞")
-    (β::T, (0.0, Inf), "Surface heterogeneity coefficient")
+    (β::T, (-Inf, Inf), "Surface heterogeneity coefficient")
 end
 
 
@@ -69,7 +69,7 @@ saturated_loading(model::LangmuirFreundlich, T) = model.M #Some depend on T, som
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: LangmuirFreundlich
     langmuir_model = x0_guess_fit(LangmuirS1,data)
     M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
-    _0 = zero(M)
+    _0 = 1e-30
     _1 = one(M)
     return T(M, K₀, E, _1, _0)
 end

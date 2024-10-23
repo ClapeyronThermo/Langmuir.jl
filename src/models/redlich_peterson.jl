@@ -5,11 +5,11 @@
 
 ## Inputs
 
-- `M::T`: maximum loading capacity of the adsorbent, `[mol/kg]`
-- `K₀::T`: affinity parameter at high temperature, `f(Pa)`
-- `E::T`:  adsorption energy, `[J/mol]`
-- `f₀::T`: parameter characterising the heterogeneity of the system  (no units)
-- `β::T`: coefficient characterising the heterogeneity of the system  (K)
+- `M::T`: Saturation loading, `[mol/kg]`
+- `K₀::T`: Affinity parameter at T → ∞, `[Pa]¹/ᶠ`
+- `E::T`: Adsorption energy, `[J/mol]`
+- `f₀::T`: Surface heterogeneity parameter at T → ∞, `[-]`
+- `β::T`: Surface heterogeneity coefficient, `[K]`
 
 ## Description
 

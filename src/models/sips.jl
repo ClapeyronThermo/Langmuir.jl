@@ -5,10 +5,10 @@
 
 ## Inputs
 
-- `M::T`: maximum loading capacity of the adsorbent, `[mol/kg]`
-- `K₀::T`: affinity parameter at high temperature, `f(Pa)`
-- `E::T`: adsorption energy, `[J/mol]`
-- `f₀::T`: Surface heterogeneity parameter at high temperature, `[-]`
+- `M::T`: Saturation loading, `[mol/kg]`
+- `K₀::T`: Affinity parameter at T → ∞, `[Pa⁻¹]`
+- `E::T`: Adsorption energy, `[J/mol]`
+- `f₀::T`: Surface heterogeneity parameter at T → ∞, `[-]`
 - `β::T`: Surface heterogeneity coefficient, `[K]`
 
 ## Description
@@ -35,7 +35,7 @@ where:
     (K₀::T, (0.0, Inf), "affinity parameter")
     (E::T, (-Inf, 0.0), "energy parameter")
     (f₀::T, (0.0, Inf), "surface heterogeneity parameter at T → ∞")
-    (β::T, (0.0, Inf), "surface heterogeneity coefficient")
+    (β::T, (-Inf, Inf), "surface heterogeneity coefficient")
 end
 
 
@@ -90,16 +90,19 @@ function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Sips
         l_i, p_i = l_p[i]
         idx = findall(>(0.0), l_i)
         l_i, p_i = l_i[idx], p_i[idx]
-        M = maximum(l_i)
+        M = maximum(l_i) + eps(maximum(l_i)*1.1)
         logp = log.(p_i)
         loglml = log.(l_i ./ (M .- l_i))
         _1 = one.(p_i)
-        flogk,f = hcat(_1,logp)\loglml
+        flogk,f = hcat(_1, logp)\loglml
         logk = flogk/f
         logKs[i] = logk
         Ms[i] = M
         fs[i] = f
     end
+
+    _1 = one(eltype(Ts))
+    _1s = ones(eltype(Ts), length(Ts))
 
     if length(l_p) > 1
         logK0, E = hcat(_1s, _1./ (Rgas(T).*Ts)) \ logKs
