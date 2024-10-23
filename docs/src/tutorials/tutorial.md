@@ -11,8 +11,6 @@ In this tutorial, we will go through a typical workflow for processing and analy
 5. **Estimating multicomponent adsorption loading** using the Ideal Adsorbed Solution Theory (IAST).
 
 
-## Workflow
-
 For this tutorial, we will work with a binary system consisting of ethane and ethylene. The goal is to investigate their adsorption properties in DUT-8, a material known for being ethane-selective.
 
 This case study is based on the research presented in the following paper:
@@ -27,8 +25,8 @@ Let's read and visualize the isotherms at the different temperatures.
 
 ```@example fitting
 using Plots, DelimitedFiles, Langmuir
-ethane_data_path = joinpath(@__DIR__, "sample_data\\ethane_tpl_data.csv")
-ethylene_data_path = joinpath(@__DIR__, "sample_data\\ethylene_tpl_data.csv")
+ethane_data_path = joinpath(@__DIR__, "sample_data/ethane_tpl_data.csv")
+ethylene_data_path = joinpath(@__DIR__, "sample_data/ethylene_tpl_data.csv")
 ethane_data = readdlm(ethane_data_path, ',')
 P_ethane = ethane_data[:, 2]*1e5
 T_ethane = ethane_data[:, 1]
