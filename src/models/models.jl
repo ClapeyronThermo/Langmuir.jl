@@ -6,10 +6,6 @@ end
 
 Rgas(model) = 8.31446261815324 #J.mol⁻¹.K⁻¹
 
-function Rgas(model::IsothermModel{<:Quantity})
-    return 8.31446261815324u"J/mol/K"
-end
-
 """
     model_length(model::IsothermModel)
 
