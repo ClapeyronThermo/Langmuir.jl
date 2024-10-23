@@ -120,4 +120,24 @@ temperature(m::AbsorbedIsothermData) = Tables.getcolumn(m,3)
 loading(m::AbsorbedIsothermData) = Tables.getcolumn(m,2)
 pressure(m::AbsorbedIsothermData) = Tables.getcolumn(m,1)
 
-export AbsorbedIsothermData, isotherm_data
+
+
+function split_data_by_temperature(data::AdsIsoTData{TT}) where TT
+    l = loading(data)
+    p = pressure(data)
+    t = temperature(data)
+    
+    unique_temps = sort(unique(t))  # Sort unique temperatures in increasing order
+    temp_data = Vector{Tuple{Vector{TT}, Vector{TT}}}(undef, length(unique_temps))
+    
+    for (i, temp) in enumerate(unique_temps)
+        indices = findall(t .== temp)
+        l_temp = l[indices]
+        p_temp = p[indices]
+        temp_data[i] = (l_temp, p_temp)
+    end
+    
+    return unique_temps, temp_data
+end
+
+export AbsorbedIsothermData, isotherm_data, split_data_by_temperature, merge_isotherm_data

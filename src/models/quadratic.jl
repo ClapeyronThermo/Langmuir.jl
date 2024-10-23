@@ -5,8 +5,8 @@
 
 ## Inputs
 
-- `K₀a::T`: Affinity parameter A, `[1/Pa]`
-- `K₀b::T`: Affinity parameter B, `[1/Pa^2]`
+- `K₀a::T`: Affinity parameter A at T → ∞, `[1/Pa]`
+- `K₀b::T`: Affinity parameter B at T → ∞, `[1/Pa^2]`
 - `M::T`: Saturation loading, `[mol/kg]`
 - `Ea::T`: Adsorption energy A, `[J/mol]`
 - `Eb::T`: Adsorption energy B, `[J/mol]`
@@ -108,7 +108,7 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Quadratic
         Eb = _1
     end
 
-    Quadratic(Ka, Kb, M, -Ea, -Eb)
+    Quadratic(abs(Ka), abs(Kb), M, -abs(Ea), -abs(Eb))
 end
 
 export Quadratic

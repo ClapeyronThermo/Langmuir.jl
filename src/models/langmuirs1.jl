@@ -7,9 +7,9 @@
 
 ## Inputs
 
-- `M::T`: maximum loading capacity of the adsorbent, `[mol/kg]`
-- `K₀::T`: equilibrium constant at zero coverage, `[1/Pa]`
-- `E::T`: adsorption energy, `[J/mol]`
+- `M::T`: Saturation loading, `[mol/kg]`
+- `K₀::T`: Affinity parameter at T → ∞, `[1/Pa]`
+- `E::T`: Adsorption energy, `[J/mol]`
 
 ## Description
 

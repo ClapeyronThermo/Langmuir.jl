@@ -5,7 +5,7 @@
 
 ## Inputs
 
-- `Kh::T`: Affinity parameter, or Henry’s constant, `[mol/kg/Pa]`
+- `Kh::T`: Affinity parameter, or Henry’s constant at T → ∞ `[mol/kg/Pa]`
 - `E::T`: Adsorption energy, `[J/mol]`
 
 ## Description
@@ -14,7 +14,7 @@ The Henry isotherm model describes the adsorption of gases on solid surfaces at 
 
 The adsorption behavior follows Henry's law:
 
-n = Kh * p
+n = K * p
 
 The energy parameter `E` is related to Henry's constant `Kh` by the equation:
 

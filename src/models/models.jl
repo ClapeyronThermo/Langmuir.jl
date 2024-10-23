@@ -6,6 +6,10 @@ end
 
 Rgas(model) = 8.31446261815324 #J.mol⁻¹.K⁻¹
 
+function Rgas(model::IsothermModel{<:Quantity})
+    return 8.31446261815324u"J/mol/K"
+end
+
 """
     model_length(model::IsothermModel)
 
@@ -125,23 +129,6 @@ function Tmax_data(data)
 
 end 
 
-function split_data_by_temperature(data::AdsIsoTData{TT}) where TT
-    l = loading(data)
-    p = pressure(data)
-    t = temperature(data)
-    
-    unique_temps = sort(unique(t))  # Sort unique temperatures in increasing order
-    temp_data = Vector{Tuple{Vector{TT}, Vector{TT}}}(undef, length(unique_temps))
-    
-    for (i, temp) in enumerate(unique_temps)
-        indices = findall(t .== temp)
-        l_temp = l[indices]
-        p_temp = p[indices]
-        temp_data[i] = (l_temp, p_temp)
-    end
-    
-    return unique_temps, temp_data
-end
 
 
 function isotherm_descriptions(::Type{T}) where T <: IsothermModel

@@ -59,8 +59,7 @@ Below it is assumed that the ideal gas law is a good approximation to describe t
 
 ```@example lang1
 import Langmuir: Rgas
-Vg = Rgas(isotherm)*300.0./P[2:end]
-ΔH = map(Vg_P -> isosteric_heat(isotherm, first(Vg_P), last(Vg_P), 300.), zip(Vg, P[2:end])) |> x -> round.(x, digits = 7)
+ΔH = map(P -> isosteric_heat(isotherm, P, 300.), P[2:end]) |> x -> round.(x, digits = 7)
 scatter(l_at_300[2:end], ΔH, size = (500, 250),  ylabel = "Isosteric heat (J/mol)", xlabel = "loading (mol/kg)", label = "Estimated isosteric heat with AD")
 plot!([first(l_at_300), last(l_at_300)], [-E, -E], label = "Expected value") 
 ```

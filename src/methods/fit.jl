@@ -35,6 +35,12 @@ Base.@kwdef struct NewtonIsothermFittingSolver <: IsothermFittingSolver
     logspace::Bool = false
 end
 
+#= function heterogeneity_penalty(M::Union{Freundlich, LangmuirFreundlich, Sips, RedlichPeterson}, T)
+       
+    return ifelse(M.f₀ - M.β/T < 0.0, 50.0, zero(eltype(M))) 
+
+end =#
+
 function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB},
 alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
     
@@ -46,11 +52,11 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
     T = temperature(Ðₗ)
     lb_sign = sign.(nextfloat.(prob.lb)) #Assumes that parameters are either > 0 or < 0.
 
-    function ℓ(θ)
+    function ℓ(θ, is_logspace)
 
         _θ = copy(θ)
 
-        if alg.logspace
+        if is_logspace
             _θ .= lb_sign .* exp.(θ)
         end
         
@@ -99,7 +105,7 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
     end
 
 
-    result = BlackBoxOptim.bboptimize(ℓ, x0; 
+    result = BlackBoxOptim.bboptimize(Base.Fix2(ℓ, alg.logspace), x0; 
     SearchRange = [(lb[i], ub[i]) for i in eachindex(lb)],
     PopulationSize = alg.population_size,
     MaxTime = alg.time_limit,

@@ -1,7 +1,6 @@
 using Langmuir
 import Langmuir: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
 import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
-import Langmuir: merge_isotherm_data, split_data_by_temperature
 using Test
 const LG = Langmuir
 #we test that definitions of loading and sp_res are consistent.
@@ -27,8 +26,7 @@ end
         test_sp_res_loading(cL_test, [1e5, 2e5, 3e5], 298.)
 
         # Isosteric heat
-        V = Rgas(cL_test)*298.0/101325.0
-        ΔH = isosteric_heat(cL_test, V, 101325.0, 298.) ≈ -cL_test.E
+        ΔH = isosteric_heat(cL_test, 101325.0, 298.) ≈ -cL_test.E
     end
 end
 

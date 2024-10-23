@@ -1,16 +1,16 @@
 
 """
     `Toth(M, K₀, E, f₀, β)`
-    
+
     Toth <: IsothermModel
 
 
 ## Inputs
 
- - `M::T`: maximum loading capacity of the adsorbent, `[mol/kg]`
- - `K₀::T`: affinity parameter, `f(Pa)`
- - `E::T`: energy parameter, `[J/mol]`
- - `f₀::T`: Surface heterogeneity parameter at high temperature, `[-]`
+ - `M::T`: Saturation loading, `[mol/kg]`
+ - `K₀::T`: Affinity parameter at T → ∞, `[Pa⁻¹]`
+ - `E::T`: Adsorption energy, `[J/mol]`
+ - `f₀::T`: Surface heterogeneity parameter at T → ∞, `[-]`
  - `β::T`: Surface heterogeneity coefficient, `[K]`
 
 ## Description
@@ -38,7 +38,7 @@ where:
     (K₀::T, (0.0, Inf), "affinity parameter")
     (E::T, (-Inf, 0.0), "energy parameter")
     (f₀::T, (0.0, Inf), "surface heterogeneity parameter at T → ∞")
-    (β::T, (0.0, Inf), "surface heterogeneity coefficient")
+    (β::T, (-Inf, Inf), "surface heterogeneity coefficient")
 end
 
 function loading(model::Toth, p, T)
