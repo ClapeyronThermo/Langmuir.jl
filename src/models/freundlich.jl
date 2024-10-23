@@ -8,7 +8,7 @@
 
 - `K₀::T`: Affinity parameter at T → ∞, `[1/Pa]`
 - `f₀::T`: Surface heterogeneity parameter at T → ∞, `[-]`
-- `β::T`: Surface heterogeneity coefficient (K)
+- `β::T`: Surface heterogeneity coefficient `[K]`
 - `E::T`: Adsorption energy, `[J/mol]`
 
 ## Description
