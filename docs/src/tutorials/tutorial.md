@@ -1,4 +1,4 @@
-# [A complete tutorial with Langmuir.jl](@id Tutorial)
+# [A typical workflow with Langmuir.jl](@id Tutorial)
 
 In this tutorial, we will go through a typical workflow for processing and analyzing adsorption equilibrium data:
 

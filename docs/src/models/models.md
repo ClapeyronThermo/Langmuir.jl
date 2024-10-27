@@ -15,7 +15,9 @@ Pages = ["models.md"]
 ```
 
 ## No-parameter Isotherm Models
-
+```@docs
+Langmuir.ZeroIsotherm
+```
 
 ## One-parameter Isotherm Models
 

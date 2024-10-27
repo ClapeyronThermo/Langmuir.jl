@@ -4,6 +4,7 @@ using Langmuir
 
 makedocs(;
   modules = Langmuir,
+  checkdocs=:none,
   authors = "Andres Riedemann, Vinicius Viena Santana and contributors",
   sitename = "Langmuir.jl",
   format = Documenter.HTML(;
@@ -15,7 +16,7 @@ makedocs(;
     "Home" => "index.md",
     "Background" => "tutorials/background.md",
     "Getting Started" => "tutorials/getting_started.md",
-    "Tutorial" => "tutorials/tutorial.md",
+    "Tutorials" => Any["tutorials/tutorial.md"],
     "Supported models" => "models/models.md",
     "Reference" => "reference.md",
   ],
