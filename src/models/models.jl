@@ -280,6 +280,7 @@ export IsothermModel
 
 include("freundlich.jl")
 include("langmuirs1.jl")
+include("null.jl")
 include("langmuir_freundlich.jl")
 include("redlich_peterson.jl")
 include("sips.jl")

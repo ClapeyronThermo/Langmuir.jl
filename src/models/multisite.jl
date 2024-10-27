@@ -1,17 +1,14 @@
 """
-    MultiSite(isotherms...)
 
-    MultiSite <: IsothermModel
+    MultiSite(isotherms::Vararg{IsothermModel}...)
 
-The `MultiSite` isotherm model allows combining multiple single-site isotherms to model adsorption on surfaces with multiple distinct types of adsorption sites.
+given a list of isotherms, create a multisite isotherm model.
 
-## Inputs
-
-- `isotherms::Tuple{IsothermModel}`: A tuple of isotherm models representing the different adsorption sites.
-
-## Description
-
-The `MultiSite` model combines multiple isotherm models (e.g., Langmuir) to represent systems where adsorption occurs at different types of sites, each described by its own isotherm. This model is useful when the adsorbent has heterogeneous surface characteristics, with different regions or adsorption sites behaving according to different isotherm models.
+```julia
+model1 = LangmuirS1(3.0,1.0,0.0)
+model2 = LangmuirS1(3.0,0.9,3000.0)
+double_site_LangmuirS1 = MultiSite(model1,model2) #create a multisite model with two LangmuirS1 isotherms
+```
 """
 struct MultiSite{T,𝕀} <: IsothermModel{T}
     isotherms::𝕀
@@ -43,20 +40,6 @@ function Base.getindex(m::MultiSite{T,𝕀}) where {T,𝕀}
     return m.isotherms[i]
 end
 
-"""
-
-    MultiSite(m1::IsothermModel,isotherms::Vararg{IsothermModel}...)
-
-given a list of isotherms, create a multisite isotherm model.
-
-```julia
-model1 = LangmuirS1(3.0,1.0,0.0)
-model2 = LangmuirS1(3.0,0.9,3000.0)
-double_site_LangmuirS1 = MultiSite(model1,model2) #create a multisite model with two LangmuirS1 isotherms
-
-@assert loading(model1,1.0,3000.0) + loading(model2,1.0,3000.0) = loading(double_site_LangmuirS1,1.0,3000.0)
-```
-"""
 
 function model_length(::Type{MultiSite{T,I}}) where {T,I}
     return _model_length_multi(I)

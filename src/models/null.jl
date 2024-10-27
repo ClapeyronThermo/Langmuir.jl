@@ -25,3 +25,6 @@ sp_res(model::ZeroIsotherm, p, T) = zero(Base.promote_eltype(model,p,T))
 loading(model::ZeroIsotherm, p, T) = zero(Base.promote_eltype(model,p,T))
 henry_coefficient(model::ZeroIsotherm, T) = zero(Base.promote_eltype(model,T))
 Base.iszero(::ZeroIsotherm) = true
+
+
+export ZeroIsotherm

@@ -20,7 +20,7 @@ where $Q_st$ is the isosteric heat of the component being adsorbed, $T$ is the t
 
 When the isotherm is of the form $N_i = f(T, P_i)$, one can write:
 
-$Q_{st, i} = -T*(V_g - V_a)*\left( \frac{\frac{\partial N_i}{\partial T}\rvert_P_i}{\frac{\partial N_i}{\partial P}\rvert_T} \right)$ 
+$Q_{st, i} = -T \cdot (V_g - V_a) \cdot \left( \frac{\partial N_i / \partial T \mid P_i}{\partial N_i / \partial P \mid T} \right)$
 
 
 ## Multi component adsorption
@@ -38,7 +38,7 @@ $\sum_i^{N_c} x_i = 1$
 
 Combining the two above equations, the following nonlinear solve is set:
 
-$f(\pi) = 1-\sum_1^{N_c}\frac{Py_i}{P_i^0\left(\pi\right)}$ = 0 
+$f(\pi) = 1-\sum_1^{N_c}\frac{Py_i}{P_i^0\left(\pi\right)} = 0$ 
 
 
 
