@@ -127,3 +127,7 @@ function _eltype(x::T) where T
         return eltyp
     end
 end
+
+@inline function gradient(f::F, x) where {F}
+    return ForwardDiff.gradient(f,x)
+end
