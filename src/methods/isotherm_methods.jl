@@ -220,7 +220,7 @@ function isosteric_heat(model::IsothermModel, p, T; Vᵃ = zero(eltype(p)), Vᵍ
 
     ∂n_∂p, ∂n_∂T = _df
 
-    return -T*(Vᵍ - Vᵃ)*∂n_∂T/∂n_∂p
+    return T*(Vᵍ - Vᵃ)*∂n_∂T/∂n_∂p
 end
 
 #useful for creating pseudo langmuir models for multicomponent adsoption.

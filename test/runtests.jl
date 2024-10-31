@@ -1,8 +1,12 @@
 using Langmuir
 import Langmuir: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
+import Langmuir: gibbs_excess_free_energy, activity_coefficient
 import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
 using Test
 const LG = Langmuir
+
+
+
 #we test that definitions of loading and sp_res are consistent.
 
 function test_sp_res_loading(model, prange, T)
@@ -26,7 +30,7 @@ end
         test_sp_res_loading(cL_test, [1e5, 2e5, 3e5], 298.)
 
         # Isosteric heat
-        ΔH = isosteric_heat(cL_test, 101325.0, 298.) ≈ -cL_test.E
+        ΔH = isosteric_heat(cL_test, 101325.0, 298.) ≈ cL_test.E
     end
 end
 
@@ -73,7 +77,16 @@ end
     end
 end
 
-
+@testset "ThermodynamicLangmuir" begin
+    tlang = ThermodynamicLangmuir(2.468, 7.03e-10, -2540*Rgas(LangmuirS1{Float64}), -611.63)
+    analyical_gammas(T, θ) = (exp(θ[2]^2*tlang.Bᵢᵩ/T*(exp(-0.3*tlang.Bᵢᵩ/T) - 1)/(θ[1]*exp(-0.3*tlang.Bᵢᵩ/T) + θ[2])^2),
+    exp(θ[1]^2*-tlang.Bᵢᵩ/T*(exp(-0.3*-tlang.Bᵢᵩ/T) - 1)/(θ[1] + θ[2]*exp(-0.3*-tlang.Bᵢᵩ/T))^2)                                                                                         )
+    @test analyical_gammas(273.15, [0.4, 0.6])[1] ≈ activity_coefficient(tlang, 273.15, [0.4, 0.6])[1]
+    @test analyical_gammas(273.15, [0.4, 0.6])[2] ≈ activity_coefficient(tlang, 273.15, [0.4, 0.6])[2]
+    
+    tlang2 = ThermodynamicLangmuir(2.468, 7.03e-10, -2540*Rgas(LangmuirS1{Float64}), 0.0)
+    @test loading(tlang2, 101325.0, 298.15) ≈ loading(LangmuirS1(tlang2.M, tlang2.K₀, tlang2.E), 101325.0, 298.15)
+end
 
 
 @testset "IAST" begin
@@ -116,3 +129,6 @@ end
     @test iast(models,p,T,y,IASTNestedLoop())[1] ≈ q_tot
     @test iast(models,p,T,y,IASTNestedLoop(),x0 = x0)[1] ≈ q_tot
 end
+
+
+

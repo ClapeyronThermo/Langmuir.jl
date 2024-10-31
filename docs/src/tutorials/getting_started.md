@@ -61,7 +61,7 @@ Below it is assumed that the ideal gas law is a good approximation to describe t
 import Langmuir: Rgas
 ΔH = map(P -> isosteric_heat(isotherm, P, 300.), P[2:end]) |> x -> round.(x, digits = 7)
 scatter(l_at_300[2:end], ΔH, size = (500, 250),  ylabel = "Isosteric heat (J/mol)", xlabel = "loading (mol/kg)", label = "Estimated isosteric heat with AD")
-plot!([first(l_at_300), last(l_at_300)], [-E, -E], label = "Expected value") 
+plot!([first(l_at_300), last(l_at_300)], [E, E], label = "Expected value") 
 ```
 
 ## Estimating properties in multicomponent adsorption.

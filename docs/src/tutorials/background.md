@@ -14,13 +14,13 @@ The first approach focuses on kinetics, where adsorption and desorption rates ar
 
 The heat of adsorption is a critical design parameter in adsorptive gas separation units. During adsorption, heat is released as adsorbate molecules transition to a lower energy state on the surface of the adsorbent compared to their higher energy state in the bulk gas phase. This exothermic process significantly impacts both the efficiency and operational conditions of adsorption systems. For a single component, the isosteric heat is given by:
 
-$Q_{st} = -T*(V_g - V_a)*\left( \frac{dP_i}{dT} \right)\rvert_{(N_i,A)}$ 
+$Q_{st} = T*(V_g - V_a)*\left( \frac{dP_i}{dT} \right)\rvert_{(N_i,A)}$ 
 
 where $Q_st$ is the isosteric heat of the component being adsorbed, $T$ is the temperature, $V_g$ is the molar volume of the component in gas phase, $V_a$ is the molar volume of the component in adsorbed phase, $N_i$ is the amount of component adsorbed of the component
 
 When the isotherm is of the form $N_i = f(T, P_i)$, one can write:
 
-$Q_{st, i} = -T \cdot (V_g - V_a) \cdot \left( \frac{\partial N_i / \partial T \mid P_i}{\partial N_i / \partial P \mid T} \right)$
+$Q_{st, i} = T \cdot (V_g - V_a) \cdot \left( \frac{\partial N_i / \partial T \mid P_i}{\partial N_i / \partial P \mid T} \right)$
 
 
 ## Multi component adsorption

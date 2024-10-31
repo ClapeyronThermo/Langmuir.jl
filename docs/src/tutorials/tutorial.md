@@ -108,8 +108,8 @@ P_C₂₌_283K = sort(lp_ethylene[1][2][2:end])
 l_C₂₌_283K = sort(loading1_ethylene[2:end])
 ΔH_C₂₌_283K = map(p -> isosteric_heat(ethylene_isotherm, p, 283.0), P_C₂₌_283K)
 
-scatter(l_C₂_283K, -ΔH_C₂_283K, xlabel = "Loading (mol/kg)", ylabel = "Isosteric Heat (J/mol)", m = (4, :white, stroke(1, :lightslateblue)), markershape = :circle, label = "Ethane - 283.0 K", size = (600, 300))
-scatter!(l_C₂₌_283K, -ΔH_C₂₌_283K, xlabel = "Loading (mol/kg)", ylabel = "Isosteric Heat (J/mol)", markershape = :square, m = (3, :white, stroke(1, :springgreen2)), label = "Ethylene - 283.0 K")
+scatter(l_C₂_283K, ΔH_C₂_283K, xlabel = "Loading (mol/kg)", ylabel = "Isosteric Heat (J/mol)", m = (4, :white, stroke(1, :lightslateblue)), markershape = :circle, label = "Ethane - 283.0 K", size = (600, 300))
+scatter!(l_C₂₌_283K, ΔH_C₂₌_283K, xlabel = "Loading (mol/kg)", ylabel = "Isosteric Heat (J/mol)", markershape = :square, m = (3, :white, stroke(1, :springgreen2)), label = "Ethylene - 283.0 K")
 ```
 The plot shows the isosteric heat of adsorption for ethane and ethylene at 283.0 K as a function of loading. Ethane exhibits a steeper decline in adsorption heat, suggesting stronger initial interactions that weaken significantly as loading increases, whereas ethylene's decline is more gradual, indicating a slower reduction in adsorption strength. 
 
