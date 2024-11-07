@@ -1,3 +1,31 @@
+"""
+    ThermodynamicLangmuir(M, K₀, E, Bᵢᵩ)
+
+The `ThermodynamicLangmuir` struct represents a thermodynamic Langmuir model with activity coefficients calculated using an aNRTL-like approach.
+
+## Parameters
+
+- `M`: Saturation loading `[mol/kg]`
+- `K₀`: Affinity parameter at high temperature `[1/Pa]`
+- `E`: Adsorption energy `[J/mol]`
+- `Bᵢᵩ`: Interaction energy parameter between adsorbate species `i` and vacant sites `[J/mol]`
+
+## Description
+
+The Langmuir equation is given by:
+
+    nᵢ = (M * K * P) / (γᵢ/γᵩ + K * P)
+
+where `nᵢ` is the adsorbed amount of species `i`, `K` is calculated as:
+
+    K = K₀ * exp(-E / (R * T))
+
+where:
+- `R` is the gas constant
+- `T` is the temperature
+
+The activity coefficients `γᵢ` and `γᵩ` are determined using the Gibbs excess free energy, `gᴱ/RT`, which is calculated based on the surface fractions (`θᵢ`, `θᵩ`) and interaction parameters derived from `Bᵢᵩ`. This free energy value is used in the `activity_coefficient` function to compute the activity coefficients of the adsorbate and phantom molecules.
+"""
 @with_metadata struct ThermodynamicLangmuir{T} <: IsothermModel{T}
     (M::T, (0.0, Inf), "saturation loading")
     (K₀::T, (0.0, Inf), "affinity parameter") 

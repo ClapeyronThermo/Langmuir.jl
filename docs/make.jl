@@ -16,7 +16,7 @@ makedocs(;
     "Home" => "index.md",
     "Background" => "tutorials/background.md",
     "Getting Started" => "tutorials/getting_started.md",
-    "Tutorials" => Any["tutorials/tutorial.md"],
+    "Tutorials" => Any["tutorials/tutorial.md", "tutorials/isosteric_heat.md"],
     "Supported models" => "models/models.md",
     "Reference" => "reference.md",
   ],

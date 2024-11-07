@@ -25,28 +25,26 @@ Langmuir.ZeroIsotherm
 Langmuir.Henry
 ```
 
-## Two-parameter Isotherm Models
-
-```@docs
-Langmuir.LangmuirS1
-Langmuir.Freundlich
-```
-
 ## Three-parameter Isotherm Models
 
 ```@docs
+Langmuir.LangmuirS1
+```
+
+## Four or more parameter Isotherm Models
+
+```@docs
+Langmuir.Freundlich
 Langmuir.RedlichPeterson
 Langmuir.Toth
-Langmuir.Sips
-Langmuir.LangmuirFreundlich
 Langmuir.Unilan
 Langmuir.Quadratic
 Langmuir.BrunauerEmmettTeller
-```
-
-## Four and more parameters Isotherm Models
-
-```@docs
+Langmuir.Sips
+Langmuir.LangmuirFreundlich
 Langmuir.MultiSite
+Langmuir.ThermodynamicLangmuir
 ```
+
+
 
