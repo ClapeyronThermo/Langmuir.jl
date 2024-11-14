@@ -81,9 +81,7 @@ The Gibbs excess free energy term, $\frac{g^E}{RT}$, is expressed as:
 
 $\frac{g^E}{RT} = \frac{\theta_i \theta_\phi \tau_{i\phi} (G_{i\phi} - 1)}{\theta_i G_{i\phi} + \theta_\phi}$
 
-where:
-
-$B_{i\phi}$ is a model parameter, $\tau_{i\phi} = B_{i\phi} / T$, $G_{i\phi} = \exp(-0.3 \cdot \tau_{i\phi})$.
+where, $B_{i\phi}$ is a model parameter, $\tau_{i\phi} = B_{i\phi} / T$, $G_{i\phi} = \exp(-0.3 \cdot \tau_{i\phi})$.
 
 Here, $\theta_i$ and $\theta_\phi$ are the coverage terms for the adsorbed species and adsorption sites, 
 respectively ($\theta_i  + \theta_{\phi} = 1$), and $T$ is the temperature.

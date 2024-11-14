@@ -1,7 +1,7 @@
 name = "Langmuir"
 uuid = "c62cc850-d7ca-4cc1-a95b-48008b40dc90"
 authors = ["Andrés Riedemann <longemen3000@gmail.com>", "Vinicius Santana <vinicius.viena1@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
