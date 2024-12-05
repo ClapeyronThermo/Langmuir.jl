@@ -73,22 +73,22 @@ function sp_res(model, p, T)
     return sp_res_numerical(model, p, T)
 end
 
-function sp_res_numerical(model, p, T; solver = QuadGKJL(), abstol = 1e-6, reltol = 1e-6)
+function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-6, reltol = 1e-6)
     #For cases where the sp_res is not analytical, we use numerical integration
 
     #Part 1 integral
     ϵ = sqrt(eps(Base.promote_eltype(model, p, T)))
 
-    ∫₁ni_p⁻¹ = henry_coefficient(model, T)*ϵ
+    ∫₁ni_p⁻¹dp = henry_coefficient(model, T)*ϵ
 
     #Part 2 integral    
-    f(p) = loading(model, p, T)/p
+    f(p, T) = loading(model, p, T)/p
 
-    prob = IntegralProblem((u, p) -> f(u), (ϵ, p))
+    prob = IntegralProblem(IntegralFunction(f), (ϵ, p), T)
 
-    ∫₂ni_p⁻¹ = Integrals.solve(prob, solver; reltol = reltol, abstol = abstol).u
+    ∫₂ni_p⁻¹dp = Integrals.solve(prob, solver; reltol = reltol, abstol = abstol).u
 
-    π_i = ∫₁ni_p⁻¹ + ∫₂ni_p⁻¹
+    π_i = ∫₁ni_p⁻¹dp + ∫₂ni_p⁻¹dp
 
 return π_i
 
