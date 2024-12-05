@@ -14,7 +14,7 @@ struct MultiSite{T,𝕀} <: IsothermModel{T}
     isotherms::𝕀
 end
 
-isotherm_types(odel::MultiSite) = isotherm_types(typeof(model))
+isotherm_types(model::MultiSite) = isotherm_types(typeof(model))
 
 const __MultiSite{I,T} = MultiSite{T,T}
 
@@ -32,7 +32,7 @@ end
 
 _multisite(isotherms::I) where I = _multisite(eltype(first(isotherms)),isotherms)
 
-function MultiSite(m_first::IsothermModel,m_rest::Vararg{I}) where I <:IsothermModel
+function MultiSite(m_first::IsothermModel, m_rest::Vararg{I}) where I <:IsothermModel
     return _multisite((m_first,m_rest...))
 end
 

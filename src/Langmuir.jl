@@ -16,7 +16,7 @@ abstract type IsothermModel{T} end
 
 include("utils.jl")
 include("isotherm_data.jl")
-include("methods/methods.jl")
 include("models/models.jl")
+include("methods/methods.jl")
 
 end
