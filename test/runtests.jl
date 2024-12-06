@@ -128,6 +128,22 @@ end
     @test iast(models,p,T,y,FastIAS())[1] ≈ q_tot
     @test iast(models,p,T,y,IASTNestedLoop())[1] ≈ q_tot
     @test iast(models,p,T,y,IASTNestedLoop(),x0 = x0)[1] ≈ q_tot
+
+    ethane_isotherm = Quadratic{Float64}(2.5087482698420104e-7, 2.1373377526197646e-19, 3.641079631515442, -6898.20708031339, -47789.60001500269)
+    ethylene_isotherm = Quadratic{Float64}(2.599227350906123e-8, 7.128313806215397e-19, 3.832139235999132, -11790.383728687304, -41702.74723166111)
+    p2 = 101325.0
+    T2 = 303.0
+    models2 = (ethane_isotherm,ethylene_isotherm)
+    yx = range(0.0, 1.00, 51)
+    for yi in yx
+        y = [yi,1-yi]
+        n1,w1,status1 = iast(models2,p2,T2,y,FastIAS())
+        n2,w2,status2 = iast(models2,p2,T2,y,IASTNestedLoop())
+        @test status1 == :success
+        @test status2 == :success
+        @test n1 ≈ n2
+        @test w1 ≈ w2
+    end
 end
 
 
