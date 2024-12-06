@@ -233,7 +233,8 @@ function iast_step!(::FastIAS, models, p, T, y, state::S, maxiters, reltol, abst
         end
     end
     ΔRes = norm(δ,Inf)
-    ΔRes <= min(abstol,norm(Res,Inf)*reltol) && (converged = true)
+    ΔRes <= abstol && (converged = true)
+    norm(δ,1) <= reltol && (converged = true)
     return (;η,K,Diag,Res,δ,x,q_tot,iters,converged)
 end
 
