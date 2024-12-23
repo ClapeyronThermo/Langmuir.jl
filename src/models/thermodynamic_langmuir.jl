@@ -32,7 +32,7 @@ The activity coefficients `γᵢ` and `γᵩ` are determined using the Gibbs exc
     (E::T, (-Inf, 0.0), "energy parameter")
     (Bᵢᵩ::T, (-Inf, 0.0), "adsorbate-adsorbent interaction coefficient")
 end
-
+ 
 
 function gibbs_excess_free_energy(model::ThermodynamicLangmuir, T, θ)
 

@@ -89,6 +89,43 @@ end
 end
 
 
+@testset "Multicomponent Extended Langmuir" begin
+    Lang1 = LangmuirS1(1.727, 16.71e-10, -16152.50)
+    Lang2 = LangmuirS1(4.0, 6.71e-8, -14152.50)
+    multilang = ExtendedLangmuir(Lang1, Lang2)
+    y = [0.3, 0.7]
+    p = 101325.0
+    T = 400.0
+    @test loading(multilang, p, T, y)[1] ≈ Lang1.M * Lang1.K₀*exp(-Lang1.E/(8.31446261815324*T)) * p * y[1] / (1.0 + 
+    Lang2.K₀*exp(-Lang2.E/(8.31446261815324*T))*p*y[2] + Lang1.K₀*exp(-Lang1.E/(8.31446261815324*T))*p*y[1])
+    @test loading(multilang, p, T, y)[2] ≈ Lang2.M * Lang2.K₀*exp(-Lang2.E/(8.31446261815324*T)) * p * y[2] / (1.0 +
+    Lang2.K₀*exp(-Lang2.E/(8.31446261815324*T))*p*y[2] + Lang1.K₀*exp(-Lang1.E/(8.31446261815324*T))*p*y[1])
+end
+
+
+@testset "Multicomponent Extended Multisite Langmuir" begin
+    Lang1 = MultiSite(LangmuirS1(1.727, 16.71e-10, -16152.50), LangmuirS1(4.0, 6.71e-8, -14152.50))
+    Lang2 = MultiSite(LangmuirS1(2.727, 16.71e-12, 1.3*-16152.50), LangmuirS1(7.0, 6.71e-5, 2*-14152.50))
+    multilang = ExtendedLangmuir(Lang1, Lang2)
+    y = [0.6, 0.4]
+    p = 2*101325.0
+    T = 400.0
+
+    den_highE = 1.0 + Lang2.isotherms[2].K₀*exp(-Lang2.isotherms[2].E/(8.31446261815324*T))*p*y[2] + 
+              Lang1.isotherms[1].K₀*exp(-Lang1.isotherms[1].E/(8.31446261815324*T))*p*y[1]
+
+    den_lowE = 1.0 + Lang2.isotherms[1].K₀*exp(-Lang2.isotherms[1].E/(8.31446261815324*T))*p*y[2] +
+                Lang1.isotherms[2].K₀*exp(-Lang1.isotherms[2].E/(8.31446261815324*T))*p*y[1]
+
+    @test loading(multilang, p, T, y)[1] ≈ Lang1.isotherms[1].M * Lang1.isotherms[1].K₀*exp(-Lang1.isotherms[1].E/(8.31446261815324*T)) * p * y[1] / den_highE + 
+    Lang1.isotherms[2].M * Lang1.isotherms[2].K₀*exp(-Lang1.isotherms[2].E/(8.31446261815324*T)) * p * y[1] / den_lowE
+
+    @test loading(multilang, p, T, y)[2] ≈ Lang2.isotherms[1].M * Lang2.isotherms[1].K₀*exp(-Lang2.isotherms[1].E/(8.31446261815324*T)) * p * y[2] / den_lowE + 
+    Lang2.isotherms[2].M * Lang2.isotherms[2].K₀*exp(-Lang2.isotherms[2].E/(8.31446261815324*T)) * p * y[2] / den_highE
+            
+end
+
+
 @testset "IAST" begin
     #10.1002/aic.14684, S.I
     v = @MultiSite{LangmuirS1,LangmuirS1}
