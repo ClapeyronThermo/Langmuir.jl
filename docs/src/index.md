@@ -25,4 +25,9 @@ A complete workflow for using Langmuir.jl typically includes the following steps
 
 - [Andrés Riedemann](mailto:andres.riedemann@gmail.com), University of Concepción
 - [Vinicius Santana](mailto:vinicius.viena1@gmail.com), Norwegian University of Science and Technology - NTNU.
-- Pierre Walker - Caltech. 
+- Pierre Walker - Caltech.
+
+### Acknowledgements
+
+This publication has been produced with support from the HYDROGENi Research Centre (hydrogeni.no), performed under the Norwegian research program FMETEKN. The authors acknowledge the industry partners in HYDROGENi for their contributions and the Research Council of Norway (333118). This work also counts on the support of SUBPRO-Zero through Prof. Idelfonso Nogueira, an associated partner and professor at the Department of Chemical Engineering at NTNU. SUBPRO-Zero is a Research Centre at the Norwegian University of Science and Technology (NTNU) (project code 100589 and CristinID 2720670).
+
