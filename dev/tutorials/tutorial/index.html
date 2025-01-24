@@ -23,7 +23,7 @@ scatter!(lp_ethane[3][2], lp_ethane[3][1], label = &quot;T = 323.00 K (Ethane)&q
 
 scatter!(lp_ethylene[1][2], lp_ethylene[1][1], label = &quot;T = 283.00 K (Ethylene)&quot;, color = :mediumspringgreen, markershape = :square, m = (3, :white, stroke(1, :springgreen2)))
 scatter!(lp_ethylene[3][2], lp_ethylene[3][1], label = &quot;T = 323.00 K (Ethylene)&quot;,
-markershape = :square, m = (3, :white, stroke(1, :springgreen2)))</code></pre><img src="2120ea7a.svg" alt="Example block output"/><p>Following the reference manuscript, the quadratic isotherm is the chosen model for fitting the data. In this tutorial, the same strategy is used.</p><pre><code class="language-julia hljs">import Langmuir: x0_guess_fit, to_vec
+markershape = :square, m = (3, :white, stroke(1, :springgreen2)))</code></pre><img src="3b9ef566.svg" alt="Example block output"/><p>Following the reference manuscript, the quadratic isotherm is the chosen model for fitting the data. In this tutorial, the same strategy is used.</p><pre><code class="language-julia hljs">import Langmuir: x0_guess_fit, to_vec
 #Fitting ethane
 x0_ethane = to_vec(x0_guess_fit(Quadratic, d_ethane))
 lb_ethane = (1e-25, 1e-25, 1e-4, -80_000.0, -80_000.0)
@@ -38,24 +38,24 @@ println(ethane_isotherm)</code></pre><pre class="documenter-example-output"><cod
 0.00 secs, 0 evals, 0 steps
 DE modify state:
 
-Optimization stopped after 64608 steps and 0.41 seconds
+Optimization stopped after 52213 steps and 0.34 seconds
 Termination reason: Too many steps (101) without any function evaluations (probably search has converged)
-Steps per second = 157579.72
-Function evals per second = 150694.39
+Steps per second = 155095.85
+Function evals per second = 149552.99
 Improvements/step = Inf
-Total function evaluations = 61785
+Total function evaluations = 50347
 
 
 Best candidate found: [-15.1983, -42.9896, 1.29228, 8.83902, 10.7746]
 
 Fitness: 0.007827085
 
-Fitting loss for ethane is 0.007827084749448472
-Quadratic{Float64}(2.5087484082871486e-7, 2.137337809237948e-19, 3.64107963157901, -6898.2069522905, -47789.59995087956)</code></pre><pre><code class="language-julia hljs">#Plotting ethane fitting
+Fitting loss for ethane is 0.007827084749448477
+Quadratic{Float64}(2.508748323372888e-7, 2.1373377537611362e-19, 3.641079630912702, -6898.207054451208, -47789.60002152422)</code></pre><pre><code class="language-julia hljs">#Plotting ethane fitting
 loading1_ethane = loading_at_T(ethane_isotherm, lp_ethane[1][2], Ts_ethane[1])
 loading3_ethane = loading_at_T(ethane_isotherm, lp_ethane[3][2], Ts_ethane[3])
 plot!(sort(lp_ethane[1][2]), sort(loading1_ethane), color = :slateblue2, label = &quot;Quadratic - 283.0 K&quot;)
-plot!(sort(lp_ethane[2][2]), sort(loading3_ethane), color = :slateblue2, label = &quot;Quadratic - 323.0 K&quot;)</code></pre><img src="aafe9497.svg" alt="Example block output"/><pre><code class="language-julia hljs">#Fitting Ethylene
+plot!(sort(lp_ethane[2][2]), sort(loading3_ethane), color = :slateblue2, label = &quot;Quadratic - 323.0 K&quot;)</code></pre><img src="573cb530.svg" alt="Example block output"/><pre><code class="language-julia hljs">#Fitting Ethylene
 x0_ethylene = to_vec(x0_guess_fit(Quadratic, d_ethylene))
 lb_ethylene = (1e-25, 1e-25, 1e-4, -80_000.0, -80_000.0)
 ub_ethylene = (1e-1, 1e-1, 100., -500.0, -500.0)
@@ -66,12 +66,12 @@ println(ethylene_isotherm)</code></pre><pre class="documenter-example-output"><c
 0.00 secs, 0 evals, 0 steps
 DE modify state:
 
-Optimization stopped after 51522 steps and 0.27 seconds
+Optimization stopped after 54930 steps and 0.28 seconds
 Termination reason: Too many steps (101) without any function evaluations (probably search has converged)
-Steps per second = 189494.31
-Function evals per second = 182311.31
+Steps per second = 194401.28
+Function evals per second = 184014.10
 Improvements/step = Inf
-Total function evaluations = 49569
+Total function evaluations = 51995
 
 
 Best candidate found: [-17.4655, -41.785, 1.34342, 9.37504, 10.6383]
@@ -79,11 +79,11 @@ Best candidate found: [-17.4655, -41.785, 1.34342, 9.37504, 10.6383]
 Fitness: 0.001567210
 
 Fitting loss for ethane is 0.001567210479377113
-Quadratic{Float64}(2.5992273623899577e-8, 7.128314017179977e-19, 3.8321392399818173, -11790.383725173959, -41702.74714149012)</code></pre><pre><code class="language-julia hljs">#Plotting ethylene isotherms
+Quadratic{Float64}(2.599227611483522e-8, 7.128314203232092e-19, 3.8321392348869128, -11790.383479322858, -41702.74709670384)</code></pre><pre><code class="language-julia hljs">#Plotting ethylene isotherms
 loading1_ethylene = loading_at_T(ethylene_isotherm, lp_ethylene[1][2], Ts_ethylene[1])
 loading3_ethylene = loading_at_T(ethylene_isotherm, lp_ethylene[1][2], Ts_ethylene[3])
 plot!(sort(lp_ethylene[1][2]), sort(loading1_ethylene), color = :springgreen2, label = &quot;Quadratic - 283.0 K&quot;)
-plot!(sort(lp_ethylene[1][2]), sort(loading3_ethylene), color = :springgreen2, label = &quot;Quadratic - 323.0 K&quot;)</code></pre><img src="27b052db.svg" alt="Example block output"/><p>From the fitting results, the isotherm parameters closely match those reported in the reference manuscript. For example, the parameter <span>$M$</span> was estimated at 3.68 in the manuscript, while it is 3.64 in this analysis. However, the energy parameters exhibit a greater discrepancy. Without calorimetric data, it&#39;s challenging to determine the accuracy of these values, as parameter identifiability is limited when relying solely on loading data.</p><pre><code class="language-julia hljs">#Ethane isosteric heat
+plot!(sort(lp_ethylene[1][2]), sort(loading3_ethylene), color = :springgreen2, label = &quot;Quadratic - 323.0 K&quot;)</code></pre><img src="75dc861f.svg" alt="Example block output"/><p>From the fitting results, the isotherm parameters closely match those reported in the reference manuscript. For example, the parameter <span>$M$</span> was estimated at 3.68 in the manuscript, while it is 3.64 in this analysis. However, the energy parameters exhibit a greater discrepancy. Without calorimetric data, it&#39;s challenging to determine the accuracy of these values, as parameter identifiability is limited when relying solely on loading data.</p><pre><code class="language-julia hljs">#Ethane isosteric heat
 P_C₂_283K = sort(lp_ethane[1][2][2:end])
 l_C₂_283K = sort(loading1_ethane[2:end])
 ΔH_C₂_283K = map(p -&gt; isosteric_heat(ethane_isotherm, p, 283.0), P_C₂_283K)
@@ -94,7 +94,7 @@ l_C₂₌_283K = sort(loading1_ethylene[2:end])
 ΔH_C₂₌_283K = map(p -&gt; isosteric_heat(ethylene_isotherm, p, 283.0), P_C₂₌_283K)
 
 scatter(l_C₂_283K, ΔH_C₂_283K, xlabel = &quot;Loading (mol/kg)&quot;, ylabel = &quot;Isosteric Heat (J/mol)&quot;, m = (4, :white, stroke(1, :lightslateblue)), markershape = :circle, label = &quot;Ethane - 283.0 K&quot;, size = (600, 300))
-scatter!(l_C₂₌_283K, ΔH_C₂₌_283K, xlabel = &quot;Loading (mol/kg)&quot;, ylabel = &quot;Isosteric Heat (J/mol)&quot;, markershape = :square, m = (3, :white, stroke(1, :springgreen2)), label = &quot;Ethylene - 283.0 K&quot;)</code></pre><img src="774ae719.svg" alt="Example block output"/><p>The plot shows the isosteric heat of adsorption for ethane and ethylene at 283.0 K as a function of loading. Ethane exhibits a steeper decline in adsorption heat, suggesting stronger initial interactions that weaken significantly as loading increases, whereas ethylene&#39;s decline is more gradual, indicating a slower reduction in adsorption strength. </p><p>Lastly, the final analysis will utilize IAST to make predictions on the binary adsorption of ethane and ethylene.</p><pre><code class="language-julia hljs">y_C₂ = range(0.0, 1.00, 51) |&gt; collect
+scatter!(l_C₂₌_283K, ΔH_C₂₌_283K, xlabel = &quot;Loading (mol/kg)&quot;, ylabel = &quot;Isosteric Heat (J/mol)&quot;, markershape = :square, m = (3, :white, stroke(1, :springgreen2)), label = &quot;Ethylene - 283.0 K&quot;)</code></pre><img src="7c08819d.svg" alt="Example block output"/><p>The plot shows the isosteric heat of adsorption for ethane and ethylene at 283.0 K as a function of loading. Ethane exhibits a steeper decline in adsorption heat, suggesting stronger initial interactions that weaken significantly as loading increases, whereas ethylene&#39;s decline is more gradual, indicating a slower reduction in adsorption strength. </p><p>Lastly, the final analysis will utilize IAST to make predictions on the binary adsorption of ethane and ethylene.</p><pre><code class="language-julia hljs">y_C₂ = range(0.0, 1.00, 51) |&gt; collect
 success_y_C₂ = []
 x_C₂ = []
 x_C₂₌ = []
@@ -120,4 +120,4 @@ for y_C₂_ᵢ in y_C₂
 end
 
 plot(success_y_C₂, x_C₂, xlabel = &quot;x&quot;, ylabel = &quot;y&quot;, label = &quot;ethane&quot;, framestyle=:box, size = (600, 300))
-plot!(1.0 .- success_y_C₂, x_C₂₌, label = &quot;ethylene&quot;)</code></pre><img src="eba066f3.svg" alt="Example block output"/><p>Here you can see the x-y plot for both components.  </p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting Started</a><a class="docs-footer-nextpage" href="../isosteric_heat/">Comparing the estimation of isosteric heat from isotherms with Langmuir.jl »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Wednesday 11 December 2024 09:45">Wednesday 11 December 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+plot!(1.0 .- success_y_C₂, x_C₂₌, label = &quot;ethylene&quot;)</code></pre><img src="75fa8b47.svg" alt="Example block output"/><p>Here you can see the x-y plot for both components.  </p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting Started</a><a class="docs-footer-nextpage" href="../isosteric_heat/">Comparing the estimation of isosteric heat from isotherms with Langmuir.jl »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Friday 24 January 2025 15:00">Friday 24 January 2025</span>. Using Julia version 1.11.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
