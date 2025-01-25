@@ -9,10 +9,13 @@
 
 - `M::T`: Saturation loading, `[mol⋅kg⁻¹]`
 - `K₀::T`: Affinity parameter at T → ∞, `[1⋅Pa⁻¹]`
-- `θ::T`: Correction factor, `[unitless]`
+- `θ::T`: Strength of adsorbate-adsorbate interactions, `[unitless]`
 - `E::T`: Adsorption energy, `[J⋅mol⁻¹]`
 
 ## Description
+
+The value of θ can be both negative and positive. 
+In the former case, this would correspond to attraction between adsorbed particle, and in the latter to repulsion.
 
 The Asymptotic Tempkin equation is given by:
 
@@ -30,7 +33,7 @@ where:
 @with_metadata struct AsymptoticTempkin{T} <: IsothermModel{T}
     (M::T, (0.0, Inf), "saturation loading") 
     (K₀::T, (0.0, Inf), "affinity parameter") #Using Inf cause trouble in bboxoptimize
-    (θ::T, (0.0, 1.0), "correction factor") 
+    (θ::T, (-Inf, Inf), "strength of adsorbate-adsorbate interactions") 
     (E::T, (-Inf, 0.0), "energy parameter") 
 end
 

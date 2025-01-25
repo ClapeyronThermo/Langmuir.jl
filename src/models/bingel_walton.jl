@@ -8,8 +8,8 @@
 ## Inputs
 
 - `M::T`: Saturation loading, `[mol⋅kg⁻¹ ]`
-- `K₀::T`: Affinity parameter at T → ∞, `[1⋅Pa⁻¹]`
-- `A::T`:  K₀ modulating parameter, `[1⋅Pa⁻¹]`
+- `K₀::T`: Intrinsic adsorption aﬃnity, `[1⋅Pa⁻¹]`
+- `A::T`:  Clustering coeﬃcient describing strong adsorbate-adsorbate interactions, `[1⋅Pa⁻¹]`
 - `E::T`: Adsorption energy, `[J⋅mol⁻¹]`
 
 ## Description
@@ -30,7 +30,7 @@ where:
 @with_metadata struct BingelWalton{T} <: IsothermModel{T}
     (M::T, (0.0, Inf), "saturation loading") 
     (K₀::T, (0.0, Inf), "affinity parameter") 
-    (A::T, (0.0, Inf), "affinity parameter") 
+    (A::T, (0.0, Inf), "clustering coefficient") 
     (E::T, (-Inf, 0.0), "energy parameter")
 end
 
