@@ -46,7 +46,7 @@ function sp_res(model::ObrienMyers, p, T) #done TVC
     E = model.E
     K = K₀*exp(-E/(Rgas(model)*T))
     _1 = one(eltype(model))
-    _2 = two(eltype(model))
+    _2 = convert(eltype(model), 2)
     return M * (log1p(K * p) + σ^(_2) * K * p / (_2 * (_1 + K * p)^(_2)))
 end
 
@@ -57,11 +57,11 @@ function loading(model::ObrienMyers, p, T) #done TVC
     E = model.E
     K = K₀*exp(-E/(Rgas(model)*T))
     _1 = one(eltype(model))
-    _2 = two(eltype(model))
-    _3 = three(eltype(model))
+    _2 = convert(eltype(model), 2)
+    _3 = convert(eltype(model), 3)
     return M * (K *p / (_1 + K*p) + σ^(_2)* K * p * (_1 - K * p) / (_2 * (_1 + K * p)^(_3))) #again not sure about _x instead of x...
 end
 
 #optimizations for ObrienMyers, not necessary, but improve performance | Done TVC
-henry_coefficient(model::ObrienMyers, T) = model.M * model.K₀ * exp(-E / (Rgas(model) * T)) * (one(eltype(model)) + 0.5 * modoel.σ^2)
+henry_coefficient(model::ObrienMyers, T) = model.M * model.K₀ * exp(-E / (Rgas(model) * T)) * (one(eltype(model)) + 0.5 * modoel.σ^(convert(eltype(model), 2)))
 saturated_loading(model::AntiLangmuir, T) = model.M
