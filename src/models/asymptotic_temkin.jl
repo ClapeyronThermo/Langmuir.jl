@@ -64,3 +64,5 @@ end
 #optimizations for AsymptoticTemkin, not necessary, but improve performance
 henry_coefficient(model::AsymptoticTemkin, T) = model.K₀*exp(-E/(Rgas(model)*T)) * model.M
 saturated_loading(model::AsymptoticTemkin, T) = model.M 
+
+export AsymptoticTemkin

@@ -55,3 +55,5 @@ end
 henry_coefficient(model::AntiLangmuir, T) = model.A₀*exp(-E/(Rgas(model)*T))
 saturated_loading(model::AntiLangmuir, T) = prevfloat(Inf) #as temperature increases, so does the loading in all cases, thus the saturated loading rends to infinity
 #saturated_loading(model::AntiLangmuir, T) = prevfloat(loading(model,Inf,Inf)) (not sure...)
+
+export Anti_Langmuir

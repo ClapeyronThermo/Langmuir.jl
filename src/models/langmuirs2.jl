@@ -67,3 +67,5 @@ end
 
 henry_coefficient(model::LangmuirS2, T) = model.M₁*model.K₀₁*exp(-model.E₁/(Rgas(model)*T))+model.M₂*model.K₀₂*exp(-model.E₂/(Rgas(model)*T))
 saturated_loading(model::LangmuirS2, T) = model.M₁ + model.M₂
+
+export LangmuirS2

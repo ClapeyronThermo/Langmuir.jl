@@ -49,3 +49,5 @@ end
 #optimizations for BingelWalton, not necessary, but improve performance
 henry_coefficient(model::BingelWalton, T) = model.K₀*exp(-E/(Rgas(model)*T)) * model.M
 saturated_loading(model::BingelWalton, T) = model.M #Some depend on T, some don't
+
+export BingelWalton
