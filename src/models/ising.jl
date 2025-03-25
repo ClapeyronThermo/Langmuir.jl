@@ -18,7 +18,7 @@
 
 The IsingS1 equation is given by:
 
-n = (M * K * p) / (1 + K * p)
+n = 
 
 The adsorption energy E is related to the equilibrium constant K₀ by the equation:
 
