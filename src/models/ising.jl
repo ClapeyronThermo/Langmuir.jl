@@ -1,17 +1,17 @@
 """
-    `IsingS1(Mᵢ,Kᵢ,Eᵢ,Kₒ,Eₒ)`
+    `IsingS1(Mᵢ,Kᵢ₀,Eᵢ,Kₒ₀,Eₒ)`
 
     IsingS1 <: IsothermModel
 
-`IsingS1(Mᵢ,Kᵢ,Eᵢ,Kₒ,Eₒ)` represents the single site Ising isotherm model.
+`IsingS1(Mᵢ,Kᵢ₀,Eᵢ,Kₒ₀,Eₒ)` represents the single site Ising isotherm model.
 
 ## Inputs
 
 - `Mᵢ::T`: Saturation loading, `[mol⋅kg⁻¹]`
-- `Kᵢ::T`: Affinity parameter XX at T → ∞, `[Pa⁻¹]`
-- `Eᵢ::T`: Adsorption energy XX, `[J⋅mol⁻¹]`
-- `Kₒ::T`: Affinity parameter XX at T → ∞, `[Pa⁻¹]`
-- `Eₒ::T`: Adsorption energy XX, `[J⋅mol⁻¹]`
+- `Kᵢ₀::T`: Affinity parameter I at T → ∞, `[Pa⁻¹]`
+- `Eᵢ::T`: Adsorption energy I, `[J⋅mol⁻¹]`
+- `Kₒ₀::T`: Affinity parameter O at T → ∞, `[Pa⁻¹]`
+- `Eₒ::T`: Adsorption energy O, `[J⋅mol⁻¹]`
 
 
 ## Description
@@ -31,26 +31,23 @@ where:
 """
 @with_metadata struct IsingS1{T} <: IsothermModel{T}
     (Mᵢ ::T, (0.0, Inf), "saturation loading")
-    (Kᵢ::T, (0.0, Inf), "affinity parameter I") #Using Inf cause trouble in bboxoptimize
+    (Kᵢ₀::T, (0.0, Inf), "affinity parameter I") #Using Inf cause trouble in bboxoptimize
     (Eᵢ::T, (-Inf, 0.0), "energy parameter I")
-    (Kₒ::T, (0.0, Inf), "affinity parameter O") #Using Inf cause trouble in bboxoptimize
+    (Kₒ₀::T, (0.0, Inf), "affinity parameter O") #Using Inf cause trouble in bboxoptimize
     (Eₒ::T, (-Inf, 0.0), "energy parameter O")
 end
 
-'XXX'
-
 function loading(model::LangmuirS1, p, T)
     M = model.M
-    K₀ = model.K₀
-    E = model.E
-    K = K₀*exp(-E/(Rgas(model)*T))
-    _1 = one(eltype(model))
+    Kₒ₀ = model.Kₒ₀
+    Eₒ = model.Eₒ
+    Kₒ = Kₒ₀*exp(-Eₒ/(Rgas(model)*T))
+    Kᵢ₀ = model.Kᵢ₀
+    Eᵢ = model.Eᵢ
+    Kᵢ = Kᵢ₀*exp(-Eᵢ/(Rgas(model)*T))
+    wᵢ = 0.5*(1-Kᵢ*p + ((1-Kᵢ*p)^2+4*Kₒ*p)^(0.5))
 
-    return M * K *p / (_1 + K*p)
+    return M * Kₒ *p / (wᵢ^2 + Kₒ*p)
 end
 
-#optimizations for LangmuirS1, not necessary, but improve performance
-henry_coefficient(model::LangmuirS1, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
-saturated_loading(model::LangmuirS1, T) = model.M #Some depend on T, some don't
-pressure_impl(model::LangmuirS1, Π, T,::typeof(sp_res), approx) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
 
