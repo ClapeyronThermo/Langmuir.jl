@@ -16,13 +16,16 @@
 
 ## Description
 
-The IsingS1 equation is given by:
+The IsingS1 equation is given by: 
+n = M⋅Kₒ⋅P⋅(ωᵢ²+Kₒ⋅P)⁻¹ 
 
-n = 
+where:
+wᵢ = 0.5⋅(1-Kᵢ⋅p+√((1-Kᵢ⋅p)²+4⋅Kₒ⋅p))
 
-The adsorption energy E is related to the equilibrium constant K₀ by the equation:
+The adsorption energies Eᵢ & Eₒ are related to the equilibrium constants Kᵢ & Kₒ by the equations:
 
-K = K₀*exp(-E / (R * T))
+Kₒ = Kₒ₀⋅exp(-Eₒ⋅(R⋅T)⁻¹)
+Kᵢ = Kᵢ₀⋅exp(-Eᵢ⋅(R⋅T)⁻¹)
 
 where:
 - R is the gas constant,
