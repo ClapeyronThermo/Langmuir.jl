@@ -5,9 +5,9 @@
 
 ## Inputs
 
-- `M::T`: Saturation loading, `[mol/kg]`
-- `K₀::T`: Affinity parameter at T → ∞, `[1/Pa]`
-- `E::T`: Adsorption energy, `[J/mol]`
+- `M::T`: Saturation loading, `[mol⋅kg⁻¹]`
+- `K₀::T`: Affinity parameter at T → ∞, `[Pa⁻¹]`
+- `E::T`: Adsorption energy, `[J⋅mol⁻¹]`
 - `f₀::T`: Surface heterogeneity parameter at T → ∞, `[-]`
 - `β::T`: Surface heterogeneity coefficient, `[K]`
 
@@ -30,9 +30,8 @@ The surface heterogeneity parameter `f` is also temperature-dependent and can be
 f = f₀ - β / T
 
 Where:
-- `R` is the gas constant,
-- `T` is the absolute temperature.
-
+- `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
+- `T` is the temperature, `[K]`.
 """
 @with_metadata struct LangmuirFreundlich{T} <: IsothermModel{T}
     (M::T, (0.0, Inf), "saturation loading")

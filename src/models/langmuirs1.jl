@@ -7,9 +7,9 @@
 
 ## Inputs
 
-- `M::T`: Saturation loading, `[mol/kg]`
-- `K₀::T`: Affinity parameter at T → ∞, `[1/Pa]`
-- `E::T`: Adsorption energy, `[J/mol]`
+- `M::T`: Saturation loading, `[mol⋅kg⁻¹]`
+- `K₀::T`: Affinity parameter at T → ∞, `[Pa⁻¹]`
+- `E::T`: Adsorption energy, `[J⋅mol⁻¹]`
 
 ## Description
 
@@ -21,10 +21,9 @@ The adsorption energy E is related to the equilibrium constant K₀ by the equat
 
 K = K₀*exp(-E / (R * T))
 
-where:
-- R is the gas constant,
-- T is the temperature.
-
+Where:
+- `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
+- `T` is the temperature, `[K]`.
 """
 @with_metadata struct LangmuirS1{T} <: IsothermModel{T}
     (M::T, (0.0, Inf), "saturation loading")

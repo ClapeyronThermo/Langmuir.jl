@@ -27,10 +27,9 @@ The adsorption energies Eᵢ & Eₒ are related to the equilibrium constants K�
 Kₒ = Kₒ₀⋅exp(-Eₒ⋅(R⋅T)⁻¹)
 Kᵢ = Kᵢ₀⋅exp(-Eᵢ⋅(R⋅T)⁻¹)
 
-where:
-- R is the gas constant,
-- T is the temperature.
-
+Where:
+- `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
+- `T` is the temperature, `[K]`.
 """
 @with_metadata struct IsingS1{T} <: IsothermModel{T}
     (Mᵢ ::T, (0.0, Inf), "saturation loading")
