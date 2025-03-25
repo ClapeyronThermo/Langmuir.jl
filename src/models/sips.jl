@@ -29,6 +29,7 @@ Where:
 - `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
 - `T` is the temperature, `[K]`.
 """
+
 @with_metadata struct Sips{T} <: IsothermModel{T}
     (M::T, (0.0, Inf), "saturation loading")
     (K₀::T, (0.0, Inf), "affinity parameter")

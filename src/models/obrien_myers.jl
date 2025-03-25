@@ -30,7 +30,6 @@ Where:
 - `T` is the temperature, `[K]`.
 """
 
-
 @with_metadata struct ObrienMyers{T} <: IsothermModel{T}
     (M::T, (0.0, Inf), "saturation loading")
     (K₀::T, (0.0, Inf), "affinity parameter") #Using Inf cause trouble in bboxoptimize

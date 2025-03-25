@@ -29,6 +29,7 @@ Where:
 - `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
 - `T` is the temperature, `[K]`.
 """
+
 @with_metadata struct Freundlich{T} <: IsothermModel{T}
     (K₀::T, (0.0, Inf), "Affinity parameter")
     (f₀::T, (0.0, Inf), "Surface heterogeneity parameter at T → ∞")

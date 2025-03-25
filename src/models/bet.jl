@@ -30,6 +30,7 @@ Where:
 - `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
 - `T` is the temperature, `[K]`.
 """
+
 @with_metadata struct BrunauerEmmettTeller{T} <: IsothermModel{T}
     (K₀a::T,  (0.0, Inf), "affinity parameter")
     (K₀b::T, (0.0, Inf), "affinity parameter")

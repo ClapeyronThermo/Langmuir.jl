@@ -24,9 +24,7 @@ A = A₀*exp(-E / (R * T))
 Where:
 - `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
 - `T` is the temperature, `[K]`.
-
 """
-
 
 @with_metadata struct AntiLangmuir{T} <: IsothermModel{T}
     (A₀ ::T, (0.0, Inf), "Henry coefficient")
