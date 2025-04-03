@@ -5,8 +5,8 @@
 
 ## Inputs
 
-- `Kh::T`: Affinity parameter, or Henry’s constant at T → ∞ `[mol/kg/Pa]`
-- `E::T`: Adsorption energy, `[J/mol]`
+- `Kh::T`: Affinity parameter, or Henry’s constant at T → ∞ `[mol/kg⋅Pa⁻¹]`
+- `E::T`: Adsorption energy, `[J⋅mol⁻¹]`
 
 ## Description
 
@@ -21,10 +21,10 @@ The energy parameter `E` is related to Henry's constant `Kh` by the equation:
 K = Kh*exp(-E / (R * T))
 
 Where:
-- `R` is the universal gas constant, `[J/mol/K]`,
+- `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
 - `T` is the temperature, `[K]`.
-
 """
+
 @with_metadata struct Henry{T} <: IsothermModel{T}
     (Kh::T, (0.0, Inf), "affinity parameter")
     (E::T, (-Inf, 0.0), "energy parameter")
