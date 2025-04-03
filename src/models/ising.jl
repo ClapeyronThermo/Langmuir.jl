@@ -33,7 +33,7 @@ Where:
 """
 
 @with_metadata struct IsingS1{T} <: IsothermModel{T}
-    (Mᵢ ::T, (0.0, Inf), "saturation loading")
+    (Mᵢ::T, (0.0, Inf), "saturation loading")
     (Kᵢ₀::T, (0.0, Inf), "affinity parameter I") #Using Inf cause trouble in bboxoptimize
     (Eᵢ::T, (-Inf, 0.0), "energy parameter I")
     (Kₒ₀::T, (0.0, Inf), "affinity parameter O") #Using Inf cause trouble in bboxoptimize
@@ -41,16 +41,30 @@ Where:
 end
 
 function loading(model::IsingS1, p, T)
-    M = model.M
+    M = model.Mᵢ
     Kₒ₀ = model.Kₒ₀
     Eₒ = model.Eₒ
     Kₒ = Kₒ₀*exp(-Eₒ/(Rgas(model)*T))
     Kᵢ₀ = model.Kᵢ₀
     Eᵢ = model.Eᵢ
     Kᵢ = Kᵢ₀*exp(-Eᵢ/(Rgas(model)*T))
-    wᵢ = 0.5*(1-Kᵢ*p + ((1-Kᵢ*p)^2+4*Kₒ*p)^(0.5))
+    wᵢ = 0.5*(1.0 -Kᵢ*p + √((1.0 - Kᵢ*p)^2 + 4.0*Kₒ*p))
 
-    return M * Kₒ *p / (wᵢ^2 + Kₒ*p)
+    return M * Kₒ * p / (wᵢ^2 + Kₒ*p)
+end
+
+function sp_res(model::IsingS1, p, T)
+    M = model.Mᵢ
+    Kₒ₀ = model.Kₒ₀
+    Eₒ = model.Eₒ
+    Kₒ = Kₒ₀*exp(-Eₒ/(Rgas(model)*T))
+    Kᵢ₀ = model.Kᵢ₀
+    Eᵢ = model.Eᵢ
+    Kᵢ = Kᵢ₀*exp(-Eᵢ/(Rgas(model)*T))
+    wᵢ = 0.5*(1.0 -Kᵢ*p + √((1.0 - Kᵢ*p)^2 + 4.0*Kₒ*p))
+
+    return M * ((Kₒ * p) - (wᵢ^2*log(Kₒ * p + wᵢ^2)))/(p^2)
 end
 
 
+export IsingS1
