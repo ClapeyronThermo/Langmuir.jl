@@ -8,7 +8,7 @@
 ## Inputs
 ⋅
 - `M::T`: Saturation loading, `[mol⋅kg⁻¹]`
-- `K₀::T`: Affinity parameter at T → ∞, `[Pa⁻¹]`
+- `K₀::T`: Affinity parameter at T → ∞, `[1⋅Pa⁻¹]`
 - `σ::T`: Variance in energy distribution, `[unitless]` #Not too sure...
 - `E::T`: Adsorption energy, `[J⋅mol⁻¹]`
 
@@ -25,10 +25,12 @@ The adsorption energy E is related to the equilibrium constant K₀ by the equat
 
 K = K₀*exp(-E / (R * T))
 
-Where:
-- `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
-- `T` is the temperature, `[K]`.
+where:
+- R is the gas constant,
+- T is the temperature.
+
 """
+
 
 @with_metadata struct ObrienMyers{T} <: IsothermModel{T}
     (M::T, (0.0, Inf), "saturation loading")
