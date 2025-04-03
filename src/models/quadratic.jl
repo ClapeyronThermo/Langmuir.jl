@@ -5,11 +5,11 @@
 
 ## Inputs
 
-- `K₀a::T`: Affinity parameter A at T → ∞, `[Pa⁻¹]`
-- `K₀b::T`: Affinity parameter B at T → ∞, `[Pa⁻²]`
-- `M::T`: Saturation loading, `[mol⋅kg⁻¹]`
-- `Ea::T`: Adsorption energy A, `[J⋅mol⁻¹]`
-- `Eb::T`: Adsorption energy B, `[J⋅mol⁻¹]`
+- `K₀a::T`: Affinity parameter A at T → ∞, `[1/Pa]`
+- `K₀b::T`: Affinity parameter B at T → ∞, `[1/Pa^2]`
+- `M::T`: Saturation loading, `[mol/kg]`
+- `Ea::T`: Adsorption energy A, `[J/mol]`
+- `Eb::T`: Adsorption energy B, `[J/mol]`
 
 ## Description
 
@@ -24,11 +24,11 @@ Ka = K₀a * exp(-Ea / (RT))
 Kb = K₀b * exp(-Eb / (RT))
 
 Where:
-- `Ka` and `Kb` are the affinity parameters at temperature `T`, `[K]`
-- `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
-- `T` is the temperature, `[K]`.
-"""
+- `Ka` and `Kb` are the affinity parameters at temperature `T`,
+- `R` is the gas constant,
+- `T` is the absolute temperature.
 
+"""
 @with_metadata struct Quadratic{T} <: IsothermModel{T}
     (K₀a::T, (0.0, Inf), "Affinity parameter A")
     (K₀b::T, (0.0, Inf), "Affinity parameter B")

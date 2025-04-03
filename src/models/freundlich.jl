@@ -6,10 +6,10 @@
 
 ## Inputs
 
-- `K₀::T`: Affinity parameter at T → ∞, `[Pa⁻¹]`
+- `K₀::T`: Affinity parameter at T → ∞, `[1/Pa]`
 - `f₀::T`: Surface heterogeneity parameter at T → ∞, `[-]`
 - `β::T`: Surface heterogeneity coefficient `[K]`
-- `E::T`: Adsorption energy, `[J⋅mol⁻¹]`
+- `E::T`: Adsorption energy, `[J/mol]`
 
 ## Description
 
@@ -26,10 +26,9 @@ The exponent f is also temperature dependent and can be expressed as:
 f = f₀ - β/T
 
 Where:
-- `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
-- `T` is the temperature, `[K]`.
+- `R` is the gas constant,
+- `T` is the temperature.
 """
-
 @with_metadata struct Freundlich{T} <: IsothermModel{T}
     (K₀::T, (0.0, Inf), "Affinity parameter")
     (f₀::T, (0.0, Inf), "Surface heterogeneity parameter at T → ∞")
