@@ -40,7 +40,7 @@ Where:
     (Eₒ::T, (-Inf, 0.0), "energy parameter O")
 end
 
-function loading(model::LangmuirS1, p, T)
+function loading(model::IsingS1, p, T)
     M = model.M
     Kₒ₀ = model.Kₒ₀
     Eₒ = model.Eₒ
