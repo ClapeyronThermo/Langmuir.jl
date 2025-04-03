@@ -25,4 +25,4 @@ A complete workflow for using Langmuir.jl typically includes the following steps
 
 - [Andrés Riedemann](mailto:andres.riedemann@gmail.com), University of Concepción
 - [Vinicius Santana](mailto:vinicius.viena1@gmail.com), Norwegian University of Science and Technology - NTNU.
-- Pierre Walker - Caltech. 
+- Pierre Walker - Caltech.

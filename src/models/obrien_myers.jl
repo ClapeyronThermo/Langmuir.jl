@@ -62,4 +62,4 @@ end
 
 #optimizations for ObrienMyers, not necessary, but improve performance | Done TVC
 henry_coefficient(model::ObrienMyers, T) = model.M * model.K₀ * exp(-E / (Rgas(model) * T)) * (one(eltype(model)) + 0.5 * modoel.σ^(convert(eltype(model), 2)))
-saturated_loading(model::AntiLangmuir, T) = model.M
+saturated_loading(model::ObrienMyers, T) = model.M
