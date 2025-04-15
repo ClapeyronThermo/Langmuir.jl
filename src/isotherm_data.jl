@@ -73,7 +73,7 @@ function isotherm_data(table,p_label::Symbol,l_label::Symbol,T_label::Symbol)
 end
 
 function isotherm_data(table)
-    return isotherm_data(table,:p,:l,:T)
+    return isotherm_data(table,keys(table)...)
 end
 
 #Tables.jl api, column access

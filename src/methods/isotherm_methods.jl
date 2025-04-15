@@ -73,7 +73,7 @@ function sp_res(model, p, T)
     return sp_res_numerical(model, p, T)
 end
 
-function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-6, reltol = 1e-6)
+function sp_res_numerical(model::IsothermModel, p::V, T::V; solver = HCubatureJL(), abstol = 1e-3, reltol = 1e-3) where V <: Real
     #For cases where the sp_res is not analytical, we use numerical integration
 
     #Part 1 integral
@@ -93,6 +93,24 @@ function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), absto
 return π_i
 
 end
+
+function ChainRulesCore.frule(
+    (_, Δmodel, Δp, ΔT), 
+    ::typeof(sp_res_numerical), 
+    model, 
+    p, 
+    T; 
+    kwargs...
+)
+return sp_res_numerical(model, p, T, kwargs...), loading(model, p, T)/p
+end
+
+@ForwardDiff_frule sp_res_numerical(model, p::ForwardDiff.Dual, T; kwargs...)
+
+#= function sp_res_numerical(model::IsothermModel, p::ForwardDiff.Dual, T; kwargs...)
+    return loading(model, p, T)/p
+end
+ =#
 
 #henry coefficient
 
@@ -169,12 +187,12 @@ function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), approx)
         p0 = pressure_x0(model, Π, T, sp_res)
         f0(p,Π) = Π - sp_res(model, p, T)
         prob = Roots.ZeroProblem(f0, p0)
-        return Roots.solve(prob,p = Π)
+        return Roots.solve(prob, p = Π, Roots.Secant())
     elseif approx == :henry
         return Π/henry_coefficient(model, T)
    # elseif approx == :saturated ?
     else
-        _0 = Base.promote_eltype(model,Π,T)
+        _0 = Base.promote_eltype(model, Π, T)
         return _0/_0
     end
 end

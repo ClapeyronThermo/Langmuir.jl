@@ -34,7 +34,7 @@ The activity coefficients `γᵢ` and `γᵩ` are determined using the Gibbs exc
 end
  
 
-function gibbs_excess_free_energy(model::ThermodynamicLangmuir, T, θ)
+@inline function gibbs_excess_free_energy(model::ThermodynamicLangmuir, T, θ)
 
     _1 = one(eltype(T))
     Bᵢᵩ = model.Bᵢᵩ
@@ -78,7 +78,8 @@ function henry_coefficient(model::ThermodynamicLangmuir, T)
 
     _0 = zero(eltype(T))
 
-    q_0 = loading(model, _0, T)
+    #q_0 = loading(model, _0, T)
+    q_0 = _0
 
     f(∂q, ∂p) = isotherm_res(model, ∂q, ∂p, T)
 
@@ -112,21 +113,25 @@ function loading_impl(model::ThermodynamicLangmuir, p, T)
     E = model.E
     K = K₀*exp(-E/(Rgas(model)*T))
 
-    f0(q, P_T) = begin 
-    p, T = P_T
-    θᵢ = q/M
-    γᵢ, γᵩ = activity_coefficient(model, T, [θᵢ, _1 - θᵢ])
-    q - M * K *p / (γᵢ/γᵩ + K*p)    
+    f0 = let model=model, M=M, K=K, _1=_1, p=p, T=T
+        q -> begin
+            θᵢ = q/M
+            γᵢ, γᵩ = activity_coefficient(model, T, [θᵢ, _1 - θᵢ])
+            q - M * K *p / (γᵢ/γᵩ + K*p)
+        end
     end 
     prob = Roots.ZeroProblem(f0, q0)
-    return Roots.solve(prob, p = (p, T))
-
+    return Roots.solve(prob, Roots.Secant())
 end
 
+function pressure_x0(model::M, Π, T, ::typeof(sp_res)) where M <: ThermodynamicLangmuir
+    guess_model = from_vec(LangmuirS1, [model.M, model.K₀, model.E])
+    return pressure(guess_model, Π, T, sp_res)
+end
 
 function loading(model::ThermodynamicLangmuir, p, T)
     return loading_impl(model, p, T)
 end
 
-export ThermodynamicLangmuir
+export ThermodynamicLangmuir, gibbs_excess_free_energy
 

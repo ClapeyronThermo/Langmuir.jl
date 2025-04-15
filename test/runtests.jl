@@ -88,6 +88,21 @@ end
     @test loading(tlang2, 101325.0, 298.15) ≈ loading(LangmuirS1(tlang2.M, tlang2.K₀, tlang2.E), 101325.0, 298.15)
 end
 
+@testset "gibss free energy multicomponent" begin
+    tl1 = ThermodynamicLangmuir(2.00, 7.0e-5, -10_000.0, -600.0)
+    tl2 = ThermodynamicLangmuir(3.00, 7.0e-6, -20_000.0, -100.0)
+    models = ThermodynamicLangmuirModels(tl1, tl2)
+    nrtl = aNRTLModel(models)
+    x = [0.8, 0.2]
+    T = 300.0
+    τ₁ = tl1.Bᵢᵩ/T
+    τ₂ = tl2.Bᵢᵩ/T
+    τ₁₂ = τ₁ - τ₂
+    G₁₂ = exp(-0.3*(τ₁ - τ₂))
+    analytical_Gᴱ = x[1]*x[2]*τ₁₂*(G₁₂ - 1.0)/(x[1]*G₁₂ + x[2])
+    @test gibbs_excess_free_energy(nrtl, T, x) ≈ analytical_Gᴱ
+end
+
 
 @testset "Multicomponent Extended Langmuir" begin
     Lang1 = LangmuirS1(1.727, 16.71e-10, -16152.50)
