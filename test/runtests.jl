@@ -91,8 +91,7 @@ end
 @testset "gibss free energy multicomponent" begin
     tl1 = ThermodynamicLangmuir(2.00, 7.0e-5, -10_000.0, -600.0)
     tl2 = ThermodynamicLangmuir(3.00, 7.0e-6, -20_000.0, -100.0)
-    models = ThermodynamicLangmuirModels(tl1, tl2)
-    nrtl = aNRTLModel(models)
+    nrtl = aNRTLModel((tl1, tl2))
     x = [0.8, 0.2]
     T = 300.0
     τ₁ = tl1.Bᵢᵩ/T

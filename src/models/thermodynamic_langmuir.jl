@@ -100,7 +100,9 @@ function isosteric_heat(model::ThermodynamicLangmuir, p, T; Vᵃ = zero(eltype(p
 
     q = loading(model, p, T)
 
-    f(∂p, ∂T) = isotherm_res(model, q, ∂p, ∂T)
+    f = let model = model, q = q
+        (∂p, ∂T) -> isotherm_res(model, q, ∂p, ∂T)
+    end
 
     _f,_df = fgradf2(f, p, T)
 
@@ -119,7 +121,7 @@ function loading_impl(model::ThermodynamicLangmuir, p, T)
     E = model.E
     K = K₀*exp(-E/(Rgas(model)*T))
 
-    f0 = let model=model, M=M, K=K, _1=_1, p=p, T=T
+    f0 = let model=model, M=M, K=K, _1 =_1, p=p, T=T
         q -> begin
             θᵢ = q/M
             γᵢ, γᵩ = activity_coefficient(model, T, [θᵢ, _1 - θᵢ])
