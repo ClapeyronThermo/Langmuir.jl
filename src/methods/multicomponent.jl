@@ -8,13 +8,9 @@ struct IASTModels{T,𝕀} <: MultiComponentIsothermModel{T}
     isotherms::𝕀
 end
 
-struct ThermodynamicLangmuirModels{T,𝕀} <: MultiComponentIsothermModel{T}
+struct aNRTLModel{𝕀 <: Tuple{Vararg{IsothermModel}}, B <: Array}
     isotherms::𝕀
-end
-
-struct aNRTLModel{𝕀, T <: Array}
-    isotherms::𝕀
-    Βᵢⱼ::T
+    Βᵢⱼ::B
 end
 
 function _extendedlangmuir(::Type{T}, isotherms::𝕀) where {T,𝕀}
@@ -38,28 +34,17 @@ function IASTModels(m_first::I, m_rest::Vararg{I}) where {I <: IsothermModel}
     return _iastmodels((m_first, m_rest...))
 end
 
-function _tlangmuirmodels(::Type{T}, isotherms::𝕀) where {T,𝕀}
-    return ThermodynamicLangmuirModels{T,𝕀}(isotherms)
-end
-
-_tlangmuirmodels(isotherms::I) where I = _tlangmuirmodels(eltype(first(isotherms)), isotherms)
-
-function ThermodynamicLangmuirModels(m_first::I, m_rest::Vararg{I}) where {I <: ThermodynamicLangmuir}
-    return _tlangmuirmodels((m_first, m_rest...))
-end
-
-function aNRTLModel(I::N) where N <: ThermodynamicLangmuirModels
-    isotherms = I.isotherms
-    Bᵢᵩ = getfield.(isotherms, :Bᵢᵩ) |> collect
+function aNRTLModel(models::Tuple{Vararg{I}}) where I <: ThermodynamicLangmuir
+    Bᵢᵩ = getfield.(models, :Bᵢᵩ) |> collect
     Bᵢⱼ = Bᵢᵩ .- Bᵢᵩ' # Estimated interaction parameters from pure isotherm 
-    return aNRTLModel(isotherms, Bᵢⱼ)
+    return aNRTLModel(models, Bᵢⱼ)
 end
 
-function aNRTLModel(I::N) where N <: MultiComponentIsothermModel
-    isotherms = I.isotherms
+function aNRTLModel(models::Tuple{Vararg{I}}) where I <: IsothermModel
+    isotherms = collect(models)
     NIsotherms = length(isotherms)
-    Bᵢᵩ = zeros(NIsotherms)
-    Bᵢⱼ = Bᵢᵩ .- Bᵢᵩ' # Estimated interaction parameters from pure isotherm 
+    Bᵢᵩ = zeros(NIsotherms) #Ideal model
+    Bᵢⱼ = Bᵢᵩ .- Bᵢᵩ'  
     return aNRTLModel(I, Bᵢⱼ)
 end
 
@@ -71,7 +56,7 @@ end
 
 function loading(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: Tuple{Vararg{<:LangmuirS1{_T}}}}
 
-    _1_∑kP = one(eltype(model))
+    _1_∑kP = one(eltype(T))
     loadings = similar(pᵢ)
     models = model.isotherms
 
@@ -193,9 +178,13 @@ end
 
 function activity_coefficient(model::aNRTLModel, T, x::Vector)
     
-    fun(x) = gibbs_excess_free_energy(model, T, x)
+    fun = let model = model, T = T 
+        x -> gibbs_excess_free_energy(model, T, x)
+    end
 
-    return exp.(gradient(fun, x))
+    cache = similar(x)
+
+    return exp.(ForwardDiff.gradient!(cache, fun, x))
 end
 
 export ExtendedLangmuir, IASTModels, ThermodynamicLangmuirModels, aNRTLModel

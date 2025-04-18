@@ -34,7 +34,7 @@ The activity coefficients `γᵢ` and `γᵩ` are determined using the Gibbs exc
 end
  
 
-@inline function gibbs_excess_free_energy(model::ThermodynamicLangmuir, T, θ)
+function gibbs_excess_free_energy(model::ThermodynamicLangmuir, T::A, θ::AbstractVector{V}) where {V, A}
 
     _1 = one(eltype(T))
     Bᵢᵩ = model.Bᵢᵩ
@@ -49,11 +49,15 @@ end
     return gᴱ_RT
 end
 
-function activity_coefficient(model::ThermodynamicLangmuir, T, θ)
+function activity_coefficient(model::ThermodynamicLangmuir, T::A, θ::AbstractVector{V}) where {V, A}
 
-         fun(θ) = gibbs_excess_free_energy(model, T, θ)
-
-         return exp.(gradient(fun, θ))
+         fun = let model = model, T = T 
+            θ -> gibbs_excess_free_energy(model, T, θ)
+         end 
+         
+         #cfg = ForwardDiff.GradientConfig(fun, θ, autochunk(θ))
+         cache = similar(θ)
+         return exp.(ForwardDiff.gradient!(cache, fun, θ))
 end
 
 function loading_x0(model::ThermodynamicLangmuir, p, T)    
@@ -63,8 +67,8 @@ function loading_x0(model::ThermodynamicLangmuir, p, T)
     return loading(guess_model, p, T)
 end
 
-function isotherm_res(model::ThermodynamicLangmuir, q, p, T)
-    _1 = one(eltype(model))
+function isotherm_res(model::ThermodynamicLangmuir, q, p, T::A) where {A}
+    _1 = one(eltype(T))
     M = model.M
     K₀ = model.K₀
     E = model.E
@@ -81,7 +85,9 @@ function henry_coefficient(model::ThermodynamicLangmuir, T)
     #q_0 = loading(model, _0, T)
     q_0 = _0
 
-    f(∂q, ∂p) = isotherm_res(model, ∂q, ∂p, T)
+    f = let model = model, T = T
+        (∂q, ∂p) -> isotherm_res(model, ∂q, ∂p, T)
+    end
 
     _f,_df = fgradf2(f, q_0, _0)
 
