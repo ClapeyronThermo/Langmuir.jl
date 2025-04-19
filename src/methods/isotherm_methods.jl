@@ -73,7 +73,7 @@ function sp_res(model, p, T)
     return sp_res_numerical(model, p, T)
 end
 
-function sp_res_numerical(model::IsothermModel, p::V, T::V; solver = QuadGKJL(), abstol = 1e-3, reltol = 1e-3) where V <: Real
+function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-3, reltol = 1e-3)
     #For cases where the sp_res is not analytical, we use numerical integration
 
     #Part 1 integral
@@ -83,7 +83,7 @@ function sp_res_numerical(model::IsothermModel, p::V, T::V; solver = QuadGKJL(),
 
     #Part 2 integral    
     f = let model = model
-        (p, T) -> loading(model, p, T)/p
+        (p, T) ->loading(model, p, T)/p
     end
 
     prob = IntegralProblem(IntegralFunction(f), (ϵ, p), T)

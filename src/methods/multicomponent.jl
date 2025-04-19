@@ -8,7 +8,7 @@ struct IASTModels{T,𝕀} <: MultiComponentIsothermModel{T}
     isotherms::𝕀
 end
 
-struct aNRTLModel{𝕀 <: Tuple{Vararg{IsothermModel}}, B <: Array}
+struct aNRTLModel{𝕀, B <: Array}
     isotherms::𝕀
     Βᵢⱼ::B
 end
@@ -34,13 +34,13 @@ function IASTModels(m_first::I, m_rest::Vararg{I}) where {I <: IsothermModel}
     return _iastmodels((m_first, m_rest...))
 end
 
-function aNRTLModel(models::Tuple{Vararg{I}}) where I <: ThermodynamicLangmuir
+function aNRTLModel(models::Tuple{I, Vararg{I}}) where I <: ThermodynamicLangmuir
     Bᵢᵩ = getfield.(models, :Bᵢᵩ) |> collect
     Bᵢⱼ = Bᵢᵩ .- Bᵢᵩ' # Estimated interaction parameters from pure isotherm 
     return aNRTLModel(models, Bᵢⱼ)
 end
 
-function aNRTLModel(models::Tuple{Vararg{I}}) where I <: IsothermModel
+function aNRTLModel(models::Tuple{I, Vararg{I}}) where I <: IsothermModel
     isotherms = collect(models)
     NIsotherms = length(isotherms)
     Bᵢᵩ = zeros(NIsotherms) #Ideal model
