@@ -8,7 +8,7 @@
 ## Inputs
 ⋅
 - `A₀::T`: Henry coefficient, `[mol⋅kg⁻¹⋅Pa⁻¹]`
-- `B::T`: Affinity parameter at T → ∞, `[1⋅Pa⁻¹]`
+- `B::T`: Affinity parameter at T → ∞, `[Pa⁻¹]`
 - `E::T`: Adsorption energy, `[J⋅mol⁻¹]`
 
 ## Description
@@ -21,12 +21,10 @@ The adsorption energy E is related to the Henry coefficient A₀ by the equation
 
 A = A₀*exp(-E / (R * T))
 
-where:
-- R is the gas constant,
-- T is the temperature.
-
+Where:
+- `R` is the universal gas constant, `[J⋅mol⁻¹⋅K⁻¹]`,
+- `T` is the temperature, `[K]`.
 """
-
 
 @with_metadata struct AntiLangmuir{T} <: IsothermModel{T}
     (A₀ ::T, (0.0, Inf), "Henry coefficient")
