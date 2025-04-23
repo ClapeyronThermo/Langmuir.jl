@@ -1,8 +1,9 @@
-abstract type IASTSolver end
+abstract type ASTSolver end
+abstract type IASTSolver <: ASTSolver end
 struct FastIAS <: IASTSolver end
 struct IASTNestedLoop <: IASTSolver end
 
-struct IASTProblem{M,P,TT,Y,X,G}
+struct ASTProblem{M,P,TT,Y,X,G}
     models::M
     p::P
     T::TT
@@ -11,39 +12,45 @@ struct IASTProblem{M,P,TT,Y,X,G}
     gas_model::G
 end
 
-IASTProblem(models, p, T, y; x0 = nothing,gas_model = nothing) = IASTProblem(models, p, T, y, x0, gas_model)
+const IASTProblem = ASTProblem
 
-struct IASTIteration{ALG<:IASTSolver,PROB<:IASTProblem,ITER,COND}
+ASTProblem(models, p, T, y; x0 = nothing,gas_model = nothing) = ASTProblem(models, p, T, y, x0, gas_model)
+
+struct ASTIteration{ALG<:ASTSolver,PROB<:ASTProblem,ITER,COND}
     alg::ALG
     prob::PROB
     iter::ITER
     cond::COND
 end
 
-function CommonSolve.step!(iter::I) where I <: IASTIteration{ALG,PROB,ITER,COND} where {ALG,PROB,ITER,COND}
+get_P0i(iter::ASTIteration{IASTNestedLoop}) = iter.iter.Pᵢ
+get_P0i(iter::ASTIteration{FastIAS}) = iter.iter.η ./ iter.iter.K
+
+const IASTIteration = ASTIteration
+
+function CommonSolve.step!(iter::I) where I <: ASTIteration{ALG,PROB,ITER,COND} where {ALG,PROB,ITER,COND}
     maxiters,reltol,abstol = iter.cond
     alg,prob,state = iter.alg,iter.prob,iter.iter
-    new_state = iast_step!(alg,prob.models, prob.p, prob.T, prob.y, state, maxiters,reltol, abstol)
-    return IASTIteration(alg,prob,new_state,iter.cond)
+    new_state = ast_step!(alg,prob.models,prob.p,prob.T,prob.y,state,maxiters,reltol,abstol)
+    return ASTIteration(alg,prob,new_state,iter.cond)
 end
 
-function CommonSolve.solve!(x::IASTIteration)
+function ast_solve!(x::ASTIteration)
     converged = x.iter.converged
-    if converged
-        return x.iter.q_tot,x.iter.x,:success
-    end
-    maxiters,reltol,abstol = x.cond
-    #iters = x.cond[1]
+    x.iter.converged && return x,:success
     for i in 1:maxiters
         x = step!(x)
-        if x.iter.converged
-            return x.iter.q_tot,x.iter.x,:success
-        end
+        ix.iter.converged && return x,:success
     end
-    return x.iter.q_tot,x.iter.x,:maxiters_exceeded
+    return x,:maxiters_exceeded
 end
 
-function iast_x0(::FastIAS,models, p, T, y, x0 = nothing)
+function CommonSolve.solve!(x0::ASTIteration)
+    x,status = ast_solve!(x0)
+    return x.iter.q_tot,x.iter.x,status
+end
+
+function iast_x0(::FastIAS, models, p, T, y, x0 = nothing)
     n = length(models)
     #we calculate Πi, find the extrema, and interpolate a langmuir isotherm.
     #this skips the non existent henry and/or saturated_loading isotherms when they are not available
@@ -116,7 +123,7 @@ function iast_x0(::IASTNestedLoop,models, p, T, y, x0 = nothing)
     return Π0,P0i
 end
 
-function CommonSolve.init(prob::IASTProblem{M,P,TT,Y,G},alg::IASTNestedLoop;maxiters = 100,reltol = 1e-12, abstol = 1e-10) where {M,P,TT,Y,G}
+function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::IASTNestedLoop;maxiters = 100,reltol = 1e-12, abstol = 1e-10) where {M,P,TT,Y,G}
     Π,Pᵢ = iast_x0(alg,prob.models, prob.p, prob.T, prob.y, prob.x0)
     q_tot = zero(eltype(Pᵢ))/zero(eltype(Pᵢ))
     x = similar(Pᵢ)
@@ -127,7 +134,7 @@ function CommonSolve.init(prob::IASTProblem{M,P,TT,Y,G},alg::IASTNestedLoop;maxi
     return IASTIteration(alg,prob,state,conditions)
 end
 
-function CommonSolve.init(prob::IASTProblem{M,P,TT,Y,G},alg::FastIAS;maxiters = 100,reltol = 1e-12, abstol = 1e-10) where {M,P,TT,Y,G}
+function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FastIAS;maxiters = 100,reltol = 1e-12, abstol = 1e-10) where {M,P,TT,Y,G}
     η,K = iast_x0(alg,prob.models, prob.p, prob.T, prob.y, prob.x0)
     q_tot = zero(eltype(η))/zero(eltype(η))
     x = similar(η)
@@ -137,37 +144,39 @@ function CommonSolve.init(prob::IASTProblem{M,P,TT,Y,G},alg::FastIAS;maxiters = 
     iters = 0
     converged = false
     conditions = (maxiters,reltol,abstol)
-    state = (;η,K,Diag,Res,δ,x,q_tot,iters,converged)
+    state = (;NaN*zero(eltype(η)),η,K,Diag,Res,δ,x,q_tot,iters,converged)
     return IASTIteration(alg,prob,state,conditions)
 end
 
-function iast_step!(::IASTNestedLoop, models, p, T, y, state::S, maxiters, reltol, abstol) where S
+function ast_step!(::IASTNestedLoop, models, p, T, y, state::S, maxiters, reltol, abstol) where S
     (;Π,Pᵢ,q_tot,x,iters,converged) = state
-    q_tot_inv = zero(q_tot)
     iters += 1
+
     for i in 1:length(Pᵢ)
         model = models[i]
         Pᵢ[i] = pressure(model, Π, T, sp_res)
     end
-    q_tot_inv = zero(eltype(Pᵢ))
+
+    q⁻¹ = zero(eltype(Pᵢ))
+
     for i in 1:length(Pᵢ)
         model = models[i]
         p0i = Pᵢ[i]
         x[i] = p*y[i]/p0i
         qi = loading(model,p0i,T)
-        q_tot_inv +=p*y[i]/p0i/qi
+        q⁻¹ +=p*y[i]/p0i/qi
     end
-    Δ∑x = 1 - sum(x)
-    Δ2 = -Δ∑x/q_tot_inv
+
+    ΔΠ = (sum(x) - 1)/q⁻¹
     iters == maxiters && (converged = true)
     abs(Δ2) < min(Π*reltol,abstol) && (converged = true)
-    Π = Π + Δ2
-    q_tot = 1/q_tot_inv
+    Π = Π + ΔΠ
+    q_tot = 1/q⁻¹
     return (;Π,Pᵢ,q_tot,x,iters,converged)
 end
 
-function iast_step!(::FastIAS, models, p, T, y, state::S, maxiters, reltol, abstol) where S
-    (;η,K,Diag,Res,δ,x,q_tot,iters,converged) = state
+function ast_step!(::FastIAS, models, p, T, y, state::S, maxiters, reltol, abstol) where S
+    (;_,η,K,Diag,Res,δ,x,q_tot,iters,converged) = state
     iters += 1
     #Kpi = scaling factor, p0i = η[i]/K[i]
     n = length(η)
@@ -235,7 +244,8 @@ function iast_step!(::FastIAS, models, p, T, y, state::S, maxiters, reltol, abst
     ΔRes = norm(δ,Inf)
     ΔRes <= abstol && (converged = true)
     norm(δ,1) <= reltol && (converged = true)
-    return (;η,K,Diag,Res,δ,x,q_tot,iters,converged)
+    Π = Π_nc
+    return (;Π,η,K,Diag,Res,δ,x,q_tot,iters,converged)
 end
 
 
@@ -247,48 +257,13 @@ TODO: docs
 returns q_tot,x,convergence_symbol (:success, or :maxiters_exceeded)
 """
 function iast(models,p,T,y,method = FastIAS(),gas_model = nothing;x0 = nothing,maxiters = 100,reltol = 1e-12, abstol = 1e-10)
-    prob = IASTProblem(models, p, T, y; x0, gas_model)
+    prob = ASTProblem(models, p, T, y; x0, gas_model)
     return CommonSolve.solve(prob, method; maxiters, reltol, abstol)
 end
 
-function rast(models::M, p, T, y, gas_model = nothing; x0 = nothing, maxiters = 100, reltol = 1e-7, abstol = 1e-7) where {M <: aNRTLModel}
-    
-    isotherms = models.isotherms
-
-    if isnothing(x0)
-
-        (n_total, x₀, is_success) = iast([isotherms...], p, T, y, IASTNestedLoop(), gas_model; x0, maxiters, reltol, abstol)
-        
-        if is_success == :success
-            Pᵢ₀_π = y.*p./x₀
-            P₁₀_π = first(Pᵢ₀_π)
-            Π₀ = sp_res(first(isotherms), P₁₀_π, T)
-            q0 = vcat(x₀, Π₀)
-        else
-            error("IAST guess convergence failed - current number of iterations is $maxiters, consider increasing to meet tolerances.")
-        end
-
-        else
-            Π₀ = last(x0)
-            x₀ = x0[1:length(y)]
-            q0 = vcat(x₀, Π₀)
-    end
-
-        f0(out, x_Π, P_T_y) = begin 
-            P, T, y = P_T_y
-            x, Π = x_Π[1:length(y)], last(x_Π)
-            yP = y.*P
-            Pᵢ⁰ = map(m->pressure(m, Π, T, sp_res), isotherms)
-            xᵢPᵢ⁰γᵢ = x.*Pᵢ⁰.*activity_coefficient(models, T, x)
-            res1 = yP .- xᵢPᵢ⁰γᵢ
-            res2 = sum(x) - 1.0
-            out .= vcat(res1, res2)
-            return out
-            end 
-
-        g(u, x) = f0(u, x, (p, T, y))
-
-    return g, q0
+function iast(models::ThermodynamicLangmuir,p,T,y,method = FastIAS(),gas_model = nothing;x0 = nothing,maxiters = 100,reltol = 1e-12, abstol = 1e-10)
+    return iast(models.isotherms,p,T,y,method,gas_model;x0,maxiters,reltol,abstol)
 end
 
-export IASTProblem, FastIAS, IASTNestedLoop, iast, rast
+
+export IASTProblem, FastIAS, IASTNestedLoop, iast
