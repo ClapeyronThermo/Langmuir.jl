@@ -73,7 +73,7 @@ function sp_res(model, p, T)
     return sp_res_numerical(model, p, T)
 end
 
-function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-6, reltol = 1e-6)
+function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-3, reltol = 1e-3)
     #For cases where the sp_res is not analytical, we use numerical integration
 
     #Part 1 integral
@@ -82,7 +82,9 @@ function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), absto
     ∫₁ni_p⁻¹dp = henry_coefficient(model, T)*ϵ
 
     #Part 2 integral    
-    f(p, T) = loading(model, p, T)/p
+    f = let model = model
+        (p, T) ->loading(model, p, T)/p
+    end
 
     prob = IntegralProblem(IntegralFunction(f), (ϵ, p), T)
 
@@ -93,6 +95,24 @@ function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), absto
 return π_i
 
 end
+
+function ChainRulesCore.frule(
+    (_, Δmodel, Δp, ΔT), 
+    ::typeof(sp_res_numerical), 
+    model, 
+    p, 
+    T; 
+    kwargs...
+)
+return sp_res_numerical(model, p, T, kwargs...), loading(model, p, T)/p
+end
+
+@ForwardDiff_frule sp_res_numerical(model, p::ForwardDiff.Dual, T; kwargs...)
+
+#= function sp_res_numerical(model::IsothermModel, p::ForwardDiff.Dual, T; kwargs...)
+    return loading(model, p, T)/p
+end
+ =#
 
 #henry coefficient
 
@@ -167,14 +187,16 @@ end
 function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), approx)
     if approx == :exact
         p0 = pressure_x0(model, Π, T, sp_res)
-        f0(p,Π) = Π - sp_res(model, p, T)
+        f0 = let model = model, Π = Π, T =T
+            p -> Π - sp_res(model, p, T)
+        end
         prob = Roots.ZeroProblem(f0, p0)
-        return Roots.solve(prob,p = Π)
+        return Roots.solve(prob, Roots.Secant())
     elseif approx == :henry
         return Π/henry_coefficient(model, T)
    # elseif approx == :saturated ?
     else
-        _0 = Base.promote_eltype(model,Π,T)
+        _0 = Base.promote_eltype(model, Π, T)
         return _0/_0
     end
 end
@@ -214,7 +236,9 @@ This equation is derived based on the Clausius-Clapeyron relation, which relates
 """
 function isosteric_heat(model::IsothermModel, p, T; Vᵃ = zero(eltype(p)), Vᵍ = Rgas(model)*T/p)
     
-    f(∂p,∂T) = loading(model, ∂p, ∂T)
+    f =  let model = model
+        (∂p,∂T) -> loading(model, ∂p, ∂T)
+    end
     
     _f,_df = fgradf2(f, p, T)
 

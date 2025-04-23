@@ -251,4 +251,44 @@ function iast(models,p,T,y,method = FastIAS(),gas_model = nothing;x0 = nothing,m
     return CommonSolve.solve(prob, method; maxiters, reltol, abstol)
 end
 
-export IASTProblem, FastIAS, IASTNestedLoop, iast
+function rast(models::M, p, T, y, gas_model = nothing; x0 = nothing, maxiters = 100, reltol = 1e-7, abstol = 1e-7) where {M <: aNRTLModel}
+    
+    isotherms = models.isotherms
+
+    if isnothing(x0)
+
+        (n_total, x₀, is_success) = iast([isotherms...], p, T, y, IASTNestedLoop(), gas_model; x0, maxiters, reltol, abstol)
+        
+        if is_success == :success
+            Pᵢ₀_π = y.*p./x₀
+            P₁₀_π = first(Pᵢ₀_π)
+            Π₀ = sp_res(first(isotherms), P₁₀_π, T)
+            q0 = vcat(x₀, Π₀)
+        else
+            error("IAST guess convergence failed - current number of iterations is $maxiters, consider increasing to meet tolerances.")
+        end
+
+        else
+            Π₀ = last(x0)
+            x₀ = x0[1:length(y)]
+            q0 = vcat(x₀, Π₀)
+    end
+
+        f0(out, x_Π, P_T_y) = begin 
+            P, T, y = P_T_y
+            x, Π = x_Π[1:length(y)], last(x_Π)
+            yP = y.*P
+            Pᵢ⁰ = map(m->pressure(m, Π, T, sp_res), isotherms)
+            xᵢPᵢ⁰γᵢ = x.*Pᵢ⁰.*activity_coefficient(models, T, x)
+            res1 = yP .- xᵢPᵢ⁰γᵢ
+            res2 = sum(x) - 1.0
+            out .= vcat(res1, res2)
+            return out
+            end 
+
+        g(u, x) = f0(u, x, (p, T, y))
+
+    return g, q0
+end
+
+export IASTProblem, FastIAS, IASTNestedLoop, iast, rast
