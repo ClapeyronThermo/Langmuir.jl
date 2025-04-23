@@ -1,7 +1,7 @@
 name = "Langmuir"
 uuid = "c62cc850-d7ca-4cc1-a95b-48008b40dc90"
 authors = ["Andrés Riedemann <longemen3000@gmail.com>", "Vinicius Santana <vinicius.viena1@gmail.com>"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
@@ -42,7 +42,7 @@ Roots = "2.1"
 StaticArrays = "1"
 TableOperations = "1"
 Tables = "^1.8"
-julia = "1.9"
+julia = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
