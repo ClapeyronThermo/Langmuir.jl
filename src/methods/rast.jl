@@ -117,17 +117,17 @@ Diag
 
 =#
 function ast_step!(::FastRAS, model::MultiComponentIsothermModel, p, T, y, state::S, maxiters, reltol, abstol) where S
-    (;_,η,K,Diag,Res,δ,γ₀,x,q_tot,iters,converged) = state
+    (;Π,η,K,Diag,Res,δ,γ,x,q_tot,iters,converged) = state
     iters += 1
     #Kpi = scaling factor, p0i = η[i]/K[i]
     n = length(η)
+    models = model.isotherms
     ΔJac_nc_nc = zero(eltype(η))
     ΔRes_nc = zero(eltype(η))
     ∑KpiPyiηi = zero(eltype(η))
     Jac_row_last = zero(eltype(η))
     Π_nc = sp_res(last(models), η[end]/K[end], T)
     q⁻¹ = zero(q_tot)
-
     #update xi
     for i in 1:n
         model = models[i]
@@ -135,14 +135,14 @@ function ast_step!(::FastRAS, model::MultiComponentIsothermModel, p, T, y, state
         p0ᵢ = ηᵢ/Kpiᵢ
         x[i] = p*yᵢ/p0ᵢ/γ[i]
     end
-
+    γ = activity_coefficient(model, T, x)
     for i in 1:n
         model = models[i]
         ηᵢ,Kpiᵢ,yᵢ = η[i],K[i],y[i]
         p0ᵢ = ηᵢ/Kpiᵢ
         ηᵢ2 = ηᵢ*ηᵢ
         #update last row
-        KpiᵢPyᵢ = Kpiᵢ*p*yᵢ
+        KpiᵢPyᵢ = Kpiᵢ*p*yᵢ/γ[i]
         Jac_rowᵢ = KpiᵢPyᵢ/ηᵢ2
         ∑KpiPyiηi += KpiᵢPyᵢ/ηᵢ
         #Jac_row[i] = Jac_rowᵢ
@@ -160,7 +160,7 @@ function ast_step!(::FastRAS, model::MultiComponentIsothermModel, p, T, y, state
             Jac_row_last = Jac_rowᵢ
         end
     end
-    q_tot = 1/q_tot_inv
+    q_tot = 1/q⁻¹
     #update last term of the last row of the jac
     Jac_nc_nc = Jac_row_last + Diag[end]*ΔJac_nc_nc
     Jac_row_nc = Diag[end]
@@ -194,7 +194,7 @@ function ast_step!(::FastRAS, model::MultiComponentIsothermModel, p, T, y, state
     ΔRes <= abstol && (converged = true)
     norm(δ,1) <= reltol && (converged = true)
     Π = Π_nc
-    return (;Π,η,K,Diag,Res,δ,x,q_tot,iters,converged)
+    return (;Π,η,K,Diag,Res,δ,γ,x,q_tot,iters,converged)
 end
 
 export rast, FastRAS, RASTNestedLoop
