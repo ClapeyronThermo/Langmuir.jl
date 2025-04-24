@@ -4,7 +4,7 @@ import Langmuir: gibbs_excess_free_energy, activity_coefficient
 import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
 using Test
 const LG = Langmuir
-import Languir: R̄
+import Langmuir: R̄
 
 
 #we test that definitions of loading and sp_res are consistent.
