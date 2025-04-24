@@ -15,10 +15,11 @@ using Printf
 using PrettyTables
 using ForwardDiffChainRules
 import ChainRulesCore
-import FastGaussQuadrature
+#import FastGaussQuadrature
 
 abstract type IsothermModel{T} end
 
+const R̄ = 8.31446261815324 #gas constant
 include("utils.jl")
 include("isotherm_data.jl")
 include("models/models.jl")
