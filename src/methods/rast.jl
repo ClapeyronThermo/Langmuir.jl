@@ -3,15 +3,14 @@ abstract type RASTSolver <: ASTSolver end
 struct FastRAS{IAST<:IASTSolver} <: RASTSolver
     iast::IAST
 end
-FastRAS() = FastRAS(IASTNestedLoop())
-FastRAS(;iast) = FastRAS(iast)
 
-struct RASTNestedLoop{IAST<:IASTSolver} <: ASTSolver
+FastRAS(;iast = IASTNestedLoop()) = FastRAS(iast)
+
+struct RASTNestedLoop{IAST<:IASTSolver} <: RASTSolver
     iast::IAST
 end
 
-RASTNestedLoop(;iast) = RASTNestedLoop(iast)
-RASTNestedLoop() = RASTNestedLoop(IASTNestedLoop())
+RASTNestedLoop(;iast = IASTNestedLoop()) = RASTNestedLoop(iast)
 
 
 """
@@ -43,6 +42,7 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::RASTNestedLoop;maxit
     q_tot = iast_x0.q_tot
     Pᵢ = get_P0i(iast_solution)
     converged = false
+    iters = 0
     conditions = (maxiters,reltol,abstol)
     state = (;Π,Pᵢ,q_tot,x,iters,converged)
     return IASTIteration(alg,prob,state,conditions)
@@ -61,23 +61,30 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FastRAS;maxiters = 1
     Pᵢ = get_P0i(iast_solution)
     converged = false
     conditions = (maxiters,reltol,abstol)
-    state = (;Π,Pᵢ,q_tot,x,iters,converged)
+    γ = activity_coefficient(prob.models, prob.T, x)
+    iters = 0
+    η = similar(x)
+    Res = similar(x)
+    δ = similar(x)
+    Diag = similar(x)
+    K = 1 ./ Pᵢ
+    state = (;Π,η,K,Diag,Res,δ,γ,x,q_tot,iters,converged)
     return IASTIteration(alg,prob,state,conditions)
 end
 
+#almost equal to IASTNestedLoop, just adding the activity coefficient in the inner solver.
 function ast_step!(::RASTNestedLoop, model::MultiComponentIsothermModel, p, T, y, state::S, maxiters, reltol, abstol) where S
     (;Π,Pᵢ,q_tot,x,iters,converged) = state
     iters += 1
     isotherms = model.isotherms
 
-    for i in 1:length(Pᵢ)
+    for i in 1:length(isotherms)
         Pᵢ[i] = pressure(isotherms[i], Π, T, sp_res)
     end
 
     γᵢ = activity_coefficient(model, T, x)
     q⁻¹ = zero(q_tot)
-
-    for i in 1:length(Pᵢ)
+    for i in 1:length(isotherms)
         puremodel = isotherms[i]
         Pᵢ⁰ = Pᵢ[i]
         xᵢ = y[i]*p/(Pᵢ⁰*γᵢ[i])
@@ -95,8 +102,22 @@ function ast_step!(::RASTNestedLoop, model::MultiComponentIsothermModel, p, T, y
     return (;Π,Pᵢ,q_tot,x,iters,converged)
 end
 
+#=
+FastRAS (tentative name? it does not appear on scholar) 
+i don't know if this is done before.
+in theory, γᵢ depends on ηᵢ, but, we can just squeeze that activity coefficient model in the K value:
+
+RAST equations in fast ias format:
+
+Resᵢ = Πi(ηi) - Πi(η_nc) for i in 1:(nc - 1)
+p0ᵢ = ηᵢ/Kᵢ
+Res_nc = 1 - sum(Kᵢ*yᵢ*p /ηᵢγᵢ) = 1 - sum(yᵢp/p0ᵢγᵢ)
+
+Diag
+
+=#
 function ast_step!(::FastRAS, model::MultiComponentIsothermModel, p, T, y, state::S, maxiters, reltol, abstol) where S
-    (;_,η,K,Diag,Res,δ,x,q_tot,iters,converged) = state
+    (;_,η,K,Diag,Res,δ,γ₀,x,q_tot,iters,converged) = state
     iters += 1
     #Kpi = scaling factor, p0i = η[i]/K[i]
     n = length(η)
@@ -105,7 +126,16 @@ function ast_step!(::FastRAS, model::MultiComponentIsothermModel, p, T, y, state
     ∑KpiPyiηi = zero(eltype(η))
     Jac_row_last = zero(eltype(η))
     Π_nc = sp_res(last(models), η[end]/K[end], T)
-    q_tot_inv = zero(q_tot)
+    q⁻¹ = zero(q_tot)
+
+    #update xi
+    for i in 1:n
+        model = models[i]
+        ηᵢ,Kpiᵢ,yᵢ = η[i],K[i],y[i]
+        p0ᵢ = ηᵢ/Kpiᵢ
+        x[i] = p*yᵢ/p0ᵢ/γ[i]
+    end
+
     for i in 1:n
         model = models[i]
         ηᵢ,Kpiᵢ,yᵢ = η[i],K[i],y[i]
@@ -117,8 +147,7 @@ function ast_step!(::FastRAS, model::MultiComponentIsothermModel, p, T, y, state
         ∑KpiPyiηi += KpiᵢPyᵢ/ηᵢ
         #Jac_row[i] = Jac_rowᵢ
         qi = loading(model,p0ᵢ,T)
-        q_tot_inv += p*yᵢ/qi/p0ᵢ
-        x[i] = p*yᵢ/p0ᵢ
+        q⁻¹ += p*yᵢ/qi/p0ᵢ
         #update diagonals
         Diagᵢ = qi/ηᵢ
         Diag[i] = Diagᵢ

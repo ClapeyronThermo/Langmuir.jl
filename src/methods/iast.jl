@@ -35,12 +35,15 @@ function CommonSolve.step!(iter::I) where I <: ASTIteration{ALG,PROB,ITER,COND} 
     return ASTIteration(alg,prob,new_state,iter.cond)
 end
 
+ast_step!(iter::ASTIteration) = CommonSolve.step!(iter)
+
 function ast_solve!(x::ASTIteration)
+    maxiters = x.cond[1]
     converged = x.iter.converged
     x.iter.converged && return x,:success
     for i in 1:maxiters
         x = step!(x)
-        ix.iter.converged && return x,:success
+        x.iter.converged && return x,:success
     end
     return x,:maxiters_exceeded
 end
@@ -144,7 +147,8 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FastIAS;maxiters = 1
     iters = 0
     converged = false
     conditions = (maxiters,reltol,abstol)
-    state = (;NaN*zero(eltype(η)),η,K,Diag,Res,δ,x,q_tot,iters,converged)
+    Π = NaN*zero(eltype(η))
+    state = (;Π,η,K,Diag,Res,δ,x,q_tot,iters,converged)
     return IASTIteration(alg,prob,state,conditions)
 end
 
@@ -169,7 +173,7 @@ function ast_step!(::IASTNestedLoop, models, p, T, y, state::S, maxiters, reltol
 
     ΔΠ = (sum(x) - 1)/q⁻¹
     iters == maxiters && (converged = true)
-    abs(Δ2) < min(Π*reltol,abstol) && (converged = true)
+    abs(ΔΠ) < min(Π*reltol,abstol) && (converged = true)
     Π = Π + ΔΠ
     q_tot = 1/q⁻¹
     return (;Π,Pᵢ,q_tot,x,iters,converged)
@@ -250,11 +254,76 @@ end
 
 
 """
-    iast(models,p,T,y,method = FastIAS(),gas_model = nothing;x0 = nothing,maxiters = 100,reltol = 1e-12, abstol = 1e-10)
+    iast(models, p, T, y; method = FastIAS(), gas_model = nothing, x0 = nothing, maxiters = 100, reltol = 1e-12, abstol = 1e-10)
 
-TODO: docs
+Solve for the adsorption equilibrium of a multicomponent gas mixture using the Ideal Adsorbed Solution Theory (IAST).
 
-returns q_tot,x,convergence_symbol (:success, or :maxiters_exceeded)
+# Arguments
+- `models`: A collection of isotherm models for each component in the mixture.
+- `p`: Total pressure of the gas mixture.
+- `T`: Temperature of the system.
+- `y`: Mole fractions of the components in the bulk gas phase.
+
+# Keyword Arguments
+- `method`: Solver method to use (default: `FastIAS()`).
+- `gas_model`: Optional gas model for the bulk phase (default: `nothing`).
+- `x0`: Initial guess for the adsorbed phase composition (default: `nothing`).
+- `maxiters`: Maximum number of iterations allowed (default: `100`).
+- `reltol`: Relative tolerance for convergence (default: `1e-12`).
+- `abstol`: Absolute tolerance for convergence (default: `1e-10`).
+
+# Returns
+- `q_tot`: Total adsorbed amount.
+- `x`: Mole fractions of the components in the adsorbed phase.
+- `status::Symbol`: Status of the solver (`:success` or `:maxiters_exceeded`).
+
+# Description
+The Ideal Adsorbed Solution Theory (IAST) is based on the assumption that the adsorbed phase behaves as an ideal solution. It uses the following key equations:
+
+1. **Equilibrium Condition**:
+
+   ``math
+   x_i \\cdot p_i(\\Pi) = y_i \\cdot p
+   ``
+
+   where ``\\(x_i\\)`` and ``\\(y_i\\)`` are the mole fractions of component ``\\(i\\)`` in the adsorbed and bulk phases, respectively, ``\\(p_i(\\Pi)\\)`` is the partial pressure of component ``\\(i\\)`` in the adsorbed phase, and ``\\(\\Pi\\)`` is the spreading pressure.
+
+2. **Mass Balance**:
+
+   ``math
+   \\sum_i x_i = 1
+   ``
+
+3. **Spreading Pressure Relation**:
+
+   ``math
+   \\Pi = \\int_0^{p_i} \\frac{q_i(p)}{p} dp
+   ``
+
+   where ``\\(q_i(p)\\)`` is the adsorption isotherm for component ``\\(i\\)``.
+
+The `iast` function solves these equations iteratively to determine the adsorbed phase composition ``\\(x\\)`` and the total adsorbed amount ``\\(q_{tot}\\)``.
+
+# Example
+```julia
+using Langmuir
+
+# Define isotherm models for two components
+isotherm_1 = LangmuirS1(1.913, 6.82e-10, -21_976.40)
+isotherm_2 = LangmuirS1(1.913, 1.801e-9, -16_925.01)
+models = (isotherm_1, isotherm_2)
+
+# Bulk phase conditions
+y = [0.5, 0.5]
+p = 101325.0
+T = 300.0
+
+# Solve using IAST
+q_tot, x, status = iast(models, p, T, y)
+println("Total adsorbed amount: \$q_tot")
+println("Adsorbed phase composition: \$x")
+println("Solver status: \$status")
+```
 """
 function iast(models,p,T,y,method = FastIAS(),gas_model = nothing;x0 = nothing,maxiters = 100,reltol = 1e-12, abstol = 1e-10)
     prob = ASTProblem(models, p, T, y; x0, gas_model)
