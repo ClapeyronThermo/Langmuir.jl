@@ -180,7 +180,7 @@ function ast_step!(::IASTNestedLoop, models, p, T, y, state::S, maxiters, reltol
 end
 
 function ast_step!(::FastIAS, models, p, T, y, state::S, maxiters, reltol, abstol) where S
-    (;_,η,K,Diag,Res,δ,x,q_tot,iters,converged) = state
+    (;Π,η,K,Diag,Res,δ,x,q_tot,iters,converged) = state
     iters += 1
     #Kpi = scaling factor, p0i = η[i]/K[i]
     n = length(η)
