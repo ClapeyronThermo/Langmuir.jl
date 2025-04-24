@@ -164,17 +164,17 @@ function gibbs_excess_free_energy(model::aNRTLModel, T, x::AbstractVector)
     gᴱ_RT = _0
     for i ∈ 1:i1
         ∑τⱼᵢGⱼᵢxⱼ = _0
-        Gⱼᵢxⱼ = _0
+        ∑Gⱼᵢxⱼ = _0
         xᵢ = x[i]*∑x⁻¹
         for j ∈ 1:i2
             xⱼ = x[j]*∑x⁻¹
             τⱼᵢ = Bᵢⱼ[j,i]*T⁻¹
             Gⱼᵢ = exp(-0.3*τⱼᵢ)
             Gⱼᵢxⱼ = xⱼ*Gⱼᵢ
-            ∑Gx += Gⱼᵢxⱼ
-            ∑τGx += Gⱼᵢxⱼ*τⱼᵢ
+            ∑Gⱼᵢxⱼ += Gⱼᵢxⱼ
+            ∑τⱼᵢGⱼᵢxⱼ += Gⱼᵢxⱼ*τⱼᵢ
         end
-        gᴱ_RT += xᵢ*∑τⱼᵢGⱼᵢxⱼ/Gⱼᵢxⱼ
+        gᴱ_RT += xᵢ*∑τⱼᵢGⱼᵢxⱼ/∑Gⱼᵢxⱼ
     end
     return gᴱ_RT
 #=

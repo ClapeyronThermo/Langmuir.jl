@@ -4,7 +4,7 @@ import Langmuir: gibbs_excess_free_energy, activity_coefficient
 import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
 using Test
 const LG = Langmuir
-
+import Languir: R̄
 
 
 #we test that definitions of loading and sp_res are consistent.
@@ -88,7 +88,7 @@ end
     @test loading(tlang2, 101325.0, 298.15) ≈ loading(LangmuirS1(tlang2.M, tlang2.K₀, tlang2.E), 101325.0, 298.15)
 end
 
-@testset "gibss free energy multicomponent" begin
+@testset "gibbs free energy multicomponent" begin
     tl1 = ThermodynamicLangmuir(2.00, 7.0e-5, -10_000.0, -600.0)
     tl2 = ThermodynamicLangmuir(3.00, 7.0e-6, -20_000.0, -100.0)
     nrtl = aNRTLModel((tl1, tl2))
@@ -110,10 +110,10 @@ end
     y = [0.3, 0.7]
     p = 101325.0
     T = 400.0
-    @test loading(multilang, p, T, y)[1] ≈ Lang1.M * Lang1.K₀*exp(-Lang1.E/(8.31446261815324*T)) * p * y[1] / (1.0 + 
-    Lang2.K₀*exp(-Lang2.E/(8.31446261815324*T))*p*y[2] + Lang1.K₀*exp(-Lang1.E/(8.31446261815324*T))*p*y[1])
-    @test loading(multilang, p, T, y)[2] ≈ Lang2.M * Lang2.K₀*exp(-Lang2.E/(8.31446261815324*T)) * p * y[2] / (1.0 +
-    Lang2.K₀*exp(-Lang2.E/(8.31446261815324*T))*p*y[2] + Lang1.K₀*exp(-Lang1.E/(8.31446261815324*T))*p*y[1])
+    @test loading(multilang, p, T, y)[1] ≈ Lang1.M * Lang1.K₀*exp(-Lang1.E/(R̄*T)) * p * y[1] / (1.0 + 
+    Lang2.K₀*exp(-Lang2.E/(R̄*T))*p*y[2] + Lang1.K₀*exp(-Lang1.E/(R̄*T))*p*y[1])
+    @test loading(multilang, p, T, y)[2] ≈ Lang2.M * Lang2.K₀*exp(-Lang2.E/(R̄*T)) * p * y[2] / (1.0 +
+    Lang2.K₀*exp(-Lang2.E/(R̄*T))*p*y[2] + Lang1.K₀*exp(-Lang1.E/(R̄*T))*p*y[1])
 end
 
 
@@ -125,17 +125,17 @@ end
     p = 2*101325.0
     T = 400.0
 
-    den_highE = 1.0 + Lang2.isotherms[2].K₀*exp(-Lang2.isotherms[2].E/(8.31446261815324*T))*p*y[2] + 
-              Lang1.isotherms[1].K₀*exp(-Lang1.isotherms[1].E/(8.31446261815324*T))*p*y[1]
+    den_highE = 1.0 + Lang2.isotherms[2].K₀*exp(-Lang2.isotherms[2].E/(R̄*T))*p*y[2] + 
+              Lang1.isotherms[1].K₀*exp(-Lang1.isotherms[1].E/(R̄*T))*p*y[1]
 
-    den_lowE = 1.0 + Lang2.isotherms[1].K₀*exp(-Lang2.isotherms[1].E/(8.31446261815324*T))*p*y[2] +
-                Lang1.isotherms[2].K₀*exp(-Lang1.isotherms[2].E/(8.31446261815324*T))*p*y[1]
+    den_lowE = 1.0 + Lang2.isotherms[1].K₀*exp(-Lang2.isotherms[1].E/(R̄*T))*p*y[2] +
+                Lang1.isotherms[2].K₀*exp(-Lang1.isotherms[2].E/(R̄*T))*p*y[1]
 
-    @test loading(multilang, p, T, y)[1] ≈ Lang1.isotherms[1].M * Lang1.isotherms[1].K₀*exp(-Lang1.isotherms[1].E/(8.31446261815324*T)) * p * y[1] / den_highE + 
-    Lang1.isotherms[2].M * Lang1.isotherms[2].K₀*exp(-Lang1.isotherms[2].E/(8.31446261815324*T)) * p * y[1] / den_lowE
+    @test loading(multilang, p, T, y)[1] ≈ Lang1.isotherms[1].M * Lang1.isotherms[1].K₀*exp(-Lang1.isotherms[1].E/(R̄*T)) * p * y[1] / den_highE + 
+    Lang1.isotherms[2].M * Lang1.isotherms[2].K₀*exp(-Lang1.isotherms[2].E/(R̄*T)) * p * y[1] / den_lowE
 
-    @test loading(multilang, p, T, y)[2] ≈ Lang2.isotherms[1].M * Lang2.isotherms[1].K₀*exp(-Lang2.isotherms[1].E/(8.31446261815324*T)) * p * y[2] / den_lowE + 
-    Lang2.isotherms[2].M * Lang2.isotherms[2].K₀*exp(-Lang2.isotherms[2].E/(8.31446261815324*T)) * p * y[2] / den_highE
+    @test loading(multilang, p, T, y)[2] ≈ Lang2.isotherms[1].M * Lang2.isotherms[1].K₀*exp(-Lang2.isotherms[1].E/(R̄*T)) * p * y[2] / den_lowE + 
+    Lang2.isotherms[2].M * Lang2.isotherms[2].K₀*exp(-Lang2.isotherms[2].E/(R̄*T)) * p * y[2] / den_highE
             
 end
 
