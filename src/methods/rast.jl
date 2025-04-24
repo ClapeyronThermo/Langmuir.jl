@@ -68,6 +68,7 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FastRAS;maxiters = 1
     δ = similar(x)
     Diag = similar(x)
     K = 1 ./ Pᵢ
+    η .= 1.0
     state = (;Π,η,K,Diag,Res,δ,γ,x,q_tot,iters,converged)
     return IASTIteration(alg,prob,state,conditions)
 end
