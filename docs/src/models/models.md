@@ -45,6 +45,3 @@ Langmuir.LangmuirFreundlich
 Langmuir.MultiSite
 Langmuir.ThermodynamicLangmuir
 ```
-
-
-
