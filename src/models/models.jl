@@ -128,7 +128,7 @@ end
 
 
 function isotherm_descriptions(::Type{T}) where T <: IsothermModel
-    return ntuple(Returns(""),model_length(M))
+    return ntuple(Returns(""),model_length(T))
 end
 
 """
