@@ -48,6 +48,7 @@ function loading(model::RedlichPeterson, p, T)
     return M*p/(_1 + Kpf)
 end
 
+requires_integration_sp_res(::RedlichPeterson) = Val{true}()
 #TODO: sp_res is defined, but depends on Hypergeometric functions.
 
 henry_coefficient(model::RedlichPeterson, T) = model.M

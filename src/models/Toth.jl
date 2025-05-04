@@ -49,6 +49,7 @@ function loading(model::Toth, p, T)
     _1 = one(eltype(p))
     return M*K*p/(_1 + Kpf)^(_1/f)
 end
+requires_integration_sp_res(::Toth) = Val{true}()
 
 henry_coefficient(model::Toth, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
 saturated_loading(model::Toth, T) = model.M #Some depend on T, some don't

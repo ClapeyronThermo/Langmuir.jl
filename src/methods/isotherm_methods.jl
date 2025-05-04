@@ -14,6 +14,8 @@ derived:
 - saturated_loading(model::IsothermModel,T), returns Inf by default.
 =#
 
+requires_integration_sp_res(::IsothermModel) = Val{false}()
+
 """
     loading(model::IsothermModel, p, T) -> q
 
@@ -37,7 +39,6 @@ function loading(model::IsothermModel, p, T)
 end
 
 function loading_at_T(model::IsothermModel, p, T)
-
     return map(p-> loading(model, p, T),  p)
 end
 
@@ -73,7 +74,7 @@ function sp_res(model, p, T)
     return sp_res_numerical(model, p, T)
 end
 
-function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-3, reltol = 1e-3)
+function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-10, reltol = 1e-12, p0 = nothing)
     #For cases where the sp_res is not analytical, we use numerical integration
 
     #Part 1 integral
@@ -141,7 +142,6 @@ H = (∂q/∂p) at p = 0 at a given T.
 """
 function henry_coefficient(model::IsothermModel, T)
     _0 = zero(eltype(model))
-    
     return ForwardDiff.derivative(p -> loading(model, p , T),  _0)
 end
 
@@ -187,7 +187,7 @@ end
 function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), approx)
     if approx == :exact
         p0 = pressure_x0(model, Π, T, sp_res)
-        f0 = let model = model, Π = Π, T =T
+        f0 = let model = model, Π = Π, T = T
             p -> Π - sp_res(model, p, T)
         end
         prob = Roots.ZeroProblem(f0, p0)
