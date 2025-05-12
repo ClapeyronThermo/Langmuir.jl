@@ -1,7 +1,7 @@
 #=
 api:
 
-necessary function: 
+necessary function:
     sp_res(model::IsothermModel, p, T)
     OR
     loading(model::IsothermModel,p,T)
@@ -57,7 +57,7 @@ Calculate the reduced spreading pressure for a given isotherm model at a specifi
 - `T`: The temperature at which the reduced spreading pressure is to be calculated.
 
 # Returns
-- `Π`: The reduced spreading pressure 
+- `Π`: The reduced spreading pressure
 
 # Description
 The reduced spreading pressure is a key quantity in Ideal Adsorbed Solution Theory (IAST), used to describe the adsorption behavior of mixtures. This function calculates the reduced spreading pressure Π by integrating the isotherm equation over the pressure range from 0 to `p`.
@@ -74,6 +74,8 @@ function sp_res(model, p, T)
     return sp_res_numerical(model, p, T)
 end
 
+loading_res(model, p, T) = loading(model,p,T)/p
+
 function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-10, reltol = 1e-12, p0 = nothing)
     #For cases where the sp_res is not analytical, we use numerical integration
 
@@ -82,9 +84,9 @@ function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), absto
 
     ∫₁ni_p⁻¹dp = henry_coefficient(model, T)*ϵ
 
-    #Part 2 integral    
+    #Part 2 integral
     f = let model = model
-        (p, T) ->loading(model, p, T)/p
+        (p, T) ->loading_res(model, p, T)
     end
 
     prob = IntegralProblem(IntegralFunction(f), (ϵ, p), T)
@@ -98,11 +100,11 @@ return π_i
 end
 
 function ChainRulesCore.frule(
-    (_, Δmodel, Δp, ΔT), 
-    ::typeof(sp_res_numerical), 
-    model, 
-    p, 
-    T; 
+    (_, Δmodel, Δp, ΔT),
+    ::typeof(sp_res_numerical),
+    model,
+    p,
+    T;
     kwargs...
 )
 return sp_res_numerical(model, p, T, kwargs...), loading(model, p, T)/p
@@ -164,41 +166,92 @@ end
 #inverse problems
 
 """
-pressure(model::IsothermModel, x, T, f; approx = :exact)
+pressure(model::IsothermModel, x, T, f)
 
 given an isotherm::IsothermModel and `x` = f(model,p,T), find `p` such that `f(model,p,T) = x`.
 There are two options for `f` and `x`:
 - when `f` is `sp_res`, then x = sp_res(model, p, T)
 - when `f` is `loading`, then x = loading(model, p, T)
 
-By default, it performs a root-finding over the isotherm. but custom implementations can be done by overloading `pressure_impl(model::MyModel,x,T,f::typeof(f),approx)`
-The `approx::Symbol` argument indicates if the procedure is exact or approximate. by default a henry coefficient aproximation is used when `approx =:henry` is used.
+By default, it performs a root-finding over the isotherm. but custom implementations can be done by overloading `pressure_impl(model::MyModel,x,T,f::typeof(f))`
 """
-function pressure(model::IsothermModel, x, T, f;approx = :exact)
-    return pressure_impl(model, x, T, f, approx)
+function pressure(model::IsothermModel, x, T, f; p0 = nothing,x0 = nothing)
+    #if the model already requires integration, there is already no analytic form for pressure(sp_res)
+    if requires_integration_sp_res(model) == Val{true}()
+        return pressure_impl(model, x, T, f, p0, x0)
+    else
+        return pressure_impl(model, x, T, f)
+    end
 end
 
-pressure_impl(model, x, T) = pressure_impl(model, x, T, sp_res, :exact)
+pressure_impl(model, x, T) = pressure_impl(model, x, T, sp_res)
 
 function pressure_x0(model::IsothermModel, Π, T,::typeof(sp_res))
-    Π/henry_coefficient(model, T)
+    return Π/henry_coefficient(model, T)
 end
 
-function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), approx)
-    if approx == :exact
+function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), _p0, _Π0)
+    if !isnothing(_p0)
+        p0 = oneunit(Base.promote_eltype(model, Π, T, _p0))*_p0
+    else
         p0 = pressure_x0(model, Π, T, sp_res)
+    end
+
+    if requires_integration_sp_res(model) == Val{true}()
+        if !isnothing(_Π0)
+            Π0 = oneunit(p0)*_Π0
+        else
+            Π0 = sp_res(model,p0,T)
+        end
+        return pressure_sp_res_integrator(model, Π, T, p0, Π0)
+    else
         f0 = let model = model, Π = Π, T = T
             p -> Π - sp_res(model, p, T)
         end
         prob = Roots.ZeroProblem(f0, p0)
         return Roots.solve(prob, Roots.Secant())
-    elseif approx == :henry
-        return Π/henry_coefficient(model, T)
-   # elseif approx == :saturated ?
-    else
-        _0 = Base.promote_eltype(model, Π, T)
-        return _0/_0
     end
+end
+
+function pressure_sp_res_integrator(model, Π, T, p0, Π0)
+    #=
+    Objective function:
+    integral(f,0,x) = Π
+    
+    integral from x0 to x1 of a + bx:
+    ΔΠ = a(x1 - x0) + 0.5b(x02 - x12)
+    Π - Π0 = ΔΠ
+    Π0 + ΔΠ = Π
+    we know Π0,Π,x0, we need to know x:
+    Π - Π0 + ax0 + 0.5bx0 = a(x1) + 0.5b(x1)^2
+    c = -(Π - Π0 + ax0 + 0.5bx0)
+    =#
+    Πx = Π0
+    ΔΠ = abs(Π0 - Π)
+    l(p,_T = T) = loading_res(model,p,_T)
+    
+    px = p0
+    px_old = p0
+    for i in 1:20
+        #predictor of new x
+        f0,df0 = f∂f(l,px) #f = f0 + df0(x - x0)
+        a = f0 - df0*px
+        b = df0
+        px_old = px
+        cc = -(Π - Π0 + a*px + 0.5b*px*px)
+        aa = 0.5*b
+        bb = a
+        px = (-bb + sqrt(bb*bb - 4aa*cc))/(2*aa)
+        abs(px-px_old) < 1e-8 && break
+        
+        #corrector for integral
+        prob = IntegralProblem(IntegralFunction(l), (px_old, px),T)
+        ΔΠ = Integrals.solve(prob, QuadGKJL()).u
+        
+        abs(ΔΠ) < 1e-12 && break
+        Π0 = Π0 + ΔΠ
+    end
+    return px
 end
 
 """
@@ -235,11 +288,11 @@ This equation is derived based on the Clausius-Clapeyron relation, which relates
 1. Pan, H., Ritter, J. A., & Balbuena, P. B. (1998). Examination of the approximations used in determining the isosteric heat of adsorption from the Clausius−Clapeyron equation. Langmuir: The ACS Journal of Surfaces and Colloids, 14(21), 6323–6327. [doi:10.1021/la9803373](https://doi.org/10.1021/la9803373)
 """
 function isosteric_heat(model::IsothermModel, p, T; Vᵃ = zero(eltype(p)), Vᵍ = Rgas(model)*T/p)
-    
+
     f =  let model = model
         (∂p,∂T) -> loading(model, ∂p, ∂T)
     end
-    
+
     _f,_df = fgradf2(f, p, T)
 
     ∂n_∂p, ∂n_∂T = _df
@@ -251,7 +304,7 @@ end
 function pseudo_langmuir_params(model, p, T, Πmin, Πmax)
     M = saturated_loading(model, T)
     Kh = henry_coefficient(model, T)
-    
+
     if isfinite(Kh) && isfinite(M)
         K = Kh/M
         #K/Kh = (Kh/M)/Kh = 1/M

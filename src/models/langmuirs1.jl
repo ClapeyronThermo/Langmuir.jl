@@ -54,7 +54,7 @@ end
 #optimizations for LangmuirS1, not necessary, but improve performance
 henry_coefficient(model::LangmuirS1, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
 saturated_loading(model::LangmuirS1, T) = model.M #Some depend on T, some don't
-pressure_impl(model::LangmuirS1, Π, T,::typeof(sp_res), approx) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
+pressure_impl(model::LangmuirS1, Π, T,::typeof(sp_res)) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
 
 #TODO: include effects of temperature. at the moment, the fit procedure ignores temperature dependence.
 #probably requires separating the models by temperature and linearizing K to obtain T-dependence.

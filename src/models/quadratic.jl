@@ -52,7 +52,7 @@ function loading(model::Quadratic, p, T)
     return M*(Ka + 2.0*Kb*p)*p/(_1 + p*(Ka + Kb*p))
 end
 
-function pressure_impl(model::Quadratic, Π, T, ::typeof(sp_res), approx)
+function pressure_impl(model::Quadratic, Π, T, ::typeof(sp_res))
     K₀a, K₀b, M, Ea, Eb = model.K₀a, model.K₀b, model.M, model.Ea, model.Eb
     Ka = K₀a*exp(-Ea/(Rgas(model)*T))
     Kb = K₀b*exp(-Eb/(Rgas(model)*T))
