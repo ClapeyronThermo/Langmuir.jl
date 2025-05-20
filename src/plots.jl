@@ -1,7 +1,11 @@
-using RecipesBase
-using Printf
+"""
+# This file contains the plotting recipes for the IsothermModel.
 
-@recipe function plot(model::IsothermModel, T::Number, p_range::Tuple{<:Number, <:Number}; npoints = 100)
+"""
+
+plot() = nothing
+
+@recipe function f(model::IsothermModel, T::Number, p_range::Tuple{<:Number, <:Number}; npoints = 100)
     # --- Scientific Plot Defaults ---
     # Plot Size and Resolution
     size --> (600, 400) # width, height in pixels
