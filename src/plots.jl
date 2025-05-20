@@ -50,8 +50,12 @@
     # Label for the current series: Model Name and Temperature
     model_name = typeof(model).name.name
     label --> Printf.@sprintf("%s, T = %.2f K", model_name, T) 
+
+    @series begin
         
     # Return x and y data for the series
-    return ps, loadings
+    seriestype := :line
+    ps, loadings
+    end 
 
     end
