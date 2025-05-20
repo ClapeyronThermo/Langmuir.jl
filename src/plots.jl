@@ -1,5 +1,5 @@
 
-@recipe function f(model::IsothermModel, T::V, p_range::Tuple{<:V, <:V}; npoints = 100) where V <: Real
+@recipe function f(model::IsothermModel{V}, T::V, p_range::Tuple{<:V, <:V}; npoints = 100) where V <: Real
     # --- Scientific Plot Defaults ---
     # Plot Size and Resolution
     size --> (600, 400) # width, height in pixels
