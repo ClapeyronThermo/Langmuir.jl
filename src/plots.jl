@@ -1,3 +1,5 @@
+using RecipesBase
+using Printf
 
 @recipe function f(model::IsothermModel, T::Number, p_range::Tuple{<:Number, <:Number}; npoints = 100)
     # --- Scientific Plot Defaults ---
