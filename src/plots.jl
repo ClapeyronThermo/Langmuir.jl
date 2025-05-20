@@ -1,7 +1,7 @@
 using RecipesBase
 using Printf
 
-@recipe function f(model::IsothermModel, T::Number, p_range::Tuple{<:Number, <:Number}; npoints = 100)
+@recipe function plot(model::IsothermModel, T::Number, p_range::Tuple{<:Number, <:Number}; npoints = 100)
     # --- Scientific Plot Defaults ---
     # Plot Size and Resolution
     size --> (600, 400) # width, height in pixels
