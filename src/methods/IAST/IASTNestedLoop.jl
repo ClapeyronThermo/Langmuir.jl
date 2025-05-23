@@ -51,9 +51,16 @@ function ast_step!(::IASTNestedLoop, models, p, T, y, state::S, maxiters, reltol
     (;Π,Pᵢ,q_tot,x,iters,converged) = state
     iters += 1
 
+    ΔΠ_old = (sum(x) - 1)*q_tot
+    Π_old = Π - ΔΠ_old
     for i in 1:length(Pᵢ)
         model = models[i]
-        Pᵢ[i] = pressure(model, Π, T, sp_res)
+        if iters == 1
+            Pᵢ[i] = pressure(model, Π, T, sp_res)
+        else
+            p0 = Pᵢ[i]
+            Pᵢ[i] = pressure(model, Π, T, sp_res;x0 = Π_old, p0 = p0)
+        end
     end
 
     q⁻¹ = zero(eltype(Pᵢ))

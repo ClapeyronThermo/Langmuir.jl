@@ -110,7 +110,14 @@ function ChainRulesCore.frule(
 return sp_res_numerical(model, p, T, kwargs...), loading(model, p, T)/p
 end
 
-@ForwardDiff_frule sp_res_numerical(model, p::ForwardDiff.Dual, T; kwargs...)
+function sp_res_numerical(model::IsothermModel, p::ForwardDiff.Dual{TT}, T::Number, kwargs...) where {TT}
+    pp = ForwardDiff.value(p)
+    Π = sp_res_numerical(model, pp, T, kwargs...)
+    dΠdp = loading(model, pp, T)/pp
+    return ForwardDiff.Dual{TT}(Π, dΠdp * ForwardDiff.partials(p))
+end
+
+#@ForwardDiff_frule sp_res_numerical(model, p::ForwardDiff.Dual, T; kwargs...)
 
 #= function sp_res_numerical(model::IsothermModel, p::ForwardDiff.Dual, T; kwargs...)
     return loading(model, p, T)/p
@@ -190,6 +197,10 @@ function pressure_x0(model::IsothermModel, Π, T,::typeof(sp_res))
     return Π/henry_coefficient(model, T)
 end
 
+function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res))
+    return pressure_impl(model, x, T, sp_res, nothing, nothing)  
+end
+
 function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), _p0, _Π0)
     if !isnothing(_p0)
         p0 = oneunit(Base.promote_eltype(model, Π, T, _p0))*_p0
@@ -219,7 +230,7 @@ function pressure_sp_res_integrator(model, Π, T, p0, Π0)
     integral(f,0,x) = Π
     
     integral from x0 to x1 of a + bx:
-    ΔΠ = a(x1 - x0) + 0.5b(x02 - x12)
+    ΔΠ = a(x1 - x0) + 0.5b(x0^2 - x1^2)
     Π - Π0 = ΔΠ
     Π0 + ΔΠ = Π
     we know Π0,Π,x0, we need to know x:
@@ -241,13 +252,13 @@ function pressure_sp_res_integrator(model, Π, T, p0, Π0)
         cc = -(Π - Π0 + a*px + 0.5b*px*px)
         aa = 0.5*b
         bb = a
-        px = (-bb + sqrt(bb*bb - 4aa*cc))/(2*aa)
+        Δ = max(bb*bb - 4aa*cc,zero(aa*bb*cc)) #incomplete step, but should work
+        px = (2cc)/(-bb - sqrt(Δ))
         abs(px-px_old) < 1e-8 && break
         
         #corrector for integral
         prob = IntegralProblem(IntegralFunction(l), (px_old, px),T)
         ΔΠ = Integrals.solve(prob, QuadGKJL()).u
-        
         abs(ΔΠ) < 1e-12 && break
         Π0 = Π0 + ΔΠ
     end

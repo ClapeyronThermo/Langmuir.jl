@@ -17,7 +17,7 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FullRAS;maxiters = 1
     Pᵢ = get_P0i(iast_solution)
     converged = false
     conditions = (maxiters,reltol,abstol)
-    γ = activity_coefficient(prob.models, prob.T, x)
+    
     iters = 0
     η = similar(x)
     Res = similar(x)
@@ -25,7 +25,19 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FullRAS;maxiters = 1
     Diag = similar(x)
     K = 1 ./ Pᵢ
     η .= 1.0
-    state = (;Π,η,K,Diag,Res,δ,γ,x,q_tot,iters,converged)
+    n = length(η)
+    f!(_F,_z) = full_ras_system(_F,_z,prob.models,prob.p,prob.T,prob.y,K)
+    F = similar(x,2n)
+    J = similar(x,(2n,2n))
+    J2 = similar(J)
+    z = similar(F)
+    s = similar(F)
+    piv = zeros(Int,2n)
+    config = ForwardDiff.JacobianConfig(f!,F,z)
+    cache = (f!,F,J,z,config)
+    state = (;q_tot,x,K,f!,F,J,J2,piv,z,s,config,iters,converged)
+    z[1:2] .= η
+    z[3:4] .= x
     return IASTIteration(alg,prob,state,conditions)
 end
 
@@ -34,91 +46,75 @@ FullRAS
 
 we use the FastIAS framework, but fully incorporating the activity coefficient.
 
-variables: vcat()
+variables: vcat(ηi,xi)
 Resᵢ = Πᵢ(ηi) - Πᵢ(η_nc), i in 1:nc - 1
 Resᵢ = xᵢ*ηᵢγᵢ - Kᵢ*yᵢ*p, i in nc:(2nc - 1)
 Resᵢ = 1 - sum(Kᵢ*yᵢ*p/ηᵢγᵢ), i = 2nc
 
 
 =#
-function ast_step!(::FullRAS, model::MultiComponentIsothermModel, p, T, y, state::S, maxiters, reltol, abstol) where S
-    (;Π,η,K,Diag,Res,δ,γ,x,q_tot,iters,converged) = state
-    iters += 1
-    #Kpi = scaling factor, p0i = η[i]/K[i]
-    n = length(η)
-    models = model.isotherms
-    ΔJac_nc_nc = zero(eltype(η))
-    ΔRes_nc = zero(eltype(η))
-    ∑KpiPyiηi = zero(eltype(η))
-    Jac_row_last = zero(eltype(η))
-    Π_nc = sp_res(last(models), η[end]/K[end], T)
-    q⁻¹ = zero(q_tot)
-    #update xi
+
+function full_ras_system(F,z,system::MultiComponentIsothermModel, p, T, y, K)
+    models = system.isotherms
+    n = length(K)
+    η = @view z[1:n]
+    x = @view z[(n+1):end]
+    γ = activity_coefficient(system, T, x)
+    ∑x = one(eltype(F))
+    F1 = @view F[1:n]
+    F2 = @view F[(n+1):(2n)]
     for i in 1:n
         model = models[i]
         ηᵢ,Kpiᵢ,yᵢ = η[i],K[i],y[i]
+        xᵢ,γᵢ = x[i],γ[i]
         p0ᵢ = ηᵢ/Kpiᵢ
-        x[i] = p*yᵢ/p0ᵢ/γ[i]
+        #evaluate sp_res
+        Πᵢ = sp_res(model,p0ᵢ,T)
+        F1[i] = Πᵢ
+        F2[i] = xᵢ*ηᵢ*γᵢ - Kpiᵢ*yᵢ*p
+        ∑x -= Kpiᵢ*yᵢ*p/(ηᵢ*γ[i])
     end
-    γ = activity_coefficient(model, T, x)
-    for i in 1:n
-        model = models[i]
-        ηᵢ,Kpiᵢ,yᵢ = η[i],K[i],y[i]
-        p0ᵢ = ηᵢ/Kpiᵢ
-        ηᵢ2 = ηᵢ*ηᵢ
-        #update last row
-        KpiᵢPyᵢ = Kpiᵢ*p*yᵢ/γ[i]
-        Jac_rowᵢ = KpiᵢPyᵢ/ηᵢ2
-        ∑KpiPyiηi += KpiᵢPyᵢ/ηᵢ
-        #Jac_row[i] = Jac_rowᵢ
-        qi = loading(model,p0ᵢ,T)
-        q⁻¹ += p*yᵢ/qi/p0ᵢ
-        #update diagonals
-        Diagᵢ = qi/ηᵢ
-        Diag[i] = Diagᵢ
-        if i != n
-            Resᵢ = sp_res(model,p0ᵢ, T) - Π_nc
-            Res[i] = Resᵢ
-            ΔRes_nc += Resᵢ*Jac_rowᵢ/Diagᵢ
-            ΔJac_nc_nc += Jac_rowᵢ/Diagᵢ
-        else
-            Jac_row_last = Jac_rowᵢ
-        end
+    Πₙ = F1[n]
+    for i in 1:n-1
+        F1[i] -= Πₙ
     end
-    q_tot = 1/q⁻¹
-    #update last term of the last row of the jac
-    Jac_nc_nc = Jac_row_last + Diag[end]*ΔJac_nc_nc
-    Jac_row_nc = Diag[end]
-    Diag[end] = Jac_nc_nc
-
-    #update last term of residual
-    Res[end] = 1 - ∑KpiPyiηi - ΔRes_nc
-
-    #solve system of equations by backsubstitution
-    δ_nc = -Res[end]/Diag[end]
-    δ[end] = δ_nc
-    for i in 1:(n-1)
-        δ[i] = -(Res[i] - Jac_row_nc*δ_nc)/Diag[i]
-    end
-
-    #update η
-    norm_η = -Inf*one(eltype(η))
-    for i in 1:n
-        ηi = η[i]
-        δi = δ[i]
-        if ηi + δi < 0
-            norm_η
-            η[i] = 0.5*ηi
-            δ[i] = -0.5*δi
-
-        else
-            η[i] = ηi + δi
-        end
-    end
-    ΔRes = norm(δ,Inf)
-    ΔRes <= abstol && (converged = true)
-    norm(δ,1) <= reltol && (converged = true)
-    Π = Π_nc
-    return (;Π,η,K,Diag,Res,δ,γ,x,q_tot,iters,converged)
+    F1[end] = ∑x
+    return F
 end
 
+function ast_step!(::FullRAS, model::MultiComponentIsothermModel, p, T, y, state::S, maxiters, reltol, abstol) where S
+    (;q_tot,x,K,f!,F,J,J2,piv,z,s,config,iters,converged) = state
+    n = length(x)
+    iters += 1
+    #
+    ForwardDiff.jacobian!(J,f!,F,z,config,Val{false}())
+    J2 .= J
+    lu = unsafe_LU!(J,piv)
+    s .= -F
+    ldiv!(lu,s)
+    for i in 1:length(s)
+        si = s[i]
+        abs(si) < eps(eltype(s)) && si < 0 && (s[i] = 0)
+        new_z = z[i] + si
+        if new_z < 0
+            z[i] = z[i]/2
+        else
+            z[i] = new_z
+        end
+    end
+    Fnorm = 0.5*dot(F,F)
+    converged = Fnorm < abstol
+    x .= @view z[n+1:end]
+
+    models = model.isotherms
+    q⁻¹ = zero(q_tot)
+    for i in 1:length(models)
+        puremodel = models[i]
+        Pᵢ⁰ = z[i]/K[i]
+        q⁻¹ += x[i]/loading(puremodel,Pᵢ⁰,T)
+    end
+    q_tot = 1/q⁻¹
+    return (;q_tot,x,K,f!,F,J,J2,piv,z,s,config,iters,converged)
+end
+
+export FullRAS
