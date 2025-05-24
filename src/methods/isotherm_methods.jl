@@ -198,7 +198,7 @@ function pressure_x0(model::IsothermModel, Π, T,::typeof(sp_res))
 end
 
 function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res))
-    return pressure_impl(model, x, T, sp_res, nothing, nothing)  
+    return pressure_impl(model, Π, T, sp_res, nothing, nothing)  
 end
 
 function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), _p0, _Π0)
