@@ -38,8 +38,7 @@ RAST equations in fast ias format:
 
 Resᵢ = Πi(ηi) - Πi(η_nc) for i in 1:(nc - 1)
 p0ᵢ = ηᵢ/Kᵢ
-Res_nc = 1 - sum(Kᵢ*yᵢ*p /ηᵢγᵢ) = 1 - sum(yᵢp/p0ᵢγᵢ)
-
+Res_nc = 1 - sum(Kᵢ*yᵢ*p/ηᵢγᵢ) = 1 - sum(yᵢp/p0ᵢγᵢ)
 Diag
 
 =#

@@ -255,7 +255,9 @@ function pressure_sp_res_integrator(model, Π, T, p0, Π0)
         Δ = max(bb*bb - 4aa*cc,zero(aa*bb*cc)) #incomplete step, but should work
         px = (2cc)/(-bb - sqrt(Δ))
         abs(px-px_old) < 1e-8 && break
-        
+        if px < 0
+            px = 0.5*px_old
+        end
         #corrector for integral
         prob = IntegralProblem(IntegralFunction(l), (px_old, px),T)
         ΔΠ = Integrals.solve(prob, QuadGKJL()).u

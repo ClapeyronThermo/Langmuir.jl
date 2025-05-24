@@ -36,22 +36,20 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FullRAS;maxiters = 1
     config = ForwardDiff.JacobianConfig(f!,F,z)
     cache = (f!,F,J,z,config)
     state = (;q_tot,x,K,f!,F,J,J2,piv,z,s,config,iters,converged)
-    z[1:2] .= η
-    z[3:4] .= x
+    z[1:n] .= η
+    z[n+1:end] .= x
     return IASTIteration(alg,prob,state,conditions)
 end
 
 #=
 FullRAS
 
-we use the FastIAS framework, but fully incorporating the activity coefficient.
+we use the FastIAS framework (optimizing in terms of η = p0ᵢ*Kᵢ), but fully incorporating the activity coefficient.
 
 variables: vcat(ηi,xi)
 Resᵢ = Πᵢ(ηi) - Πᵢ(η_nc), i in 1:nc - 1
 Resᵢ = xᵢ*ηᵢγᵢ - Kᵢ*yᵢ*p, i in nc:(2nc - 1)
 Resᵢ = 1 - sum(Kᵢ*yᵢ*p/ηᵢγᵢ), i = 2nc
-
-
 =#
 
 function full_ras_system(F,z,system::MultiComponentIsothermModel, p, T, y, K)
@@ -72,7 +70,7 @@ function full_ras_system(F,z,system::MultiComponentIsothermModel, p, T, y, K)
         Πᵢ = sp_res(model,p0ᵢ,T)
         F1[i] = Πᵢ
         F2[i] = xᵢ*ηᵢ*γᵢ - Kpiᵢ*yᵢ*p
-        ∑x -= Kpiᵢ*yᵢ*p/(ηᵢ*γ[i])
+        ∑x -= yᵢ*p/(p0ᵢ*γᵢ)
     end
     Πₙ = F1[n]
     for i in 1:n-1
