@@ -32,24 +32,32 @@ end
 
 ast_step!(iter::ASTIteration) = CommonSolve.step!(iter)
 
-function ast_solve!(x::ASTIteration)
-    maxiters = x.cond[1]
-    converged = x.iter.converged
-    x.iter.converged && return x,:success
+get_q_tot(iter::ASTIteration) = get_q_tot(iter.alg,iter)
+get_q_tot(alg::ASTSolver,iter::ASTIteration) = iter.iter.q_tot
+
+get_adsorbed_composition(iter::ASTIteration) = get_adsorbed_composition(iter.alg,iter)
+get_adsorbed_composition(alg::ASTSolver,iter::ASTIteration) = iter.iter.x
+
+function ast_solve!(state::ASTIteration)
+    maxiters = state.cond[1]
+    converged = state.iter.converged
+    state.iter.converged && return state,:success
     for i in 1:maxiters
-        x = step!(x)
-        x.iter.converged && return x,:success
+        state = step!(state)
+        state.iter.converged && return state,:success
     end
-    return x,:maxiters_exceeded
+    return state,:maxiters_exceeded
 end
 
+
 function CommonSolve.solve!(x0::ASTIteration)
-    x,status = ast_solve!(x0)
-    return x.iter.q_tot,x.iter.x,status
+    state,status = ast_solve!(x0)
+    q_tot = get_q_tot(state)
+    x = get_adsorbed_composition(state)
+    return q_tot,x,status
 end
 
 function ast_step! end
-
 
 """
     iast(models, p, T, y; method = FastIAS(), gas_model = nothing, x0 = nothing, maxiters = 100, reltol = 1e-12, abstol = 1e-10)
