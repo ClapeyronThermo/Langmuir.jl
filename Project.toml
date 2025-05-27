@@ -29,6 +29,7 @@ LangmuirDynamicQuantitiesExt = "DynamicQuantities"
 
 [compat]
 BlackBoxOptim = "^0.6.2"
+ChainRulesCore = "1"
 CommonSolve = "0.2.4"
 DynamicQuantities = "1"
 ForwardDiff = "^0.10, 1"
