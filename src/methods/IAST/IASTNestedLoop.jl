@@ -51,8 +51,9 @@ function ast_step!(::IASTNestedLoop, models, p, T, y, state::S, maxiters, reltol
     (;Π,Pᵢ,q_tot,x,iters,converged) = state
     iters += 1
 
-    ΔΠ_old = (sum(x) - 1)*q_tot
-    Π_old = Π - ΔΠ_old
+    #using the last point as initial point for the pressure solver
+    #drastically improves speed in models that require integration for sp_res
+    Π_old = Π - (sum(x) - 1)*q_tot
     for i in 1:length(Pᵢ)
         model = models[i]
         if iters == 1

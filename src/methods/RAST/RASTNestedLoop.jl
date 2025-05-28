@@ -28,8 +28,17 @@ function ast_step!(::RASTNestedLoop, model::MultiComponentIsothermModel, p, T, y
     iters += 1
     isotherms = model.isotherms
 
+    #using the last point as initial point for the pressure solver
+    #drastically improves speed in models that require integration for sp_res
+    Π_old = Π - (sum(x) - 1)*q_tot
     for i in 1:length(isotherms)
-        Pᵢ[i] = pressure(isotherms[i], Π, T, sp_res)
+        model = isotherms[i]
+        if iters == 1
+            Pᵢ[i] = pressure(model, Π, T, sp_res)
+        else
+            p0 = Pᵢ[i]
+            Pᵢ[i] = pressure(model, Π, T, sp_res; x0 = Π_old, p0 = p0)
+        end
     end
 
     γᵢ = activity_coefficient(model, T, x)

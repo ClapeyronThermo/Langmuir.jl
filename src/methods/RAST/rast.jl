@@ -13,7 +13,7 @@ include("RASTNestedLoop.jl")
 include("FastRAS.jl")
 include("FullRAS.jl")
 
-function rast(models::MultiComponentIsothermModel,p,T,y,method = RASTNestedLoop(),gas_model = nothing;x0 = nothing,maxiters = 100,reltol = 1e-12, abstol = 1e-10)
+function rast(models::MultiComponentIsothermModel,p,T,y,method = FullRAS(),gas_model = nothing;x0 = nothing,maxiters = 100,reltol = 1e-12, abstol = 1e-10)
     prob = ASTProblem(models, p, T, y; x0, gas_model)
     return CommonSolve.solve(prob, method; maxiters, reltol, abstol)
 end

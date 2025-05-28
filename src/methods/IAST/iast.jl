@@ -38,6 +38,10 @@ get_q_tot(alg::ASTSolver,iter::ASTIteration) = iter.iter.q_tot
 get_adsorbed_composition(iter::ASTIteration) = get_adsorbed_composition(iter.alg,iter)
 get_adsorbed_composition(alg::ASTSolver,iter::ASTIteration) = iter.iter.x
 
+get_P0i(iter::ASTIteration) = get_adsorbed_composition(iter.alg,iter)
+get_P0i(alg::ASTSolver,iter::ASTIteration) = iter.iter.Pᵢ
+
+
 function ast_solve!(state::ASTIteration)
     maxiters = state.cond[1]
     converged = state.iter.converged
@@ -146,7 +150,6 @@ function iast(models::MultiComponentIsothermModel,p,T,y,method = FastIAS(),gas_m
 end
 
 #used by rast solvers
-get_P0i(iter::ASTIteration{IASTNestedLoop}) = iter.iter.Pᵢ
-get_P0i(iter::ASTIteration{FastIAS}) = iter.iter.η ./ iter.iter.K
+
 
 export IASTProblem, FastIAS, IASTNestedLoop, iast

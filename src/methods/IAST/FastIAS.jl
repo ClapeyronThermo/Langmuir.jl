@@ -124,3 +124,5 @@ function ast_step!(::FastIAS, models, p, T, y, state::S, maxiters, reltol, absto
     Π = Π_nc
     return (;Π,η,K,Diag,Res,δ,x,q_tot,iters,converged)
 end
+
+get_P0i(alg::ASTSolver,iter::FastIAS) = iter.iter.η ./ iter.iter.K

@@ -12,8 +12,7 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FullRAS;maxiters = 1
     status == :success || error("IAST guess convergence failed - current number of iterations is $maxiters, consider increasing to meet tolerances.")
     iast_x0 = iast_solution.iter
     Π = iast_x0.Π
-    x = iast_x0.x
-    q_tot = iast_x0.q_tot
+    x = get_adsorbed_composition(iast_solution)
     Pᵢ = get_P0i(iast_solution)
     converged = false
     conditions = (maxiters,reltol,abstol)
@@ -35,9 +34,10 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FullRAS;maxiters = 1
     piv = zeros(Int,2n)
     config = ForwardDiff.JacobianConfig(f!,F,z)
     cache = (f!,F,J,z,config)
-    state = (;q_tot,x,K,f!,F,J,J2,piv,z,s,config,iters,converged)
+    
     z[1:n] .= η
     z[n+1:end] .= x
+    state = (;K,f!,F,J,J2,piv,z,s,config,iters,converged)
     return IASTIteration(alg,prob,state,conditions)
 end
 
@@ -81,7 +81,7 @@ function full_ras_system(F,z,system::MultiComponentIsothermModel, p, T, y, K)
 end
 
 function ast_step!(::FullRAS, model::MultiComponentIsothermModel, p, T, y, state::S, maxiters, reltol, abstol) where S
-    (;q_tot,x,K,f!,F,J,J2,piv,z,s,config,iters,converged) = state
+    (;K,f!,F,J,J2,piv,z,s,config,iters,converged) = state
     n = length(x)
     iters += 1
     #
@@ -102,17 +102,37 @@ function ast_step!(::FullRAS, model::MultiComponentIsothermModel, p, T, y, state
     end
     Fnorm = 0.5*dot(F,F)
     converged = Fnorm < abstol
-    x .= @view z[n+1:end]
+    ΔRes = norm(s,Inf)
+    ΔRes <= abstol && (converged = true)
+    norm(δ,1) <= reltol && (converged = true)
+    return (;K,f!,F,J,J2,piv,z,s,config,iters,converged)
+end
 
-    models = model.isotherms
-    q⁻¹ = zero(q_tot)
+function get_P0i(alg::ASTSolver,iter::FullRAS) 
+    K = iter.iter.K
+    n = length(K)
+    z = iter.iter.z
+    η = @view z[1:n]
+    return η ./ K
+end
+
+function get_adsorbed_composition(alg::ASTSolver,iter::FullRAS) 
+    z = iter.iter.z
+    return z[n+1:end]
+end
+
+function get_q_tot(alg::ASTSolver,iter::FullRAS) 
+    prob = iter.prob
+    models = prob.models.isotherms
+    K = iter.iter.K
+    z = iter.iter.z
+    q⁻¹ = zero(eltype(z))
     for i in 1:length(models)
         puremodel = models[i]
         Pᵢ⁰ = z[i]/K[i]
         q⁻¹ += x[i]/loading(puremodel,Pᵢ⁰,T)
     end
-    q_tot = 1/q⁻¹
-    return (;q_tot,x,K,f!,F,J,J2,piv,z,s,config,iters,converged)
+    return 1/q⁻¹
 end
 
 export FullRAS
