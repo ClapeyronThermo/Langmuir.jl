@@ -252,7 +252,8 @@ function derivate_cheb(cheb::ChebyshevRangeVec{T}) where {T}
     return ChebyshevRange(cheb.range,dcoeffs)
 end
 
-function integrate_cheb(ci::Vector{T}) where {T}
+#TODO: make this work
+function integrate_cheb(ci::Vector{T},i0 = zero(T)) where {T}
     cheb = Polynomials.ChebyshevT{BigFloat}(ci)
     dcheb = Polynomials.integrate(cheb)
     return convert(Vector{T},Polynomials.coeffs(dcheb))
@@ -260,19 +261,12 @@ end
 
 function integrate_cheb(cheb::ChebyshevRangeVec{T}) where {T}
     intcoeffs = Vector{Vector{T}}(undef,length(cheb.coeffs))
+    i0 = zero(T)
     for i in 1:length(cheb.coeffs)
-        icoeff = integrate_cheb(cheb.coeffs[i])
-        i1 = cheb_eval(icoeff,-1.0)
-        icoeff[1] -= i1
+        icoeff = integrate_cheb(cheb.coeffs[i],i0)
+        i0 = cheb_eval(icoeff,1.0) - i0
+        
         intcoeffs[i] = icoeff
     end
-
-    #=
-    for i in 2:length(cheb.coeffs)
-        int_b = cheb_eval(cheb.coeffs[i-1],1.0)
-        
-        icoeff = cheb.coeffs[i]
-        icoeff[1] += int_b
-    end =#
     return ChebyshevRange(cheb.range,intcoeffs)
 end
