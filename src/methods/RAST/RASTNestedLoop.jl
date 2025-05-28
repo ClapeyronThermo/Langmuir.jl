@@ -12,8 +12,8 @@ function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::RASTNestedLoop;maxit
     status == :success || error("IAST guess convergence failed - current number of iterations is $maxiters, consider increasing to meet tolerances.")
     iast_x0 = iast_solution.iter
     Π = iast_x0.Π
-    x = iast_x0.x
-    q_tot = iast_x0.q_tot
+    x = get_adsorbed_composition(iast_solution)
+    q_tot = get_q_tot(iast_solution)
     Pᵢ = get_P0i(iast_solution)
     converged = false
     iters = 0
