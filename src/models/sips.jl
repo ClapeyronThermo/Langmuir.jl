@@ -114,6 +114,7 @@ function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Sips
         K0 = exp(first(logKs))
         f₀ = first(fs)
         β = 0.0
+        E = 0.0 # Default E for single-temperature data
     end
 
 

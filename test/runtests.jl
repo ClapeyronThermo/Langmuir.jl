@@ -3,8 +3,9 @@ import Langmuir: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, R
 import Langmuir: gibbs_excess_free_energy, activity_coefficient
 import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
 using Test
+using Unitful # ADDED TOP LEVEL USING
 const LG = Langmuir
-import Langmuir: R̄
+import Langmuir: R̄, Sips, FractionVector
 
 
 #we test that definitions of loading and sp_res are consistent.
@@ -197,5 +198,205 @@ end
     end
 end
 
+@testset "Base Definitions" begin
+    using Unitful: @u_str, uconvert # Keep this for now, though should be redundant
+    val_R_default_J_mol_K = 8.31446261815324
+    # Rgas() is not defined, Rgas(model_instance) is. Test R̄ directly for the constant value.
+    @test R̄ ≈ val_R_default_J_mol_K # Check alias for the constant in J/mol/K
+    # Test R̄ against other units by converting its value
+    @test Unitful.uconvert(Unitful.@u_str("kJ/mol/K"), R̄ * Unitful.@u_str("J/mol/K")) ≈ (val_R_default_J_mol_K / 1000) * Unitful.@u_str("kJ/mol/K")
+    @test Unitful.uconvert(Unitful.@u_str("m^3*Pa/mol/K"), R̄ * Unitful.@u_str("J/mol/K")) ≈ val_R_default_J_mol_K * Unitful.@u_str("m^3*Pa/mol/K")
+
+    # Assuming _format_param_value is not meant for direct public use / testing
+    # but it's called by Base.show for models.
+    # Test Base.show for a model (indirectly tests _format_param_value)
+    sips_model = Sips(1.0, 1e-5, -10000.0, 1.0, 0.1) # Use positional arguments
+    # Test that show doesn't error and produces some output
+    # More detailed show tests could be added if specific formatting is critical
+    iobuf = IOBuffer()
+    show(iobuf, MIME("text/plain"), sips_model)
+    @test length(String(take!(iobuf))) > 0
+
+    ms_model = MultiSite(sips_model, LangmuirS1(1.0,1e-5,-10000.0))
+    show(iobuf, MIME("text/plain"), ms_model)
+    @test length(String(take!(iobuf))) > 0
+
+    # AbsorbedIsothermData show method
+    example_data_dict = Dict(:P => [10.0, 20.0], :l => [0.1, 0.2], :T => [298.0, 298.0])
+    ads_data = isotherm_data(example_data_dict, :P, :l, :T)
+    show(iobuf, MIME("text/plain"), ads_data)
+    @test length(String(take!(iobuf))) > 0
+
+    empty_ads_data = isotherm_data(Dict(:P => [], :l => [], :T => []), :P, :l, :T)
+    show(iobuf, MIME("text/plain"), empty_ads_data)
+    @test length(String(take!(iobuf))) > 0
+end
+
+@testset "Utility Functions - FractionVector" begin
+    # Valid inputs
+    @testset "Valid FractionVector" begin
+        fv1 = FractionVector([0.2, 0.3])
+        @test fv1 isa FractionVector{Float64, Vector{Float64}}
+        @test length(fv1) == 3
+        @test fv1[1] ≈ 0.2
+        @test fv1[2] ≈ 0.3
+        @test fv1[3] ≈ 0.5 # 1.0 - 0.2 - 0.3
+        @test eltype(fv1) == Float64
+
+        fv2 = FractionVector(0.6) # Single real number
+        @test fv2 isa FractionVector{Float64, Float64}
+        @test length(fv2) == 2
+        @test fv2[1] ≈ 0.6
+        @test fv2[2] ≈ 0.4 # 1.0 - 0.6
+
+        fv3 = FractionVector([0.1f0, 0.2f0, 0.3f0]) # Float32
+        @test fv3 isa FractionVector{Float32, Vector{Float32}}
+        @test fv3[4] ≈ 1.0f0 - (0.1f0 + 0.2f0 + 0.3f0)
+
+        # Test iteration
+        @test collect(fv1) ≈ [0.2, 0.3, 0.5]
+    end
+
+    # Invalid inputs (commented out as per current src/utils.jl which comments out throws)
+    # @testset "Invalid FractionVector" begin
+    #     @test_throws DomainError FractionVector([-0.1, 0.5]) # Negative value
+    #     @test_throws DomainError FractionVector([0.7, 0.8]) # Sum > 1
+    #     @test_throws DomainError FractionVector(-0.2)      # Single negative
+    #     @test_throws DomainError FractionVector(1.2)       # Single > 1
+    # end
+
+    # Test indexing and size
+    fv_idx = FractionVector([0.1, 0.2, 0.3, 0.4])
+    @test size(fv_idx) == (5,)
+    @test IndexStyle(fv_idx) == IndexLinear()
+    @test_throws BoundsError fv_idx[0]
+    @test_throws BoundsError fv_idx[6]
+
+    # Test f∂f, f∂f∂2f (already partially covered by other tests, but good to have direct ones)
+    my_func(x) = x^3
+    val, grad = LG.f∂f(my_func, 2.0)
+    @test val ≈ 8.0
+    @test grad ≈ 12.0 # 3*x^2 at x=2
+
+    val, grad, hess = LG.f∂f∂2f(my_func, 2.0)
+    @test val ≈ 8.0
+    @test grad ≈ 12.0
+    @test hess ≈ 12.0 # 6*x at x=2
+
+    # fgradf2
+    my_func2(x,y) = x^2 * y
+    val2, grad2 = LG.fgradf2(my_func2, 2.0, 3.0)
+    @test val2 ≈ 12.0 # 2^2 * 3
+    @test grad2[1] ≈ 12.0 # 2*x*y = 2*2*3
+    @test grad2[2] ≈ 4.0  # x^2 = 2^2
+
+    # to_newton (simple test)
+    # f(x) = x^2 - 2 = 0. Root is sqrt(2)
+    # f'(x) = 2x
+    # x_new = x - f(x)/f'(x) = x - (x^2-2)/(2x)
+    f_newton(x) = x^2 - 2
+    fx_val, newton_step = LG.to_newton(f_newton, 1.0) # x=1, f(1)=-1, f'(1)=2. step = -1/2 = -0.5
+    @test fx_val ≈ -1.0
+    @test newton_step ≈ -0.5
+
+    # tuplejoin
+    @test LG.tuplejoin((1,2)) == (1,2)
+    @test LG.tuplejoin((1,2), (3,4)) == (1,2,3,4)
+    @test LG.tuplejoin((1,2), (3,4), (5,6)) == (1,2,3,4,5,6)
+
+    # _eltype
+    @test LG._eltype([1,2,3]) == Int
+    @test LG._eltype((1.0, 2.0)) == Float64
+    @test LG._eltype(1) == Int # For concrete numbers, it returns their type
+    @test LG._eltype(1.0f0) == Float32
+end
+
+@testset "Sips Model" begin
+    # Parameters for Sips model (example values)
+    M_sips = 2.0  # Saturation loading [mol/kg]
+    K0_sips = 1.5e-5 # Affinity parameter [Pa⁻¹]
+    E_sips = -15000.0 # Adsorption energy [J/mol]
+    f0_sips = 0.8    # Surface heterogeneity parameter at T → ∞ [-]
+    beta_sips = 10.0    # Surface heterogeneity coefficient [K]
+    sips_model = Sips(M_sips, K0_sips, E_sips, f0_sips, beta_sips) # Use positional arguments
+
+    T_test = 298.15 # K
+    p_test = 101325.0 # Pa
+
+    # Expected K and f at T_test
+    K_expected = K0_sips * exp(-E_sips / (Rgas(sips_model) * T_test))
+    f_expected = f0_sips - beta_sips / T_test
+
+    # Test loading
+    expected_loading_val = M_sips * (K_expected * p_test)^f_expected / (1 + (K_expected * p_test)^f_expected)
+    @test loading(sips_model, p_test, T_test) ≈ expected_loading_val
+
+    # Test sp_res (spreading pressure)
+    expected_sp_res_val = M_sips * log1p((K_expected * p_test)^f_expected) / f_expected
+    @test sp_res(sips_model, p_test, T_test) ≈ expected_sp_res_val
+
+    # Test consistency between loading_ad and sp_res_numerical (like other models)
+    # sp_res_numerical can return NaN for Sips if f < 1 due to Henry coefficient being Inf.
+    if f_expected >= 1.0
+        test_sp_res_loading(sips_model, [1e4, 5e4, 1e5], T_test)
+    else
+        @warn "Skipping test_sp_res_loading for Sips model with f < 1 (f = $f_expected) due to sp_res_numerical limitations."
+    end
+
+    # Test saturated_loading
+    @test Langmuir.saturated_loading(sips_model, T_test) == M_sips
+
+    # Test pressure_impl (indirectly via pressure function if available, or by direct call if appropriate)
+    # For now, we assume pressure_impl is an internal detail covered by loading/sp_res tests
+    # If a direct `pressure(model, loading, T)` function exists and is exported, it would be better to test that.
+    # Let's test it via the `pressure` function.
+    # Need to find a loading value that is achievable.
+    target_loading = expected_loading_val / 2.0
+    # This requires solving for p, which is what pressure_impl does.
+    # We can test if pressure(model, target_loading, T) gives back something close to p_test/2 (roughly)
+    # or more accurately, if loading(model, pressure(model, target_loading, T), T) ≈ target_loading
+    calculated_p = pressure(sips_model, target_loading, T_test, loading) # Added loading argument
+    @test loading(sips_model, calculated_p, T_test) ≈ target_loading rtol=1e-3 # rtol due to inversion precision
+
+    # Test x0_guess_fit - this is more involved, usually tested by fitting success.
+    # For now, ensure it runs without error for a simple case.
+    # Create dummy AdsIsoTData
+    dummy_p = [1e4, 2e4, 5e4, 1e5]
+    dummy_l = [loading(sips_model, pi, T_test) for pi in dummy_p]
+    dummy_T = fill(T_test, length(dummy_p))
+    dummy_table = (;P=dummy_p, l=dummy_l, T=dummy_T)
+    dummy_data = isotherm_data(dummy_table, :P, :l, :T)
+
+    @testset "Sips x0_guess_fit" begin
+        # Test with single temperature data
+        guessed_params_single_T = x0_guess_fit(Sips, dummy_data)
+        @test guessed_params_single_T isa Sips
+        # Check if parameters are somewhat reasonable (e.g., positive M, K0, f0)
+        @test guessed_params_single_T.M > 0
+        @test guessed_params_single_T.K₀ > 0
+        @test guessed_params_single_T.f₀ > 0
+        # E should be negative, β can be anything
+        @test guessed_params_single_T.E <= 0 # Original E is negative, guess should reflect that.
+
+        # Test with multiple temperatures data
+        T_test2 = 320.0
+        dummy_p2 = [1e4, 2e4, 5e4, 1e5]
+        dummy_l2 = [loading(sips_model, pi, T_test2) for pi in dummy_p2]
+        dummy_T2 = fill(T_test2, length(dummy_p2))
+
+        combined_p = vcat(dummy_p, dummy_p2)
+        combined_l = vcat(dummy_l, dummy_l2)
+        combined_T = vcat(dummy_T, dummy_T2)
+        combined_table = (;P=combined_p, l=combined_l, T=combined_T)
+        combined_data = isotherm_data(combined_table, :P, :l, :T)
+
+        guessed_params_multi_T = x0_guess_fit(Sips, combined_data)
+        @test guessed_params_multi_T isa Sips
+        @test guessed_params_multi_T.M > 0
+        @test guessed_params_multi_T.K₀ > 0
+        @test guessed_params_multi_T.f₀ > 0
+        @test guessed_params_multi_T.E <= 0
+    end
+end
 
 

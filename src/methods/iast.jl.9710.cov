@@ -1,0 +1,338 @@
+        - abstract type ASTSolver end
+        - abstract type IASTSolver <: ASTSolver end
+       54 struct FastIAS <: IASTSolver end
+       53 struct IASTNestedLoop <: IASTSolver end
+        -
+        - struct ASTProblem{M,P,TT,Y,X,G}
+      107     models::M
+        -     p::P
+        -     T::TT
+        -     y::Y
+        -     x0::X
+        -     gas_model::G
+        - end
+        -
+        - const IASTProblem = ASTProblem
+        -
+      214 ASTProblem(models, p, T, y; x0 = nothing,gas_model = nothing) = ASTProblem(models, p, T, y, x0, gas_model)
+        -
+        - struct ASTIteration{ALG<:ASTSolver,PROB<:ASTProblem,ITER,COND}
+      625     alg::ALG
+        -     prob::PROB
+        -     iter::ITER
+        -     cond::COND
+        - end
+        -
+        - get_P0i(iter::ASTIteration{IASTNestedLoop}) = iter.iter.Pᵢ
+        - get_P0i(iter::ASTIteration{FastIAS}) = iter.iter.η ./ iter.iter.K
+        -
+        - const IASTIteration = ASTIteration
+        -
+      518 function CommonSolve.step!(iter::I) where I <: ASTIteration{ALG,PROB,ITER,COND} where {ALG,PROB,ITER,COND}
+      518     maxiters,reltol,abstol = iter.cond
+      518     alg,prob,state = iter.alg,iter.prob,iter.iter
+      518     new_state = ast_step!(alg,prob.models,prob.p,prob.T,prob.y,state,maxiters,reltol,abstol)
+      518     return ASTIteration(alg,prob,new_state,iter.cond)
+        - end
+        -
+        - ast_step!(iter::ASTIteration) = CommonSolve.step!(iter)
+        -
+      107 function ast_solve!(x::ASTIteration)
+      107     maxiters = x.cond[1]
+      107     converged = x.iter.converged
+      107     x.iter.converged && return x,:success
+      107     for i in 1:maxiters
+      518         x = step!(x)
+      518         x.iter.converged && return x,:success
+      822     end
+        0     return x,:maxiters_exceeded
+        - end
+        -
+      107 function CommonSolve.solve!(x0::ASTIteration)
+      371     x,status = ast_solve!(x0)
+      107     return x.iter.q_tot,x.iter.x,status
+        - end
+        -
+       54 function iast_x0(::FastIAS, models, p, T, y, x0 = nothing)
+       54     n = length(models)
+        -     #we calculate Πi, find the extrema, and interpolate a langmuir isotherm.
+        -     #this skips the non existent henry and/or saturated_loading isotherms when they are not available
+       54     Πi = sp_res.(models,p,T)
+       54     Πmin, Πmax = extrema(Πi)
+       54     MK = pseudo_langmuir_params.(models, p, T, Πmin, Πmax)
+        -     #return Kpi
+      108     η = similar(y,eltype(Πi))
+      108     K = similar(y,eltype(Πi))
+       54     K .= last.(MK)
+       54     if !isnothing(x0)
+        2         ∑x0 = sum(x0)
+        1         for i in eachindex(η)
+        3             p0i = ∑x0*p*y[i]/x0[i]
+        3             η[i] = p0i*K[i]
+        5         end
+        1         return η,K
+        -     end
+        -
+       53     Kh_avg = zero(eltype(η))
+       53     for i in eachindex(y)
+      108         Mᵢ,Kᵢ = MK[i]
+      108         Kh_avg += y[i]*Mᵢ*Kᵢ
+      163     end
+      106     Kh_avg /= sum(y)
+       53     pKh_avg = Kh_avg
+       53     for i in eachindex(η)
+      108         Mᵢ,Kᵢ = MK[i]
+      108         KHᵢ = Kᵢ * Mᵢ
+      108         s1 =  p*Kᵢ
+      108         s2 = p*Kh_avg/Mᵢ
+      108         η[i] = min(s1,s2)
+      163     end
+       53     return η,K
+        - end
+        -
+       53 function iast_x0(::IASTNestedLoop,models, p, T, y, x0 = nothing)
+       53     if !isnothing(x0)
+        2         P0i = similar(y,Base.promote_eltype(models[1],p,T,y,x0))
+        1         Π0 = Inf*one(eltype(P0i))
+        1         for i in eachindex(y)
+        3             model_i = models[i]
+        6             ∑x0 = sum(x0)
+        3             p0i = ∑x0*p*y[i]/x0[i]
+        3             P0i[i] = p0i
+        3             Π0 = min(Π0,sp_res(model_i, p0i, T))
+        5         end
+        1         return Π0,P0i
+        -     end
+       52     Πi = sp_res.(models,p,T)
+       52     Πmin, Πmax = extrema(Πi)
+       52     MK = pseudo_langmuir_params.(models, p, T, Πmin, Πmax)
+        -
+       52     Kh_avg = zero(eltype(Πmin))
+       52     for i in eachindex(y)
+      105         Mᵢ,Kᵢ = MK[i]
+      105         Kh_avg += y[i]*Mᵢ*Kᵢ
+      158     end
+       52     Π0 = Inf*Kh_avg
+      105     P0i = zeros(eltype(Πmin),length(y))
+       52     for i in eachindex(y)
+      105         Mᵢ,Kᵢ = MK[i]
+      105         KHᵢ = Kᵢ * Mᵢ
+      105         model_i = models[i]
+      105         p0i = p*Kh_avg/KHᵢ
+      105         P0i[i] = 1/KHᵢ
+      105         Π0 = min(Π0,sp_res(model_i, p0i, T))
+      158     end
+       52     P0i .*= Π0
+       52     return Π0,P0i
+        - end
+        -
+      106 function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::IASTNestedLoop;maxiters = 100,reltol = 1e-12, abstol = 1e-10) where {M,P,TT,Y,G}
+       53     Π,Pᵢ = iast_x0(alg,prob.models, prob.p, prob.T, prob.y, prob.x0)
+       53     q_tot = zero(eltype(Pᵢ))/zero(eltype(Pᵢ))
+      106     x = similar(Pᵢ)
+       53     iters = 0
+       53     converged = false
+       53     conditions = (maxiters,reltol,abstol)
+       53     state = (;Π,Pᵢ,q_tot,x,iters,converged)
+       53     return IASTIteration(alg,prob,state,conditions)
+        - end
+        -
+      108 function CommonSolve.init(prob::ASTProblem{M,P,TT,Y,G},alg::FastIAS;maxiters = 100,reltol = 1e-12, abstol = 1e-10) where {M,P,TT,Y,G}
+       54     η,K = iast_x0(alg,prob.models, prob.p, prob.T, prob.y, prob.x0)
+       54     q_tot = zero(eltype(η))/zero(eltype(η))
+      108     x = similar(η)
+      108     Diag = similar(η)
+      108     Res = similar(η)
+      108     δ = similar(η)
+       54     iters = 0
+       54     converged = false
+       54     conditions = (maxiters,reltol,abstol)
+       54     Π = NaN*zero(eltype(η))
+       54     state = (;Π,η,K,Diag,Res,δ,x,q_tot,iters,converged)
+       54     return IASTIteration(alg,prob,state,conditions)
+        - end
+        -
+      253 function ast_step!(::IASTNestedLoop, models, p, T, y, state::S, maxiters, reltol, abstol) where S
+      253     (;Π,Pᵢ,q_tot,x,iters,converged) = state
+      253     iters += 1
+        -
+      253     for i in 1:length(Pᵢ)
+      515         model = models[i]
+      515         Pᵢ[i] = pressure(model, Π, T, sp_res)
+      777     end
+        -
+      253     q⁻¹ = zero(eltype(Pᵢ))
+        -
+      253     for i in 1:length(Pᵢ)
+      515         model = models[i]
+      515         p0i = Pᵢ[i]
+      515         x[i] = p*y[i]/p0i
+      515         qi = loading(model,p0i,T)
+      515         q⁻¹ +=p*y[i]/p0i/qi
+      777     end
+        -
+      506     ΔΠ = (sum(x) - 1)/q⁻¹
+      253     iters == maxiters && (converged = true)
+      253     abs(ΔΠ) < min(Π*reltol,abstol) && (converged = true)
+      253     Π = Π + ΔΠ
+      253     q_tot = 1/q⁻¹
+      253     return (;Π,Pᵢ,q_tot,x,iters,converged)
+        - end
+        -
+      265 function ast_step!(::FastIAS, models, p, T, y, state::S, maxiters, reltol, abstol) where S
+      265     (;Π,η,K,Diag,Res,δ,x,q_tot,iters,converged) = state
+      265     iters += 1
+        -     #Kpi = scaling factor, p0i = η[i]/K[i]
+      265     n = length(η)
+      265     ΔJac_nc_nc = zero(eltype(η))
+      265     ΔRes_nc = zero(eltype(η))
+      265     ∑KpiPyiηi = zero(eltype(η))
+      265     Jac_row_last = zero(eltype(η))
+      265     Π_nc = sp_res(last(models), η[end]/K[end], T)
+      265     q_tot_inv = zero(q_tot)
+      265     for i in 1:n
+      548         model = models[i]
+      548         ηᵢ,Kpiᵢ,yᵢ = η[i],K[i],y[i]
+      548         p0ᵢ = ηᵢ/Kpiᵢ
+      548         ηᵢ2 = ηᵢ*ηᵢ
+        -         #update last row
+      548         KpiᵢPyᵢ = Kpiᵢ*p*yᵢ
+      548         Jac_rowᵢ = KpiᵢPyᵢ/ηᵢ2
+      548         ∑KpiPyiηi += KpiᵢPyᵢ/ηᵢ
+        -         #Jac_row[i] = Jac_rowᵢ
+      548         qi = loading(model,p0ᵢ,T)
+      548         q_tot_inv += p*yᵢ/qi/p0ᵢ
+      548         x[i] = p*yᵢ/p0ᵢ
+        -         #update diagonals
+      548         Diagᵢ = qi/ηᵢ
+      548         Diag[i] = Diagᵢ
+      548         if i != n
+      283             Resᵢ = sp_res(model,p0ᵢ, T) - Π_nc
+      283             Res[i] = Resᵢ
+      283             ΔRes_nc += Resᵢ*Jac_rowᵢ/Diagᵢ
+      283             ΔJac_nc_nc += Jac_rowᵢ/Diagᵢ
+        -         else
+      265             Jac_row_last = Jac_rowᵢ
+        -         end
+      831     end
+      265     q_tot = 1/q_tot_inv
+        -     #update last term of the last row of the jac
+      265     Jac_nc_nc = Jac_row_last + Diag[end]*ΔJac_nc_nc
+      265     Jac_row_nc = Diag[end]
+      265     Diag[end] = Jac_nc_nc
+        -
+        -     #update last term of residual
+      265     Res[end] = 1 - ∑KpiPyiηi - ΔRes_nc
+        -
+        -     #solve system of equations by backsubstitution
+      265     δ_nc = -Res[end]/Diag[end]
+      265     δ[end] = δ_nc
+      265     for i in 1:(n-1)
+      283         δ[i] = -(Res[i] - Jac_row_nc*δ_nc)/Diag[i]
+      301     end
+        -
+        -     #update η
+      265     norm_η = -Inf*one(eltype(η))
+      265     for i in 1:n
+      548         ηi = η[i]
+      548         δi = δ[i]
+      548         if ηi + δi < 0
+        0             norm_η
+        0             η[i] = 0.5*ηi
+        0             δ[i] = -0.5*δi
+        -
+        -         else
+      548             η[i] = ηi + δi
+        -         end
+      831     end
+      265     ΔRes = norm(δ,Inf)
+      265     ΔRes <= abstol && (converged = true)
+      265     norm(δ,1) <= reltol && (converged = true)
+      265     Π = Π_nc
+      265     return (;Π,η,K,Diag,Res,δ,x,q_tot,iters,converged)
+        - end
+        -
+        -
+        - """
+        -     iast(models, p, T, y; method = FastIAS(), gas_model = nothing, x0 = nothing, maxiters = 100, reltol = 1e-12, abstol = 1e-10)
+        -
+        - Solve for the adsorption equilibrium of a multicomponent gas mixture using the Ideal Adsorbed Solution Theory (IAST).
+        -
+        - # Arguments
+        - - `models`: A collection of isotherm models for each component in the mixture.
+        - - `p`: Total pressure of the gas mixture.
+        - - `T`: Temperature of the system.
+        - - `y`: Mole fractions of the components in the bulk gas phase.
+        -
+        - # Keyword Arguments
+        - - `method`: Solver method to use (default: `FastIAS()`).
+        - - `gas_model`: Optional gas model for the bulk phase (default: `nothing`).
+        - - `x0`: Initial guess for the adsorbed phase composition (default: `nothing`).
+        - - `maxiters`: Maximum number of iterations allowed (default: `100`).
+        - - `reltol`: Relative tolerance for convergence (default: `1e-12`).
+        - - `abstol`: Absolute tolerance for convergence (default: `1e-10`).
+        -
+        - # Returns
+        - - `q_tot`: Total adsorbed amount.
+        - - `x`: Mole fractions of the components in the adsorbed phase.
+        - - `status::Symbol`: Status of the solver (`:success` or `:maxiters_exceeded`).
+        -
+        - # Description
+        - The Ideal Adsorbed Solution Theory (IAST) is based on the assumption that the adsorbed phase behaves as an ideal solution. It uses the following key equations:
+        -
+        - 1. **Equilibrium Condition**:
+        -
+        -    ``math
+        -    x_i \\cdot p_i(\\Pi) = y_i \\cdot p
+        -    ``
+        -
+        -    where ``\\(x_i\\)`` and ``\\(y_i\\)`` are the mole fractions of component ``\\(i\\)`` in the adsorbed and bulk phases, respectively, ``\\(p_i(\\Pi)\\)`` is the partial pressure of component ``\\(i\\)`` in the adsorbed phase, and ``\\(\\Pi\\)`` is the spreading pressure.
+        -
+        - 2. **Mass Balance**:
+        -
+        -    ``math
+        -    \\sum_i x_i = 1
+        -    ``
+        -
+        - 3. **Spreading Pressure Relation**:
+        -
+        -    ``math
+        -    \\Pi = \\int_0^{p_i} \\frac{q_i(p)}{p} dp
+        -    ``
+        -
+        -    where ``\\(q_i(p)\\)`` is the adsorption isotherm for component ``\\(i\\)``.
+        -
+        - The `iast` function solves these equations iteratively to determine the adsorbed phase composition ``\\(x\\)`` and the total adsorbed amount ``\\(q_{tot}\\)``.
+        -
+        - # Example
+        - ```julia
+        - using Langmuir
+        -
+        - # Define isotherm models for two components
+        - isotherm_1 = LangmuirS1(1.913, 6.82e-10, -21_976.40)
+        - isotherm_2 = LangmuirS1(1.913, 1.801e-9, -16_925.01)
+        - models = (isotherm_1, isotherm_2)
+        -
+        - # Bulk phase conditions
+        - y = [0.5, 0.5]
+        - p = 101325.0
+        - T = 300.0
+        -
+        - # Solve using IAST
+        - q_tot, x, status = iast(models, p, T, y)
+        - println("Total adsorbed amount: \$q_tot")
+        - println("Adsorbed phase composition: \$x")
+        - println("Solver status: \$status")
+        - ```
+        - """
+      713 function iast(models,p,T,y,method = FastIAS(),gas_model = nothing;x0 = nothing,maxiters = 100,reltol = 1e-12, abstol = 1e-10)
+      107     prob = ASTProblem(models, p, T, y; x0, gas_model)
+      318     return CommonSolve.solve(prob, method; maxiters, reltol, abstol)
+        - end
+        -
+        - function iast(models::ThermodynamicLangmuir,p,T,y,method = FastIAS(),gas_model = nothing;x0 = nothing,maxiters = 100,reltol = 1e-12, abstol = 1e-10)
+        -     return iast(models.isotherms,p,T,y,method,gas_model;x0,maxiters,reltol,abstol)
+        - end
+        -
+        -
+        - export IASTProblem, FastIAS, IASTNestedLoop, iast

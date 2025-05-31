@@ -1,0 +1,114 @@
+        - """
+        -     `Quadratic(K₀a, K₀b, M, Ea, Eb)`
+        -
+        -     Quadratic <: IsothermModel
+        -
+        - ## Inputs
+        -
+        - - `K₀a::T`: Affinity parameter A at T → ∞, `[1/Pa]`
+        - - `K₀b::T`: Affinity parameter B at T → ∞, `[1/Pa^2]`
+        - - `M::T`: Saturation loading, `[mol/kg]`
+        - - `Ea::T`: Adsorption energy A, `[J/mol]`
+        - - `Eb::T`: Adsorption energy B, `[J/mol]`
+        -
+        - ## Description
+        -
+        - The `Quadratic` isotherm model is given by:
+        -
+        - n = M × (Ka + 2Kb × p) × p / (1 + p × (Ka + Kb × p))
+        -
+        - The model assumes that the affinity parameters `Ka` and `Kb` are temperature-dependent and follow the relation:
+        -
+        - Ka = K₀a * exp(-Ea / (RT))
+        -
+        - Kb = K₀b * exp(-Eb / (RT))
+        -
+        - Where:
+        - - `Ka` and `Kb` are the affinity parameters at temperature `T`,
+        - - `R` is the gas constant,
+        - - `T` is the absolute temperature.
+        -
+        - """
+        - @with_metadata struct Quadratic{T} <: IsothermModel{T}
+    51863     (K₀a::T, (0.0, Inf), "Affinity parameter A")
+        -     (K₀b::T, (0.0, Inf), "Affinity parameter B")
+        -     (M::T, (0.0, Inf), "Saturation loading")
+        -     (Ea::T, (-Inf, 0.0), "Energy parameter A")
+        -     (Eb::T, (-Inf, 0.0), "Energy parameter B")
+        - end
+        -
+      800 function sp_res(model::Quadratic, p, T)
+      800     K₀a, K₀b, M, Ea, Eb = model.K₀a, model.K₀b, model.M, model.Ea, model.Eb
+      800     Ka = K₀a*exp(-Ea/(Rgas(model)*T))
+      800     Kb = K₀b*exp(-Eb/(Rgas(model)*T))
+      800     return M*log1p(p*(Ka + Kb*p))
+        - end
+        -
+ 12966140 function loading(model::Quadratic, p, T)
+ 12966140     K₀a, K₀b, M, Ea, Eb = model.K₀a, model.K₀b, model.M, model.Ea, model.Eb
+ 12966140     Ka = K₀a*exp(-Ea/(Rgas(model)*T))
+ 12966140     Kb = K₀b*exp(-Eb/(Rgas(model)*T))
+ 12966140     _1 = one(eltype(p))
+ 12966140     return M*(Ka + 2.0*Kb*p)*p/(_1 + p*(Ka + Kb*p))
+        - end
+        -
+      488 function pressure_impl(model::Quadratic, Π, T, ::typeof(sp_res), approx)
+      488     K₀a, K₀b, M, Ea, Eb = model.K₀a, model.K₀b, model.M, model.Ea, model.Eb
+      488     Ka = K₀a*exp(-Ea/(Rgas(model)*T))
+      488     Kb = K₀b*exp(-Eb/(Rgas(model)*T))
+      488     Kab = Ka/Kb
+      488     return -0.5*Kab + sqrt(0.25*Kab*Kab + expm1(Π/M)/Kb)
+        - end
+        -
+        1 function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Quadratic
+        -     #langmuir_model = x0_guess_fit(Langmuir,data)
+        -     #M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
+        -
+        -     #l*(1 + p*(Ka + Kb*p)) = M*(Ka*p + 2*Kb*p*p)
+        -     #p*Ka*l + Kb*p*p*l - M*Ka*p - 2*M*Kb*p*p = -l
+        -     #-p*Ka*l - Kb*p*p*l + M*Ka*p + 2*M*Kb*p*p = l
+        -     #-Ka*(p*l) -Kb*(p*p*l) + M*Ka*(p) + 2*M*Kb*(p*p) = l
+        -
+        -     # Split data by temperature
+        1     Ts, l_p = split_data_by_temperature(data)
+        -
+        -     # Initialize vectors for Ka, Kb, and M values
+        2     Kas = Vector{eltype(Ts)}(undef, length(l_p))
+        2     Kbs = Vector{eltype(Ts)}(undef, length(l_p))
+        2     Ms = Vector{eltype(Ts)}(undef, length(l_p))
+        -
+        -     # Perform fitting for each (l, p) tuple
+        1     for i in 1:length(l_p)
+        5         l_i, p_i = l_p[i]
+        5         Kaneg, Kbneg, MKa, MKb2 = hcat(p_i .* l_i, p_i .* p_i .* l_i, p_i, p_i .* p_i) \ l_i
+        -
+        5         Ka = abs(Kaneg)
+        5         Kb = abs(Kbneg)
+        5         Ma = MKa / Ka
+        5         Mb = abs(0.5 * MKb2 / Kb)
+        5         Ms[i] = 0.5 * (Ma + Mb)
+        5         Kas[i] = Ka
+        5         Kbs[i] = Kb
+        9     end
+        -
+        2     M = sum(Ms)/length(Ms) #Mean of all values
+        -
+        1     _1 = one(eltype(Ts))
+        5     _1s = ones(eltype(Ts), length(Ts))
+        -
+        1     if length(l_p) > 1
+        1         logKa, Ea = hcat(_1s, _1s./ (Rgas(T).*Ts)) \ log.(Kas)
+        1         Ka = exp(logKa)
+        1         logKb, Eb = hcat(_1s, _1s./(Rgas(T).*Ts)) \ log.(Kbs)
+        1         Kb = exp(logKb)
+        -     else
+        0         Ka = first(Kas)
+        0         Kb = first(Kbs)
+        0         Ea = _1
+        0         Eb = _1
+        -     end
+        -
+        1     Quadratic(abs(Ka), abs(Kb), M, -abs(Ea), -abs(Eb))
+        - end
+        -
+        - export Quadratic

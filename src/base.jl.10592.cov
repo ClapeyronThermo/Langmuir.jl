@@ -1,0 +1,98 @@
+       13 function _format_param_value(value::AbstractFloat, sigdigits::Int)
+       13     if iszero(value)
+        0         return "0.0" # Consistent display for zero
+        -     else
+        -         # %.Xg formats to X significant digits, choosing %f or %e automatically
+       13         return Printf.@sprintf("%.*g", sigdigits, value)
+        -     end
+        - end
+        -
+        - # Handle other number types (like Integers) simply
+        - function _format_param_value(value::Number, sigdigits::Int) # sigdigits is ignored here
+        -     return string(value)
+        - end
+        -
+        - # Handle non-numeric types using repr (e.g., for Strings, Symbols if they occur)
+        - function _format_param_value(value, sigdigits::Int) # sigdigits is ignored here
+        -     return repr(value)
+        - end
+        -
+        -
+        1 function Base.show(io::IO, a::MIME"text/plain", model::MultiSite)
+        -
+        1     isotherms = model.isotherms
+        -     #print(io, "$model")
+        -
+        2     for (idx, isotherm) in enumerate(isotherms)
+        2         print(io, "Site $idx: ")
+        3         Base.show(io, a, isotherm)
+        2         ifelse(idx < length(isotherms), print(io, "\n\n"), continue)
+        2     end
+        - end
+        -
+        3 function Base.show(io::IO, ::MIME"text/plain", model::IsothermModel{T}) where {T}
+        -     # 1. Print the type name and its parameter type
+        -     # Using T from the signature is cleaner than typeof(model).parameters[1]
+        3     print(io, "$model")
+        -
+        3     typeofmodel = typeof(model)
+        -
+        3     description = isotherm_descriptions(typeofmodel)
+        -
+        3     fields = fieldnames(typeofmodel)
+        -
+        3     for (idx, fname) in enumerate(fields)
+        -
+       13         value = getfield(model, fname)
+       13         desc = description[idx]
+        -
+       26         value_str = _format_param_value(value, 6)
+        -
+       13         print(io, "\n ", fname, " (", desc, "): ", value_str)
+        -
+       13     end
+        -
+        - end
+        -
+        4 function Base.show(
+        -     io::IO,
+        -     ::MIME"text/plain",
+        -     data::AbsorbedIsothermData;
+        -     allrows=!get(io, :limit, false),
+        -     allcols=!get(io, :limit, false),
+        - )
+        2     nrow = length(getfield(data, 1))
+        -
+        -     # Show summary line
+        2     print(io, "AbsorbedIsothermData with $(nrow) data points")
+        -
+        2     nrow == 0 && return nothing
+        -
+        1     println(io)
+        -
+        1     if allcols && allrows
+        1         crop = :none
+        0     elseif allcols
+        0         crop = :vertical
+        0     elseif allrows
+        0         crop = :horizontal
+        -     else
+        0         crop = :both
+        -     end
+        -
+        -     # Use data directly as a Tables.jl instance
+        1     return pretty_table(
+        -         io,
+        -         data;  # Use data directly since it implements Tables.jl interface
+        -         newline_at_end=false,
+        -         reserved_display_lines=2,
+        -         header_alignment=:l,
+        -         crop=crop,
+        -         vcrop_mode=:middle,
+        6         formatters=(v,i,j) ->
+        -             j == 1 ? @sprintf("%.3e", v) :  # Pressure
+        -             j == 2 ? @sprintf("%.3f", v) :  # Loading
+        -             j == 3 ? @sprintf("%.2f", v) :  # Temperature
+        -             v
+        -     )
+        - end

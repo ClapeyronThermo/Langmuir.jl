@@ -1,0 +1,194 @@
+        - """
+        -
+        -     MultiSite(isotherms::Vararg{IsothermModel}...)
+        -
+        - given a list of isotherms, create a multisite isotherm model.
+        -
+        - ```julia
+        - model1 = LangmuirS1(3.0,1.0,0.0)
+        - model2 = LangmuirS1(3.0,0.9,3000.0)
+        - double_site_LangmuirS1 = MultiSite(model1,model2) #create a multisite model with two LangmuirS1 isotherms
+        - ```
+        - """
+        - struct MultiSite{T,𝕀} <: IsothermModel{T}
+        6     isotherms::𝕀
+        - end
+        -
+        - isotherm_types(model::MultiSite) = isotherm_types(typeof(model))
+        -
+        - const __MultiSite{I,T} = MultiSite{T,T}
+        -
+        3 function isotherm_types(::Type{M}) where M <: MultiSite
+        3     return fieldtypes(only(fieldtypes(M)))
+        - end
+        -
+        - function isotherm_types(::Type{__MultiSite{I}}) where {I}
+        -     return fieldtypes(I)
+        - end
+        - #we suppose that the isotherms tuple was processed before this
+        6 function _multisite(::Type{T},isotherms::𝕀) where {T,𝕀}
+        6     return MultiSite{T,𝕀}(isotherms)
+        - end
+        -
+        6 _multisite(isotherms::I) where I = _multisite(eltype(first(isotherms)),isotherms)
+        -
+        3 function MultiSite(m_first::IsothermModel, m_rest::Vararg{I}) where I <:IsothermModel
+        3     return _multisite((m_first,m_rest...))
+        - end
+        -
+        - function Base.getindex(m::MultiSite{T,𝕀}) where {T,𝕀}
+        -     return m.isotherms[i]
+        - end
+        -
+        -
+        - function model_length(::Type{MultiSite{T,I}}) where {T,I}
+        -     return _model_length_multi(I)
+        - end
+        -
+        - function _model_length_multi(I::𝕀) where {𝕀}
+        -     if @generated
+        -         types = fieldtypes(I)
+        -         N = mapreduce(model_length,+,types)
+        -         return :(N)
+        -     else
+        -         types = fieldtypes(I)
+        -         N = mapreduce(model_length,+,types)
+        -         return N
+        -     end
+        - end
+        -
+        - function Base.zero(m::MultiSite{T,I}) where {T,I}
+        -     isotherms = m.isotherms
+        -     zero_isotherms = zero.(isotherms)
+        -     return _multisite(T,zero_isotherms)
+        - end
+        -
+        - function Base.zero(::Type{MultiSite{T,I}}) where {T,I}
+        -     zero_isotherms = zero.(fieldtypes(I))
+        -     return _multisite(T,zero_isotherms)
+        - end
+        -
+       24 function Base.iszero(m::MultiSite{T,I}) where {T,I}
+       72     zeros = iszero.(m.isotherms)
+       24     return all(zeros)
+        - end
+        -
+        - function to_vec!(model::MultiSite,x)
+        -     isotherms = model.isotherms
+        -     n_begin = 1
+        -     for i in 1:length(isotherms)
+        -         model_i = isotherms[i]
+        -         ni = model_length(model_i)
+        -         n_end = n_begin + ni - 1
+        -         vec_i = @view(x[n_begin:n_end])
+        -         to_vec!(model_i,vec_i)
+        -         n_begin = n_end + 1
+        -     end
+        -     return x
+        - end
+        -
+        - const _MultiSite{I,T} = MultiSite{T,I}
+        -
+        3 function from_vec(::Type{M},x,check) where M <: MultiSite
+        3     MT = eltype(M)
+        3     if MT === Any
+        3         TT = _eltype(x)
+        -     else
+        0         TT = MT
+        -     end
+        3     iso_types = isotherm_types(M)
+        3     isotherms = isotherm_zero.(TT,iso_types)
+        3     n_begin = 1
+        3     for i in 1:length(isotherms)
+        6         model_i = isotherms[i]
+        6         ni = model_length(model_i)
+        6         n_end = n_begin + ni - 1
+        6         vec_i = @view(x[n_begin:n_end])
+        6         new_model_i = from_vec(model_i,vec_i,check)
+        6         isotherms = Base.setindex(isotherms,new_model_i,i)
+        6         n_begin = n_end + 1
+        9     end
+        3     return _multisite(isotherms)
+        - end
+        -
+       81 function loading(model::MultiSite,p,T)
+       81     result = zero(Base.promote_eltype(model,p,T))
+       81     for model_i in model.isotherms
+      486         if !iszero(model_i)
+      162             result += loading(model_i,p,T)
+        -         end
+      243     end
+       81     return result
+        - end
+        -
+      378 function sp_res(model::M,p,T) where M <: MultiSite
+      378     result = zero(Base.promote_eltype(model,p,T))
+      378     for model_i in model.isotherms
+     2268         if !iszero(model_i)
+      756             result += sp_res(model_i,p,T)
+        -         end
+     1134     end
+      378     return result
+        - end
+        -
+       39 function henry_coefficient(model::MultiSite,T)
+       39     result = zero(Base.promote_eltype(model,T))
+       39     for model_i in model.isotherms
+      234         if !iszero(model_i)
+       78             result += henry_coefficient(model_i,T)
+        -         end
+      117     end
+       39     return result
+        - end
+        -
+       12 function saturated_loading(model::MultiSite,T)
+       12     result = zero(Base.promote_eltype(model,T))
+       12     for model_i in model.isotherms
+       72         if !iszero(model)
+       24             result += saturated_loading(model_i,T)
+        -         end
+       36     end
+       12     return result
+        - end
+        -
+        - function isotherm_lower_bound(::Type{TT},::Type{MultiSite{T,I}}) where {TT,T,I}
+        -     isotherms = fieldtypes(I)
+        -     return tuplejoin(isotherm_lower_bound.(TT,isotherms))
+        - end
+        -
+        - function isotherm_upper_bound(::Type{TT},::Type{MultiSite{T,I}}) where {TT,T,I}
+        -     isotherms = fieldtypes(I)
+        -     return tuplejoin(isotherm_upper_bound.(TT,isotherms))
+        - end
+        -
+        - """
+        -     @MultiSite(isotherms)
+        -
+        - Utility macro to build `MultiSite` types.
+        -
+        - ## Example:
+        -
+        - ```julia-repl
+        - julia> v1 = @MultiSite{LangmuirS1,LangmuirS1} #abstract eltype
+        - MultiSite{T, Tuple{LangmuirS1{T}, LangmuirS1{T}}} where T
+        -
+        - julia> Langmuir.from_vec(v,[1,2,0,3,4,0])
+        - MultiSite{Int64, Tuple{LangmuirS1{Int64}, LangmuirS1{Int64}}}((LangmuirS1{Int64}(1, 2, 0), LangmuirS1{Int64}(3, 4, 0)))
+        -
+        - julia> v2 = @MultiSite{LangmuirS1, LangmuirS1}{Float64} #concrete eltype
+        - MultiSite{Float64, Tuple{LangmuirS1{Float64}, LangmuirS1{Float64}}}
+        -
+        - julia> Langmuir.from_vec(v2,[1,2,0,3,4,0])
+        - MultiSite{Float64, Tuple{LangmuirS1{Float64}, LangmuirS1{Float64}}}((LangmuirS1{Float64}(1.0, 2.0, 0.0), LangmuirS1{Float64}(3.0, 4.0, 0.0)))
+        - ```
+        - """
+        1 macro MultiSite(isotherms)
+        1     isotherms.head == :braces || throw(ArgumentError("invalid argument for `@MultiSite`: $isotherms"))
+        3     IT = map(x-> Expr(:curly,x,:T),isotherms.args)
+        1     I = Expr(:tuple,IT...)
+        1     return quote
+        1         MultiSite{T,Tuple{($I)...}} where T
+        -     end |> esc
+        - end
+        -
+        - export MultiSite, @MultiSite

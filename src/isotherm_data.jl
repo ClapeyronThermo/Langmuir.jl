@@ -30,23 +30,31 @@ function isotherm_data(p::P,l::L,t::T,p_label::Symbol,l_label::Symbol,T_label::S
     @assert p_label != l_label
     @assert p_label != T_label
     @assert l_label != T_label
-    pmin = minimum(p)
-    if pmin < 0
-        throw(DomainError(pmin,"adsorbed input pressure must be positive"))
-    end
     TT = Base.promote_eltype(p,l,t)
     n = length(p)
     pp = Vector{TT}(undef,n)
     ll = Vector{TT}(undef,n)
     tt = Vector{TT}(undef,n)
 
-    if !issorted(p)
-        idx = sortperm(pp)
-        lv,pv,tv = view(l,idx),view(p,idx),view(t,idx)
-        ll .= lv
-        pp .= pv
-        tt .= tv
-    else
+    if n > 0
+        pmin = minimum(p)
+        if pmin < 0
+            throw(DomainError(pmin,"adsorbed input pressure must be positive"))
+        end
+        if !issorted(p)
+            idx = sortperm(p) # Sort original p
+            pp .= p[idx]
+            ll .= l[idx]
+            tt .= t[idx]
+        else
+            pp .= p
+            ll .= l
+            tt .= t
+        end
+    else # n == 0, vectors are already empty and correctly typed via undef,n. Or pp,ll,tt remain Vector{TT}(undef,0)
+        # If p, l, t were Any[], TT could be Any. Forcing to Float64[] if completely empty.
+        # However, if input `p` was e.g. Float64[], TT will be Float64.
+        # The lines below ensure pp, ll, tt are copies, empty if p,l,t are empty.
         pp .= p
         ll .= l
         tt .= t

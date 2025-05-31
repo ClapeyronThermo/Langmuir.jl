@@ -1,0 +1,207 @@
+        - abstract type MultiComponentIsothermModel{T} end
+        -
+        - struct ExtendedLangmuir{T,𝕀} <: MultiComponentIsothermModel{T}
+        6     isotherms::𝕀
+        - end
+        -
+        - struct IASTModels{T,𝕀} <: MultiComponentIsothermModel{T}
+        -     isotherms::𝕀
+        - end
+        -
+        - struct aNRTLModel{T, 𝕀, B <: AbstractMatrix{T}} <: MultiComponentIsothermModel{T}
+        1     isotherms::𝕀
+        -     Βᵢⱼ::B
+        - end
+        -
+        6 function _extendedlangmuir(::Type{T}, isotherms::𝕀) where {T,𝕀}
+        6     return ExtendedLangmuir{T,𝕀}(isotherms)
+        - end
+        -
+        6 _extendedlangmuir(isotherms::I) where I = _extendedlangmuir(eltype(first(isotherms)), isotherms)
+        -
+        6 function ExtendedLangmuir(m_first::I, m_rest::Vararg{I}) where {I <: Union{LangmuirS1, MultiSite}}
+        6     return _extendedlangmuir((m_first, m_rest...))
+        - end
+        -
+        -
+        - function _iastmodels(::Type{T}, isotherms::𝕀) where {T,𝕀}
+        -     return IASTModels{T,𝕀}(isotherms)
+        - end
+        -
+        - _iastmodels(isotherms::I) where I = _iastmodels(eltype(first(isotherms)), isotherms)
+        -
+        - function IASTModels(m_first::I, m_rest::Vararg{I}) where {I <: IsothermModel}
+        -     return _iastmodels((m_first, m_rest...))
+        - end
+        -
+        1 function aNRTLModel(models::Tuple{I, Vararg{I}}) where I <: ThermodynamicLangmuir
+        2     Bᵢᵩ = getfield.(models, :Bᵢᵩ) |> collect
+        2     Bᵢⱼ = Bᵢᵩ .- Bᵢᵩ' # Estimated interaction parameters from pure isotherm
+        1     T = eltype(Bᵢⱼ)
+        1     return aNRTLModel{T,typeof(models),typeof(Bᵢⱼ)}(models, Bᵢⱼ)
+        - end
+        -
+        - function aNRTLModel(models::Tuple{I, Vararg{I}}) where I <: IsothermModel
+        -     isotherms = collect(models)
+        -     NIsotherms = length(isotherms)
+        -     T = Base.promote_eltype(models...)
+        -     Bᵢᵩ = zeros(T,(NIsotherms,NIsotherms)) #Ideal model
+        -     return aNRTLModel{T,typeof(models),typeof(Bᵢⱼ)}(models, Bᵢⱼ)
+        - end
+        -
+        6 function loading(model::ExtendedLangmuir{_T, I}, p, T, yᵢ) where {_T, I <: Tuple{Vararg{<:LangmuirS1{_T}}}}
+       12     _y = yᵢ/sum(yᵢ)
+        6     pᵢ = p*_y
+        6     return loading(model, pᵢ, T)
+        - end
+        -
+        6 function loading(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: Tuple{Vararg{<:LangmuirS1{_T}}}}
+        -
+        6     _1_∑kP = one(eltype(T))
+       12     loadings = similar(pᵢ)
+        6     models = model.isotherms
+        -
+        6     for i ∈ eachindex(pᵢ)
+        0             loadings[i] = begin
+       12                 M, K₀, E = models[i].M, models[i].K₀, models[i].E
+       12                 MKpy = M*K₀*exp(-E/(Rgas(model)*T))*pᵢ[i]
+       12                 _1_∑kP += MKpy/M
+       12                 MKpy
+        -             end
+       18     end
+        -
+        6     return loadings./_1_∑kP
+        - end
+        -
+        2 function loading(model::ExtendedLangmuir{_T, I}, p, T, y) where {_T, I <: Tuple{Vararg{<:MultiSite{_T}}}}
+        -
+        2         unpack_multisite = getfield.(model.isotherms, :isotherms)
+        -
+        6         Es = collect.(map(x -> getfield.(x, :E), unpack_multisite) |> collect)
+        -
+        2         N_sites =  length(Es[1])
+        -
+        2         sites_to_match = sortperm.(Es)
+        -
+        2         models = [ExtendedLangmuir(
+        -             getindex.(collect(unpack_multisite), getindex.(sites_to_match, i))...
+        -             )
+        -              for i in 1:N_sites]
+        -
+        6         loadings = mapreduce(m -> loading(m, p, T, y), +, models)
+        -
+        2         return loadings
+        - end
+        -
+        -
+        - function loading(model::IASTModels, p, T, y; method = IASTNestedLoop(), gas_model = nothing, x0 = nothing, maxiters = 100, reltol = 1e-12, abstol = 1e-10)
+        -
+        -     (n_total, x, is_success) = iast(model.isotherms, p, T, y, method, gas_model, x0 = x0, maxiters = maxiters, reltol = reltol, abstol = abstol)
+        -
+        -     loadings = similar(y)
+        -
+        -     if is_success == :success
+        -         loadings .= x.*n_total
+        -     else
+        -         # Convergence failed
+        -         error("Convergence failed - current number of iterations is $maxiters, consider increasing to meet tolerances.")
+        -     end
+        -
+        -     return loadings
+        - end
+        -
+        -
+        - function isosteric_heat(model::IASTModels, p, T, y; Vg = Rgas(model).*T./(p.*y), Vₐ = zeros(length(y)), method = IASTNestedLoop(), gas_model = nothing, x0 = nothing, maxiters = 100, reltol = 1e-12, abstol = 1e-10)
+        -
+        -     (n_total, x, is_success) = iast(model.isotherms, p, T, y, method, gas_model, x0 = x0, maxiters = maxiters, reltol = reltol, abstol = abstol)
+        -
+        -     if is_success == :success
+        -
+        -         Pᵢ₀_π = y.*p./x
+        -     else
+        -         # Convergence failed
+        -         error("Convergence failed - current number of iterations is $maxiters, consider increasing to meet tolerances.")
+        -     end
+        -
+        -     ∂ψ_∂p = map(m_Pᵢ₀_π -> -1.0 * loading(first(m_Pᵢ₀_π), last(m_Pᵢ₀_π), T)/last(m_Pᵢ₀_π), zip(model.isotherms, Pᵢ₀_π))
+        -
+        -     ∂ψ_∂T = map(m_Pᵢ₀_π -> -1.0 * ForwardDiff.derivative(T -> sp_res(first(m_Pᵢ₀_π), last(m_Pᵢ₀_π), T),  T), zip(model.isotherms, Pᵢ₀_π))
+        -
+        -     return T.*(Vg .- Vₐ).*(∂ψ_∂T./∂ψ_∂p).*x
+        - end
+        -
+        -
+        - function isosteric_heat(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: Tuple{Vararg{<:LangmuirS1{_T}}}}
+        -
+        - #=     pᵢ_T = [pᵢ; T]
+        -     f(pᵢ_T) = loading(model, first(pᵢ_T, length(pᵢ)), last(pᵢ_T))
+        -     ȷ_I = ForwardDiff.jacobian(f, pᵢ_T)
+        -
+        -     ∂pᵢ∂T = @views ȷ_I[:, 1:end - 1]\ȷ_I[:, end]
+        -     return @. T*(Vᵍ - Vᵃ).*∂pᵢ∂T #No excess heat due to mixing. =#
+        -
+        -     return map(p_model -> isosteric_heat(last(p_model), first(p_model), T), zip(pᵢ, model.isotherms))
+        -
+        - end
+        -
+        - function isosteric_heat(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: Tuple{Vararg{<: MultiSite{_T} }}}
+        -     return map(p_model -> isosteric_heat(last(p_model), first(p_model), T), zip(pᵢ, model.isotherms))
+        - end
+        -
+        -
+        - function isosteric_heat(model::ExtendedLangmuir{_T, I}, p, T, yᵢ) where {_T, I <: Tuple{Vararg{ <: Union{MultiSite{_T}, LangmuirS1{_T}}}}}
+        -     _y = yᵢ/sum(yᵢ)
+        -     pᵢ = p*_y
+        -     isosteric_heat(model, pᵢ, T)
+        - end
+        -
+        1 function gibbs_excess_free_energy(model::aNRTLModel, T, x::AbstractVector)
+        1     Bᵢⱼ = model.Βᵢⱼ
+        1     i1,i2 = size(Bᵢⱼ)
+        1     _0 = zero(Base.promote_eltype(Bᵢⱼ,T,x))
+        2     ∑x⁻¹ = 1/sum(x)
+        1     T⁻¹ = one(T)/T
+        1     gᴱ_RT = _0
+        1     for i ∈ 1:i1
+        2         ∑τⱼᵢGⱼᵢxⱼ = _0
+        2         ∑Gⱼᵢxⱼ = _0
+        2         xᵢ = x[i]*∑x⁻¹
+        2         for j ∈ 1:i2
+        4             xⱼ = x[j]*∑x⁻¹
+        4             τⱼᵢ = Bᵢⱼ[j,i]*T⁻¹
+        4             Gⱼᵢ = exp(-0.3*τⱼᵢ)
+        4             Gⱼᵢxⱼ = xⱼ*Gⱼᵢ
+        4             ∑Gⱼᵢxⱼ += Gⱼᵢxⱼ
+        4             ∑τⱼᵢGⱼᵢxⱼ += Gⱼᵢxⱼ*τⱼᵢ
+        6         end
+        2         gᴱ_RT += xᵢ*∑τⱼᵢGⱼᵢxⱼ/∑Gⱼᵢxⱼ
+        3     end
+        1     return gᴱ_RT
+        - #=
+        -     θ = x./sum(x)
+        -     Bᵢⱼ = model.Βᵢⱼ
+        -     T⁻¹ = one(T)./T
+        -
+        -     τᵢⱼ = Bᵢⱼ*T⁻¹
+        -     Gᵢⱼ = exp.(-0.3.*τᵢⱼ)
+        -
+        -     ∑ⱼθⱼτᵢⱼ = τᵢⱼ*θ
+        -     ∑ₖθₖGₖᵢ = Gᵢⱼ'*θ
+        -
+        -     gᴱ_RT = sum((∑ⱼθⱼτᵢⱼ./∑ₖθₖGₖᵢ).*θ)
+        -
+        -     return gᴱ_RT
+        -     =#
+        - end
+        -
+        - function activity_coefficient(model::MultiComponentIsothermModel, T, x::AbstractVector)
+        -
+        -     fun = let model = model, T = T
+        -         x -> gibbs_excess_free_energy(model, T, x)
+        -     end
+        -     cache = similar(x)
+        -     return exp.(ForwardDiff.gradient!(cache, fun, x))
+        - end
+        -
+        -
+        - export ExtendedLangmuir, IASTModels, ThermodynamicLangmuirModels, aNRTLModel

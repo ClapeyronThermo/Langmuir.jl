@@ -178,26 +178,81 @@ function pressure(model::IsothermModel, x, T, f;approx = :exact)
     return pressure_impl(model, x, T, f, approx)
 end
 
-pressure_impl(model, x, T) = pressure_impl(model, x, T, sp_res, :exact)
+pressure_impl(model, x, T) = pressure_impl(model, x, T, sp_res, :exact) # Default to sp_res if f is not provided
 
-function pressure_x0(model::IsothermModel, Π, T,::typeof(sp_res))
-    Π/henry_coefficient(model, T)
+# Initial guess for pressure given spreading pressure target
+function pressure_x0(model::IsothermModel, Π_target, T,::typeof(sp_res))
+    H = henry_coefficient(model, T)
+    # Π ≈ H * p  => p ≈ Π / H
+    val = Π_target/H
+    return ifelse(isfinite(val) & (val > zero(val)), val, one(Π_target)) # Fallback to 1.0 if H is problematic
 end
 
-function pressure_impl(model::IsothermModel, Π, T, ::typeof(sp_res), approx)
+# Initial guess for pressure given loading target
+function pressure_x0(model::IsothermModel, q_target, T, ::typeof(loading))
+    H = henry_coefficient(model, T)
+    # q ≈ H * p => p ≈ q / H
+    val = q_target / H
+    # If q_target is very small, p_guess might be very small. Ensure it's positive.
+    # If H is zero or Inf, this guess can be problematic.
+    return ifelse(isfinite(val) & (val > zero(val)), val, one(q_target)) # Fallback to 1.0
+end
+
+function pressure_impl(model::IsothermModel, target_val, T, ::typeof(sp_res), approx)
     if approx == :exact
-        p0 = pressure_x0(model, Π, T, sp_res)
-        f0 = let model = model, Π = Π, T =T
-            p -> Π - sp_res(model, p, T)
+        p0 = pressure_x0(model, target_val, T, sp_res)
+        f0 = let model = model, target_val = target_val, T =T
+            p -> target_val - sp_res(model, p, T)
         end
         prob = Roots.ZeroProblem(f0, p0)
-        return Roots.solve(prob, Roots.Secant())
+        sol_p = Roots.solve(prob, Roots.Secant()) # Consider adding bracketing or more robust solver
+        return max(0.0, sol_p) # Ensure pressure is not negative
     elseif approx == :henry
-        return Π/henry_coefficient(model, T)
+        return target_val/henry_coefficient(model, T)
    # elseif approx == :saturated ?
     else
-        _0 = Base.promote_eltype(model, Π, T)
-        return _0/_0
+        _0 = Base.promote_eltype(model, target_val, T)
+        return _0/_0 # NaN for unimplemented approx
+    end
+end
+
+function pressure_impl(model::IsothermModel, q_target, T, ::typeof(loading), approx)
+    if approx == :exact
+        p0 = pressure_x0(model, q_target, T, loading)
+
+        f_to_solve = let model=model, q_target=q_target, T=T
+            p -> loading(model, p, T) - q_target
+        end
+
+        # Check if target loading is achievable
+        sat_load = saturated_loading(model, T)
+        # Allow small tolerance for q_target slightly above sat_load due to numerical precision
+        if q_target > sat_load * (1 + sqrt(eps(sat_load)))
+            @warn "Target loading $q_target is greater than saturated loading $sat_load at temperature $T. Returning Inf."
+            return convert(eltype(p0), Inf)
+        elseif q_target < 0
+             @warn "Target loading $q_target is negative. Returning 0.0."
+             return zero(eltype(p0))
+        end
+
+        # Safeguard p0 if it's problematic (e.g. Inf/NaN from Henry coeff)
+        if !isfinite(p0) || p0 <= 0
+            p0 = one(q_target) # Reset to a generic positive guess
+        end
+
+        prob = Roots.ZeroProblem(f_to_solve, p0)
+        # Consider trying a few initial guesses or a bracketing solver if Secant fails.
+        # Roots.Brent() or Roots.AlefeldPotraShi() with a bracket like [0, some_very_high_p]
+        # For now, rely on Secant and ensure result is non-negative.
+        sol_p = Roots.solve(prob, Roots.Secant()) # Add error handling or maxiters?
+        return max(0.0, sol_p) # Ensure pressure is not negative
+
+    elseif approx == :henry
+        H = henry_coefficient(model,T)
+        return q_target/H
+    else
+        _0 = Base.promote_eltype(model, q_target, T)
+        return _0/_0 # NaN for unimplemented approx
     end
 end
 

@@ -1,0 +1,152 @@
+        - """
+        -     ThermodynamicLangmuir(M, K₀, E, Bᵢᵩ)
+        -
+        - The `ThermodynamicLangmuir` struct represents a thermodynamic Langmuir model with activity coefficients calculated using an aNRTL-like approach.
+        -
+        - ## Parameters
+        -
+        - - `M`: Saturation loading `[mol/kg]`
+        - - `K₀`: Affinity parameter at high temperature `[1/Pa]`
+        - - `E`: Adsorption energy `[J/mol]`
+        - - `Bᵢᵩ`: Interaction energy parameter between adsorbate species `i` and vacant sites `[J/mol]`
+        -
+        - ## Description
+        -
+        - The Langmuir equation is given by:
+        -
+        -     nᵢ = (M * K * P) / (γᵢ/γᵩ + K * P)
+        -
+        - where `nᵢ` is the adsorbed amount of species `i`, `K` is calculated as:
+        -
+        -     K = K₀ * exp(-E / (R * T))
+        -
+        - where:
+        - - `R` is the gas constant
+        - - `T` is the temperature
+        -
+        - The activity coefficients `γᵢ` and `γᵩ` are determined using the Gibbs excess free energy, `gᴱ/RT`, which is calculated based on the surface fractions (`θᵢ`, `θᵩ`) and interaction parameters derived from `Bᵢᵩ`. This free energy value is used in the `activity_coefficient` function to compute the activity coefficients of the adsorbate and phantom molecules.
+        - """
+        - @with_metadata struct ThermodynamicLangmuir{T} <: IsothermModel{T}
+        4     (M::T, (0.0, Inf), "saturation loading")
+        -     (K₀::T, (0.0, Inf), "affinity parameter")
+        -     (E::T, (-Inf, 0.0), "energy parameter")
+        -     (Bᵢᵩ::T, (-Inf, 0.0), "adsorbate-adsorbent interaction coefficient")
+        - end
+        -
+        -
+        2 function gibbs_excess_free_energy(model::ThermodynamicLangmuir, T::A, θ::AbstractVector{V}) where {V, A}
+        -
+        2     _1 = one(eltype(T))
+        2     Bᵢᵩ = model.Bᵢᵩ
+        2     T⁻¹ = _1/T
+        2     θᵢ, θᵩ = θ
+        -
+        2     τᵢᵩ = Bᵢᵩ*T⁻¹
+        2     Gᵢᵩ = exp(-0.3*τᵢᵩ)
+        -
+        2     gᴱ_RT = θᵢ*θᵩ*τᵢᵩ*(Gᵢᵩ - _1)/(θᵢ*Gᵢᵩ + θᵩ)
+        -
+        2     return gᴱ_RT
+        - end
+        -
+        2 function thermodynamic_langmuir_activity_coefficient(model::ThermodynamicLangmuir, T, θᵢ, θᵩ)
+        2     _1 = one(eltype(T))
+        2     Bᵢᵩ = model.Bᵢᵩ
+        2     T⁻¹ = _1/T
+        2     τᵢᵩ = Bᵢᵩ*T⁻¹
+        2     Gᵢᵩ = exp(-0.3*τᵢᵩ)
+        2     lnγᵢ = (Gᵢᵩ - 1)*τᵢᵩ*θᵩ*θᵩ/(θᵩ + θᵢ*Gᵢᵩ)^2
+        2     lnγᵩ = Gᵢᵩ*(Gᵢᵩ - 1)*τᵢᵩ*θᵢ*θᵢ/(θᵩ + θᵢ*Gᵢᵩ)^2
+        -     #lnγᵢ = θᵩ*θᵩ*τᵢᵩ*Gᵢᵩ*( lnγᵢ*(θᵢ + θᵩ*Gᵢᵩ)^-2 + (θᵩ + θᵢ*Gᵢᵩ)^-2)
+        -     #lnγᵩ = θᵢ*θᵢ*τᵢᵩ*Gᵢᵩ*( Gᵢᵩ*(θᵩ + θᵢ*Gᵢᵩ)^-2 + (θᵢ + θᵩ*Gᵢᵩ)^-2)
+        2     return SVector((exp(lnγᵢ), exp(lnγᵩ)))
+        - end
+        -
+        2 function activity_coefficient(model::ThermodynamicLangmuir, T::A, θ::AbstractVector{V}) where {V, A}
+        -
+        2          fun = let model = model, T = T
+        4             θ -> gibbs_excess_free_energy(model, T, θ)
+        -          end
+        -
+        -          #cfg = ForwardDiff.GradientConfig(fun, θ, autochunk(θ))
+        4          cache = similar(θ)
+        2          return exp.(ForwardDiff.gradient!(cache, fun, θ))
+        - end
+        -
+        1 function loading_x0(model::ThermodynamicLangmuir, p, T)
+        -
+        3     guess_model = from_vec(LangmuirS1, [model.M, model.K₀, model.E])
+        -
+        1     return loading(guess_model, p, T)
+        - end
+        -
+        2 function isotherm_res(model::ThermodynamicLangmuir, q, p, T::A) where {A}
+        2     _1 = one(eltype(T))
+        2     M = model.M
+        2     K₀ = model.K₀
+        2     E = model.E
+        2     K = K₀*exp(-E/(Rgas(model)*T))
+        2     θᵢ = q/M
+        2     θᵩ = _1 - θᵢ
+        2     γᵢ, γᵩ = thermodynamic_langmuir_activity_coefficient(model, T, θᵢ, θᵩ)
+        2     return q - M * K *p / (γᵢ/γᵩ + K*p)
+        - end
+        -
+        - function henry_coefficient(model::ThermodynamicLangmuir, T)
+        -
+        -     _0 = zero(eltype(T))
+        -
+        -     #q_0 = loading(model, _0, T)
+        -     q_0 = _0
+        -
+        -     f = let model = model, T = T
+        -         (∂q, ∂p) -> isotherm_res(model, ∂q, ∂p, T)
+        -     end
+        -
+        -     _f,_df = fgradf2(f, q_0, _0)
+        -
+        -     ∂f0_∂q, ∂f0_∂P = _df
+        -
+        -     return -∂f0_∂P/∂f0_∂q
+        - end
+        -
+        - function isosteric_heat(model::ThermodynamicLangmuir, p, T; Vᵃ = zero(eltype(p)), Vᵍ = Rgas(model)*T/p)
+        -
+        -     q = loading(model, p, T)
+        -
+        -     f = let model = model, q = q
+        -         (∂p, ∂T) -> isotherm_res(model, q, ∂p, ∂T)
+        -     end
+        -
+        -     _f,_df = fgradf2(f, p, T)
+        -
+        -     ∂n_∂p, ∂n_∂T = _df
+        -
+        -     return T*(Vᵍ - Vᵃ)*∂n_∂T/∂n_∂p
+        -
+        - end
+        -
+        1 function loading_impl(model::ThermodynamicLangmuir{L}, p, T) where L
+        1     _1 = one(eltype(p))
+        1     q0 = loading_x0(model, p, T)
+        1     M = model.M
+        1     K₀ = model.K₀
+        1     E = model.E
+        1     K = K₀*exp(-E/(Rgas(model)*T))
+        -
+        3     f01(qq) = isotherm_res(model, qq, p, T)
+        1     prob = Roots.ZeroProblem(f01, q0)
+        1     return Roots.solve(prob, Roots.Secant())
+        - end
+        -
+        - function pressure_x0(model::M, Π, T, ::typeof(sp_res)) where M <: ThermodynamicLangmuir
+        -     guess_model = from_vec(LangmuirS1, SVector((model.M, model.K₀, model.E)))
+        -     return pressure(guess_model, Π, T, sp_res)
+        - end
+        -
+        1 function loading(model::ThermodynamicLangmuir, p, T)
+        1     return loading_impl(model, p, T)
+        - end
+        -
+        - export ThermodynamicLangmuir, gibbs_excess_free_energy
+        -

@@ -1,0 +1,123 @@
+        - """
+        -     `Sips(M, K₀, E, f₀, β)`
+        -
+        -     Sips <: IsothermModel
+        -
+        - ## Inputs
+        -
+        - - `M::T`: Saturation loading, `[mol/kg]`
+        - - `K₀::T`: Affinity parameter at T → ∞, `[Pa⁻¹]`
+        - - `E::T`: Adsorption energy, `[J/mol]`
+        - - `f₀::T`: Surface heterogeneity parameter at T → ∞, `[-]`
+        - - `β::T`: Surface heterogeneity coefficient, `[K]`
+        -
+        - ## Description
+        -
+        - The Sips equation is given by:
+        -
+        - n = M * (K * p)ᶠ / (1 + (K * p)ᶠ)
+        -
+        - The adsorption energy E is related to the equilibrium constant K₀ by the equation:
+        -
+        - K = K₀ × exp(-E / (R * T))
+        -
+        - The exponent f is also temperature dependent and can be expressed as:
+        -
+        - f = f₀ - β/T
+        -
+        - where:
+        - - R is the gas constant,
+        - - T is the temperature.
+        -
+        - """
+        - @with_metadata struct Sips{T} <: IsothermModel{T}
+        2     (M::T, (0.0, Inf), "saturation loading")
+        -     (K₀::T, (0.0, Inf), "affinity parameter")
+        -     (E::T, (-Inf, 0.0), "energy parameter")
+        -     (f₀::T, (0.0, Inf), "surface heterogeneity parameter at T → ∞")
+        -     (β::T, (-Inf, Inf), "surface heterogeneity coefficient")
+        - end
+        -
+        -
+        1 function sp_res(model::Sips, p, T)
+        1     M = model.M
+        1     K₀ = model.K₀
+        1     E = model.E
+        1     f = model.f₀ - model.β/T
+        1     K = K₀*exp(-E/(Rgas(model)*T))
+        1     return M*log1p((K*p)^f)/f
+        - end
+        -
+       18 function loading(model::Sips, p, T)
+       18     M = model.M
+       18     K₀ = model.K₀
+       18     E = model.E
+       18     K = K₀*exp(-E/(Rgas(model)*T))
+       18     f = model.f₀ - model.β/T
+       19     Kpf = (K*p)^f
+       18     return M*Kpf/(1 + Kpf)
+        - end
+        -
+        2 saturated_loading(model::Sips, T) = model.M #Some depend on T, some don't
+        -
+        0 function pressure_impl(model::Sips, Π, T,::typeof(sp_res), approx)
+        0     M = model.M
+        0     K₀ = model.K₀
+        0     E = model.E
+        0     K = K₀*exp(-E/(Rgas(model)*T))
+        0     f = model.f₀ - model.β/T
+        0     return expm1(Π*f/M)^(1/f)/K
+        - end
+        -
+        1 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Sips
+        -    #l = M*(kp)^f/(1 +(kp)^f)
+        -     #l*(1 +(kp)^f) = M*(kp)^f
+        -     #l + l*(kp)^f = M*(kp)^f
+        -     #M*(kp)^f - l*(kp)^f = l
+        -     #(k*p)^f  = l/(M - l)
+        -     #f*log(k*p) = log(l) - log(M - l)
+        -     #f*(logk) + f*log(p) = log(l/(M - l))
+        -
+        -     #TODO: f*log(k) = -f*E/RT * log(k0), try to solve for E and K0.
+        -     #remove nonzero values
+        -
+        1     Ts, l_p = split_data_by_temperature(data)
+        2     Ms = Vector{eltype(Ts)}(undef, length(l_p))
+        2     logKs = Vector{eltype(Ts)}(undef, length(l_p))
+        2     fs = Vector{eltype(Ts)}(undef, length(l_p))
+        -
+        1     for i in eachindex(l_p)
+        1         l_i, p_i = l_p[i]
+        1         idx = findall(>(0.0), l_i)
+        1         l_i, p_i = l_i[idx], p_i[idx]
+        1         M = maximum(l_i) + eps(maximum(l_i)*1.1)
+        2         logp = log.(p_i)
+        2         loglml = log.(l_i ./ (M .- l_i))
+        2         _1 = one.(p_i)
+        1         flogk,f = hcat(_1, logp)\loglml
+        1         logk = flogk/f
+        1         logKs[i] = logk
+        1         Ms[i] = M
+        1         fs[i] = f
+        1     end
+        -
+        1     _1 = one(eltype(Ts))
+        1     _1s = ones(eltype(Ts), length(Ts))
+        -
+        1     if length(l_p) > 1
+        0         logK0, E = hcat(_1s, _1./ (Rgas(T).*Ts)) \ logKs
+        0         f₀, β = hcat(_1s, -_1./Ts) \ fs
+        0         M = sum(Ms)/length(Ms)
+        0         K0 = exp(logK0)
+        -     else
+        1         M = first(Ms)
+        1         K0 = exp(first(logKs))
+        1         f₀ = first(fs)
+        1         β = 0.0
+        -     end
+        -
+        -
+        1     return T(M, K0, -E, f₀, β)
+        - end
+        -
+        - export Sips

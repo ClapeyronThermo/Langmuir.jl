@@ -1,0 +1,179 @@
+        - abstract type IsothermFittingSolver end
+        -
+        - struct IsothermFittingProblem{M <: IsothermModel, TT, DL, DC, L, X, LB, UB}
+        2     IsothermModel::Type{M}
+        -     LoadingData::AdsIsoTData{TT}
+        -     CalorimetricData::DC
+        -     loss::L
+        -     x0::X
+        -     lb::LB
+        -     ub::UB
+        - end
+        -
+        -
+        - # Constructor with all arguments
+        2 IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, calorimetric_data::DC, loss::L, x0::X, lb::LB, ub::UB) where {M <: IsothermModel, TT, DC, L, X, LB, UB} =
+        - IsothermFittingProblem{M, TT, typeof(loading_data), DC, L, X, LB, UB}(IsothermModel, loading_data, calorimetric_data, loss, x0, lb, ub)
+        -
+        - # Simplified constructor
+        1 IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, loss::L) where {M <: IsothermModel, TT, L} =
+        -     IsothermFittingProblem(IsothermModel, loading_data, nothing, loss,
+        -         to_vec(x0_guess_fit(IsothermModel, loading_data)),
+        -         isotherm_lower_bound(eltype(loading_data), IsothermModel),
+        -         isotherm_upper_bound(eltype(loading_data), IsothermModel))
+        -
+        -
+        4 Base.@kwdef struct DEIsothermFittingSolver <: IsothermFittingSolver
+        2     max_steps::Int = 2e4
+        -     population_size::Int = 50
+        -     time_limit::Float64 = Inf
+        -     verbose::Bool = false
+        -     logspace::Bool = true
+        - end
+        -
+        - Base.@kwdef struct NewtonIsothermFittingSolver <: IsothermFittingSolver
+        -     logspace::Bool = false
+        - end
+        -
+        - #= function heterogeneity_penalty(M::Union{Freundlich, LangmuirFreundlich, Sips, RedlichPeterson}, T)
+        -
+        -     return ifelse(M.f₀ - M.β/T < 0.0, 50.0, zero(eltype(M)))
+        -
+        - end =#
+        -
+        2 function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB},
+        - alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
+        -
+        2     Ðₗ = prob.LoadingData
+        2     Ðₕ = prob.CalorimetricData
+        -
+        2     p = pressure(Ðₗ)
+        2     l = loading(Ðₗ)
+        2     T = temperature(Ðₗ)
+        4     lb_sign = sign.(nextfloat.(prob.lb)) #Assumes that parameters are either > 0 or < 0.
+        -
+   119401     function ℓ(θ, is_logspace)
+        -
+   119399         _θ = copy(θ)
+        -
+   119399         if is_logspace
+   238798             _θ .= lb_sign .* exp.(θ)
+        -         end
+        -
+   505579         model = from_vec(prob.IsothermModel, _θ)
+        -
+   119399         ℓr = zero(eltype(model))
+        -
+   238798         for (pᵢ, nᵢ, Tᵢ) in zip(p, l, T)
+        -
+ 29849750             n̂ᵢ = loading(model, pᵢ, Tᵢ) #Predicted loading
+        -
+ 29849750             if isnan(n̂ᵢ)
+   371460                 n̂ᵢ = -one(nᵢ)*nᵢ
+        -             end
+        -
+ 29849750 			ℓr += prob.loss(nᵢ - n̂ᵢ)
+ 59580101         end
+        -
+   119399         return ℓr/length(p)
+        -
+        -     end
+        -
+        -
+        2     if alg.logspace
+        -
+        4         x0 = log.(sign.(prob.x0) .* prob.x0)
+        4         lb = log.(sign.(nextfloat.(prob.lb)) .* nextfloat.(prob.lb))
+        4         ub = log.(sign.(prevfloat.(prob.ub)) .* prevfloat.(prob.ub))
+        -
+        -         # Ensure lb and ub are mutable arrays
+        2         lb = collect(lb)
+        2         ub = collect(ub)
+        -
+        -         # Swap lb and ub in logspace if the parameter is between -Inf and 0
+        2         for i in eachindex(lb)
+        8             if lb[i] > ub[i]
+        1                 lb[i], ub[i] = ub[i], lb[i]
+        -             end
+        8         end
+        -
+        -     else
+        0         lb = prob.lb
+        0         ub = prob.ub
+        0         x0 = prob.x0
+        -
+        -     end
+        -
+        -
+        2     result = BlackBoxOptim.bboptimize(Base.Fix2(ℓ, alg.logspace), x0;
+        -     SearchRange = [(lb[i], ub[i]) for i in eachindex(lb)],
+        -     PopulationSize = alg.population_size,
+        -     MaxTime = alg.time_limit,
+        -     TraceMode = ifelse(alg.verbose, :verbose, :silent))
+        -
+        2     opt_M = BlackBoxOptim.best_candidate(result)
+        -
+        2     loss_opt_M = BlackBoxOptim.best_fitness(result)
+        -
+        2     opt_θ = similar(opt_M)
+        -
+        2     if alg.logspace
+        2         opt_θ .= lb_sign .* exp.(opt_M)
+        -     else
+        0         opt_θ = opt_M
+        -     end
+        -
+        2     return loss_opt_M, from_vec(prob.IsothermModel, opt_θ)
+        -
+        - end
+        -
+        - function CommonSolve.solve(solver::NewtonIsothermFittingSolver)
+        -         nothing #TODO
+        - end
+        -
+        2 function fit(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB},
+        -     alg::IsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
+        -
+        2     return solve(prob, alg)
+        -
+        - end
+        -
+        - #= function fit(data::AdsIsoTData{TT}, ::Type{M}, loss = abs2, x0 = to_vec(x0_guess_fit(M, data))) where {M <: IsothermModel,TT}
+        -     p = pressure(data)
+        -     l = loading(data)
+        -     T = temperature(data)
+        -     function ℓ(θ)
+        - 		# construct model
+        - 		model = from_vec(M, θ)
+        - 		ℓr = zero(eltype(model))
+        - 		for (pᵢ, nᵢ, Tᵢ) in zip(p, l, T)
+        - 			# predicted loading
+        -             n̂ᵢ = loading(model, pᵢ, Tᵢ)
+        - 			# increment loss.
+        -             if isnan(n̂ᵢ)
+        -                 n̂ᵢ = -one(nᵢ)*nᵢ
+        -             end
+        - 			ℓr += loss(nᵢ - n̂ᵢ)
+        -         end
+        - 		return ℓr
+        - 	end
+        -     #=
+        -     some notes:
+        -     on fit, we depend on a function defined over θ,p,T ∈ ℝ
+        -     while loading(model(θ),p,T) could be defined over θ,p,T ∈ ℝ,
+        -     this is not true for sp_res(model(θ),p,T).
+        -
+        -     for example. for LangmuirS1, loading is defined over θ,p,T ∈ ℝ
+        -     but sp_res has the restriction K*p > -1
+        -     if loading is calculated via AD, we have to keep an eye on those situations.
+        -     =#
+        -     lb = similar(x0)
+        -     ub = similar(x0)
+        -     lb .= isotherm_lower_bound(eltype(x0),M)
+        -     ub .= isotherm_upper_bound(eltype(x0),M)
+        -     result = optimize(ℓ,x0,NLSolvers.ActiveBox(factorize=NLSolvers.positive_factorize),bounds = (lb,ub))
+        -     return from_vec(M, x_sol(result)),x_minimum(result)
+        - end =#
+        -
+        -
+        - export IsothermFittingProblem, DEIsothermFittingSolver, fit

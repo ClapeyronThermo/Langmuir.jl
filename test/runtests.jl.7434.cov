@@ -1,0 +1,395 @@
+        - using Langmuir
+        - import Langmuir: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
+        - import Langmuir: gibbs_excess_free_energy, activity_coefficient
+        - import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
+        - using Test
+        - const LG = Langmuir
+        - import Langmuir: R̄, Sips, FractionVector
+        -
+        -
+        - #we test that definitions of loading and sp_res are consistent.
+        -
+        1 function test_sp_res_loading(model, prange, T)
+        -
+        1     for p in prange
+        3         n = loading(model,p,T)
+        3         n₀ = loading_ad(model,p,T)
+        3         Π = sp_res(model,p,T)
+        3         Π₀ = sp_res_numerical(model, p,T)
+        3         @test n ≈ n₀
+        3         @test Π ≈ Π₀
+        3     end
+        - end
+        -
+        - @testset "isotherm consistency" begin
+        -     #Langmuir testing
+        -     @testset "langmuir" begin
+        -         cL_test = LangmuirS1(1.727, 16.71e-10, -16152.50)
+        -
+        -         # Loading
+        -         test_sp_res_loading(cL_test, [1e5, 2e5, 3e5], 298.)
+        -
+        -         # Isosteric heat
+        -         ΔH = isosteric_heat(cL_test, 101325.0, 298.) ≈ cL_test.E
+        -     end
+        - end
+        -
+        - @testset "isotherm fitting" begin
+        -     @testset "langmuir" begin
+        -         p = range(0.0, 101325.0*1.0, length = 50) |> collect
+        -         t = range(31.6 + 273.15, 50.0 + 273.15, length = 5) |> collect
+        -         P = vec(p'.*ones(length(t)))
+        -         T = vec(ones(length(p))' .* t)
+        -         pt_ = hcat(P, T)
+        -         lang = LangmuirS1(5.073, 0.67e-10, -39300.55246960819)
+        -         σ = 0.05
+      250         l = map(pT -> abs(loading(lang, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        -         table = (;P,l,T)
+        -         d = isotherm_data(table, :P, :l, :T)
+        -
+        -         prob = IsothermFittingProblem(LangmuirS1, d, abs2)
+        -         alg = DEIsothermFittingSolver(logspace = true)
+        -         loss_fit, fitted_isotherm = fit(prob, alg)
+        -
+        -         @test (abs(sqrt(loss_fit) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5%
+        -     end
+        -
+        -     @testset "quadratic" begin
+        -         p = range(0.0, 101325.0*1.0, length = 50) |> collect
+        -         t = range(31.6 + 273.15, 50.0 + 273.15, length = 5) |> collect
+        -         P = vec(p'.*ones(length(t)))
+        -         T = vec(ones(length(p))' .* t)
+        -         pt_ = hcat(P, T)
+        -         quad_ = Quadratic(0.67e-10, 0.37e-11, 4.073, -37300.9, -23300.55)
+        -         σ = 0.05
+      250         l = map(pT -> abs(loading(quad_, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        -         table = (;P,l,T)
+        -         d = isotherm_data(table, :P, :l, :T)
+        -
+        -         x0 = to_vec(x0_guess_fit(Quadratic, d))
+        -         lb = (1e-35, 1e-35, 1e-29, -5_000., -5_000.)
+        -         ub = (1e-3, 1e-3, 100., -80_000., -80_000.)
+        -         prob = IsothermFittingProblem(Quadratic{eltype(d)}, d, nothing, abs2, x0, lb, ub) #Bounds have to be manually tweaked. Default interval is too large
+        -         alg = DEIsothermFittingSolver(max_steps = 5000, logspace = true)
+        -         loss_fit, fitted_isotherm = fit(prob, alg)
+        -
+        -         @test (abs(sqrt(loss_fit) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5%
+        -     end
+        - end
+        -
+        - @testset "ThermodynamicLangmuir" begin
+        -     tlang = ThermodynamicLangmuir(2.468, 7.03e-10, -2540*Rgas(LangmuirS1{Float64}), -611.63)
+        2     analyical_gammas(T, θ) = (exp(θ[2]^2*tlang.Bᵢᵩ/T*(exp(-0.3*tlang.Bᵢᵩ/T) - 1)/(θ[1]*exp(-0.3*tlang.Bᵢᵩ/T) + θ[2])^2),
+        -     exp(θ[1]^2*-tlang.Bᵢᵩ/T*(exp(-0.3*-tlang.Bᵢᵩ/T) - 1)/(θ[1] + θ[2]*exp(-0.3*-tlang.Bᵢᵩ/T))^2)                                                                                         )
+        -     @test analyical_gammas(273.15, [0.4, 0.6])[1] ≈ activity_coefficient(tlang, 273.15, [0.4, 0.6])[1]
+        -     @test analyical_gammas(273.15, [0.4, 0.6])[2] ≈ activity_coefficient(tlang, 273.15, [0.4, 0.6])[2]
+        -
+        -     tlang2 = ThermodynamicLangmuir(2.468, 7.03e-10, -2540*Rgas(LangmuirS1{Float64}), 0.0)
+        -     @test loading(tlang2, 101325.0, 298.15) ≈ loading(LangmuirS1(tlang2.M, tlang2.K₀, tlang2.E), 101325.0, 298.15)
+        - end
+        -
+        - @testset "gibbs free energy multicomponent" begin
+        -     tl1 = ThermodynamicLangmuir(2.00, 7.0e-5, -10_000.0, -600.0)
+        -     tl2 = ThermodynamicLangmuir(3.00, 7.0e-6, -20_000.0, -100.0)
+        -     nrtl = aNRTLModel((tl1, tl2))
+        -     x = [0.8, 0.2]
+        -     T = 300.0
+        -     τ₁ = tl1.Bᵢᵩ/T
+        -     τ₂ = tl2.Bᵢᵩ/T
+        -     τ₁₂ = τ₁ - τ₂
+        -     G₁₂ = exp(-0.3*(τ₁ - τ₂))
+        -     analytical_Gᴱ = x[1]*x[2]*τ₁₂*(G₁₂ - 1.0)/(x[1]*G₁₂ + x[2])
+        -     @test gibbs_excess_free_energy(nrtl, T, x) ≈ analytical_Gᴱ
+        - end
+        -
+        -
+        - @testset "Multicomponent Extended Langmuir" begin
+        -     Lang1 = LangmuirS1(1.727, 16.71e-10, -16152.50)
+        -     Lang2 = LangmuirS1(4.0, 6.71e-8, -14152.50)
+        -     multilang = ExtendedLangmuir(Lang1, Lang2)
+        -     y = [0.3, 0.7]
+        -     p = 101325.0
+        -     T = 400.0
+        -     @test loading(multilang, p, T, y)[1] ≈ Lang1.M * Lang1.K₀*exp(-Lang1.E/(R̄*T)) * p * y[1] / (1.0 +
+        -     Lang2.K₀*exp(-Lang2.E/(R̄*T))*p*y[2] + Lang1.K₀*exp(-Lang1.E/(R̄*T))*p*y[1])
+        -     @test loading(multilang, p, T, y)[2] ≈ Lang2.M * Lang2.K₀*exp(-Lang2.E/(R̄*T)) * p * y[2] / (1.0 +
+        -     Lang2.K₀*exp(-Lang2.E/(R̄*T))*p*y[2] + Lang1.K₀*exp(-Lang1.E/(R̄*T))*p*y[1])
+        - end
+        -
+        -
+        - @testset "Multicomponent Extended Multisite Langmuir" begin
+        -     Lang1 = MultiSite(LangmuirS1(1.727, 16.71e-10, -16152.50), LangmuirS1(4.0, 6.71e-8, -14152.50))
+        -     Lang2 = MultiSite(LangmuirS1(2.727, 16.71e-12, 1.3*-16152.50), LangmuirS1(7.0, 6.71e-5, 2*-14152.50))
+        -     multilang = ExtendedLangmuir(Lang1, Lang2)
+        -     y = [0.6, 0.4]
+        -     p = 2*101325.0
+        -     T = 400.0
+        -
+        -     den_highE = 1.0 + Lang2.isotherms[2].K₀*exp(-Lang2.isotherms[2].E/(R̄*T))*p*y[2] +
+        -               Lang1.isotherms[1].K₀*exp(-Lang1.isotherms[1].E/(R̄*T))*p*y[1]
+        -
+        -     den_lowE = 1.0 + Lang2.isotherms[1].K₀*exp(-Lang2.isotherms[1].E/(R̄*T))*p*y[2] +
+        -                 Lang1.isotherms[2].K₀*exp(-Lang1.isotherms[2].E/(R̄*T))*p*y[1]
+        -
+        -     @test loading(multilang, p, T, y)[1] ≈ Lang1.isotherms[1].M * Lang1.isotherms[1].K₀*exp(-Lang1.isotherms[1].E/(R̄*T)) * p * y[1] / den_highE +
+        -     Lang1.isotherms[2].M * Lang1.isotherms[2].K₀*exp(-Lang1.isotherms[2].E/(R̄*T)) * p * y[1] / den_lowE
+        -
+        -     @test loading(multilang, p, T, y)[2] ≈ Lang2.isotherms[1].M * Lang2.isotherms[1].K₀*exp(-Lang2.isotherms[1].E/(R̄*T)) * p * y[2] / den_lowE +
+        -     Lang2.isotherms[2].M * Lang2.isotherms[2].K₀*exp(-Lang2.isotherms[2].E/(R̄*T)) * p * y[2] / den_highE
+        -
+        - end
+        -
+        -
+        1 @testset "IAST" begin
+        -     #10.1002/aic.14684, S.I
+        2     v = @MultiSite{LangmuirS1,LangmuirS1}
+        1     x1 = [1.468
+        -         0.024
+        -         0
+        -         7.891
+        -         0.001645
+        -         0]
+        -
+        6     x2 = [2.847
+        -         0.028
+        -         0.
+        -         2.223
+        -         1.228
+        -         0.]
+        -
+        6     x3 = [2.581
+        -         0.84
+        -         0.0
+        -         2.901
+        -         0.021
+        -         0.0]
+        -
+        1     m1,m2,m3 = from_vec(v,x1),from_vec(v,x2),from_vec(v,x3)
+        1     models = (m1,m2,m3)
+        3     y = [0.5,0.25,0.25]
+        1     T = 300
+        1     p = 1000
+        -
+        1     q_tot = 5.331793232381403
+        1     x_res = [0.12076215703820294, 0.4075271543741945, 0.4717106885876027]
+        3     x0 = [0.12,0.41,0.47]
+        -
+        1     @test iast(models,p,T,y)[1] ≈ q_tot
+        1     @test iast(models,p,T,y,x0 = x0)[1] ≈ q_tot
+        1     @test iast(models,p,T,y,FastIAS())[1] ≈ q_tot
+        1     @test iast(models,p,T,y,IASTNestedLoop())[1] ≈ q_tot
+        1     @test iast(models,p,T,y,IASTNestedLoop(),x0 = x0)[1] ≈ q_tot
+        -
+        1     ethane_isotherm = Quadratic{Float64}(2.5087482698420104e-7, 2.1373377526197646e-19, 3.641079631515442, -6898.20708031339, -47789.60001500269)
+        1     ethylene_isotherm = Quadratic{Float64}(2.599227350906123e-8, 7.128313806215397e-19, 3.832139235999132, -11790.383728687304, -41702.74723166111)
+        1     p2 = 101325.0
+        1     T2 = 303.0
+        1     models2 = (ethane_isotherm,ethylene_isotherm)
+        1     yx = range(0.0, 1.00, 51)
+        1     for yi in yx
+      102         y = [yi,1-yi]
+      247         n1,w1,status1 = iast(models2,p2,T2,y,FastIAS())
+       51         n2,w2,status2 = iast(models2,p2,T2,y,IASTNestedLoop())
+       51         @test status1 == :success
+       51         @test status2 == :success
+       51         @test n1 ≈ n2
+       51         @test w1 ≈ w2
+      101     end
+        - end
+        -
+        - @testset "Base Definitions" begin
+        -     @test Rgas() ≈ 8.31446261815324 # Default SI units J/mol/K
+        -     @test Rgas(LangmuirS1{Float64}) ≈ 8.31446261815324
+        -     @test Rgas(u"kJ/mol/K") ≈ 0.00831446261815324
+        -     @test Rgas(u"m^3*Pa/mol/K") ≈ 8.31446261815324
+        -     @test R̄ ≈ 8.31446261815324 # Check alias
+        -
+        -     # Assuming _format_param_value is not meant for direct public use / testing
+        -     # but it's called by Base.show for models.
+        -     # Test Base.show for a model (indirectly tests _format_param_value)
+        -     sips_model = Sips(M=1.0, K₀=1e-5, E=-10000.0, f₀=1.0, β=0.1)
+        -     # Test that show doesn't error and produces some output
+        -     # More detailed show tests could be added if specific formatting is critical
+        -     iobuf = IOBuffer()
+        -     show(iobuf, MIME("text/plain"), sips_model)
+        -     @test length(String(take!(iobuf))) > 0
+        -
+        -     ms_model = MultiSite(sips_model, LangmuirS1(1.0,1e-5,-10000.0))
+        -     show(iobuf, MIME("text/plain"), ms_model)
+        -     @test length(String(take!(iobuf))) > 0
+        -
+        -     # AbsorbedIsothermData show method
+        -     example_data_dict = Dict(:P => [10.0, 20.0], :l => [0.1, 0.2], :T => [298.0, 298.0])
+        -     ads_data = isotherm_data(example_data_dict, :P, :l, :T)
+        -     show(iobuf, MIME("text/plain"), ads_data)
+        -     @test length(String(take!(iobuf))) > 0
+        -
+        -     empty_ads_data = isotherm_data(Dict(:P => [], :l => [], :T => []), :P, :l, :T)
+        -     show(iobuf, MIME("text/plain"), empty_ads_data)
+        -     @test length(String(take!(iobuf))) > 0
+        - end
+        -
+        - @testset "Utility Functions - FractionVector" begin
+        -     # Valid inputs
+        -     @testset "Valid FractionVector" begin
+        -         fv1 = FractionVector([0.2, 0.3])
+        -         @test fv1 isa FractionVector{Float64, Vector{Float64}}
+        -         @test length(fv1) == 3
+        -         @test fv1[1] ≈ 0.2
+        -         @test fv1[2] ≈ 0.3
+        -         @test fv1[3] ≈ 0.5 # 1.0 - 0.2 - 0.3
+        -         @test eltype(fv1) == Float64
+        -
+        -         fv2 = FractionVector(0.6) # Single real number
+        -         @test fv2 isa FractionVector{Float64, Float64}
+        -         @test length(fv2) == 2
+        -         @test fv2[1] ≈ 0.6
+        -         @test fv2[2] ≈ 0.4 # 1.0 - 0.6
+        -
+        -         fv3 = FractionVector([0.1f0, 0.2f0, 0.3f0]) # Float32
+        -         @test fv3 isa FractionVector{Float32, Vector{Float32}}
+        -         @test fv3[4] ≈ 1.0f0 - (0.1f0 + 0.2f0 + 0.3f0)
+        -
+        -         # Test iteration
+        -         @test collect(fv1) ≈ [0.2, 0.3, 0.5]
+        -     end
+        -
+        -     # Invalid inputs (commented out as per current src/utils.jl which comments out throws)
+        -     # @testset "Invalid FractionVector" begin
+        -     #     @test_throws DomainError FractionVector([-0.1, 0.5]) # Negative value
+        -     #     @test_throws DomainError FractionVector([0.7, 0.8]) # Sum > 1
+        -     #     @test_throws DomainError FractionVector(-0.2)      # Single negative
+        -     #     @test_throws DomainError FractionVector(1.2)       # Single > 1
+        -     # end
+        -
+        -     # Test indexing and size
+        -     fv_idx = FractionVector([0.1, 0.2, 0.3, 0.4])
+        -     @test size(fv_idx) == (5,)
+        -     @test IndexStyle(fv_idx) == IndexLinear()
+        -     @test_throws BoundsError fv_idx[0]
+        -     @test_throws BoundsError fv_idx[6]
+        -
+        -     # Test f∂f, f∂f∂2f (already partially covered by other tests, but good to have direct ones)
+        -     my_func(x) = x^3
+        -     val, grad = LG.f∂f(my_func, 2.0)
+        -     @test val ≈ 8.0
+        -     @test grad ≈ 12.0 # 3*x^2 at x=2
+        -
+        -     val, grad, hess = LG.f∂f∂2f(my_func, 2.0)
+        -     @test val ≈ 8.0
+        -     @test grad ≈ 12.0
+        -     @test hess ≈ 12.0 # 6*x at x=2
+        -
+        -     # fgradf2
+        -     my_func2(x,y) = x^2 * y
+        -     val2, grad2 = LG.fgradf2(my_func2, 2.0, 3.0)
+        -     @test val2 ≈ 12.0 # 2^2 * 3
+        -     @test grad2[1] ≈ 12.0 # 2*x*y = 2*2*3
+        -     @test grad2[2] ≈ 4.0  # x^2 = 2^2
+        -
+        -     # to_newton (simple test)
+        -     # f(x) = x^2 - 2 = 0. Root is sqrt(2)
+        -     # f'(x) = 2x
+        -     # x_new = x - f(x)/f'(x) = x - (x^2-2)/(2x)
+        -     f_newton(x) = x^2 - 2
+        -     fx_val, newton_step = LG.to_newton(f_newton, 1.0) # x=1, f(1)=-1, f'(1)=2. step = -1/2 = -0.5
+        -     @test fx_val ≈ -1.0
+        -     @test newton_step ≈ -0.5
+        -
+        -     # tuplejoin
+        -     @test LG.tuplejoin((1,2)) == (1,2)
+        -     @test LG.tuplejoin((1,2), (3,4)) == (1,2,3,4)
+        -     @test LG.tuplejoin((1,2), (3,4), (5,6)) == (1,2,3,4,5,6)
+        -
+        -     # _eltype
+        -     @test LG._eltype([1,2,3]) == Int
+        -     @test LG._eltype((1.0, 2.0)) == Float64
+        -     @test LG._eltype(1) == Float64 # Defaults to Float64 for Any
+        -     @test LG._eltype(1.0f0) == Float32
+        - end
+        -
+        - @testset "Sips Model" begin
+        -     # Parameters for Sips model (example values)
+        -     M = 2.0  # Saturation loading [mol/kg]
+        -     K₀ = 1.5e-5 # Affinity parameter [Pa⁻¹]
+        -     E = -15000.0 # Adsorption energy [J/mol]
+        -     f₀ = 0.8    # Surface heterogeneity parameter at T → ∞ [-]
+        -     β = 10.0    # Surface heterogeneity coefficient [K]
+        -     sips_model = Sips(M, K₀, E, f₀, β)
+        -
+        -     T_test = 298.15 # K
+        -     p_test = 101325.0 # Pa
+        -
+        -     # Expected K and f at T_test
+        -     K_expected = K₀ * exp(-E / (Rgas(sips_model) * T_test))
+        -     f_expected = f₀ - β / T_test
+        -
+        -     # Test loading
+        -     expected_loading_val = M * (K_expected * p_test)^f_expected / (1 + (K_expected * p_test)^f_expected)
+        -     @test loading(sips_model, p_test, T_test) ≈ expected_loading_val
+        -
+        -     # Test sp_res (spreading pressure)
+        -     expected_sp_res_val = M * log1p((K_expected * p_test)^f_expected) / f_expected
+        -     @test sp_res(sips_model, p_test, T_test) ≈ expected_sp_res_val
+        -
+        -     # Test consistency between loading_ad and sp_res_numerical (like other models)
+        -     test_sp_res_loading(sips_model, [1e4, 5e4, 1e5], T_test)
+        -
+        -     # Test saturated_loading
+        -     @test Langmuir.saturated_loading(sips_model, T_test) == M
+        -
+        -     # Test pressure_impl (indirectly via pressure function if available, or by direct call if appropriate)
+        -     # For now, we assume pressure_impl is an internal detail covered by loading/sp_res tests
+        -     # If a direct `pressure(model, loading, T)` function exists and is exported, it would be better to test that.
+        -     # Let's test it via the `pressure` function.
+        -     # Need to find a loading value that is achievable.
+        -     target_loading = expected_loading_val / 2.0
+        -     # This requires solving for p, which is what pressure_impl does.
+        -     # We can test if pressure(model, target_loading, T) gives back something close to p_test/2 (roughly)
+        -     # or more accurately, if loading(model, pressure(model, target_loading, T), T) ≈ target_loading
+        -     calculated_p = pressure(sips_model, target_loading, T_test)
+        -     @test loading(sips_model, calculated_p, T_test) ≈ target_loading rtol=1e-3 # rtol due to inversion precision
+        -
+        -     # Test x0_guess_fit - this is more involved, usually tested by fitting success.
+        -     # For now, ensure it runs without error for a simple case.
+        -     # Create dummy AdsIsoTData
+        -     dummy_p = [1e4, 2e4, 5e4, 1e5]
+        -     dummy_l = [loading(sips_model, pi, T_test) for pi in dummy_p]
+        -     dummy_T = fill(T_test, length(dummy_p))
+        -     dummy_table = (;P=dummy_p, l=dummy_l, T=dummy_T)
+        -     dummy_data = isotherm_data(dummy_table, :P, :l, :T)
+        -
+        -     @testset "Sips x0_guess_fit" begin
+        -         # Test with single temperature data
+        -         guessed_params_single_T = x0_guess_fit(Sips, dummy_data)
+        -         @test guessed_params_single_T isa Sips
+        -         # Check if parameters are somewhat reasonable (e.g., positive M, K0, f0)
+        -         @test guessed_params_single_T.M > 0
+        -         @test guessed_params_single_T.K₀ > 0
+        -         @test guessed_params_single_T.f₀ > 0
+        -         # E should be negative, β can be anything
+        -         @test guessed_params_single_T.E <= 0 # Original E is negative, guess should reflect that.
+        -
+        -         # Test with multiple temperatures data
+        -         T_test2 = 320.0
+        -         dummy_p2 = [1e4, 2e4, 5e4, 1e5]
+        -         dummy_l2 = [loading(sips_model, pi, T_test2) for pi in dummy_p2]
+        -         dummy_T2 = fill(T_test2, length(dummy_p2))
+        -
+        -         combined_p = vcat(dummy_p, dummy_p2)
+        -         combined_l = vcat(dummy_l, dummy_l2)
+        -         combined_T = vcat(dummy_T, dummy_T2)
+        -         combined_table = (;P=combined_p, l=combined_l, T=combined_T)
+        -         combined_data = isotherm_data(combined_table, :P, :l, :T)
+        -
+        -         guessed_params_multi_T = x0_guess_fit(Sips, combined_data)
+        -         @test guessed_params_multi_T isa Sips
+        -         @test guessed_params_multi_T.M > 0
+        -         @test guessed_params_multi_T.K₀ > 0
+        -         @test guessed_params_multi_T.f₀ > 0
+        -         @test guessed_params_multi_T.E <= 0
+        -     end
+        - end
+        -
+        -
+        -

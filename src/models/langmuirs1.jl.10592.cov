@@ -1,0 +1,104 @@
+        - """
+        -     `LangmuirS1(M, K₀, E)`
+        -
+        -     LangmuirS1 <: IsothermModel
+        -
+        - `LangmuirS1(M, K₀, E)` represents the single site Langmuir isotherm model.
+        -
+        - ## Inputs
+        -
+        - - `M::T`: Saturation loading, `[mol/kg]`
+        - - `K₀::T`: Affinity parameter at T → ∞, `[1/Pa]`
+        - - `E::T`: Adsorption energy, `[J/mol]`
+        -
+        - ## Description
+        -
+        - The LangmuirS1 equation is given by:
+        -
+        - n = (M * K * p) / (1 + K * p)
+        -
+        - The adsorption energy E is related to the equilibrium constant K₀ by the equation:
+        -
+        - K = K₀*exp(-E / (R * T))
+        -
+        - where:
+        - - R is the gas constant,
+        - - T is the temperature.
+        -
+        - """
+        - @with_metadata struct LangmuirS1{T} <: IsothermModel{T}
+    41334     (M::T, (0.0, Inf), "saturation loading")
+        -     (K₀::T, (0.0, Inf), "affinity parameter") #Using Inf cause trouble in bboxoptimize
+        -     (E::T, (-Inf, 0.0), "energy parameter")
+        - end
+        -
+      762 function sp_res(model::LangmuirS1, p, T)
+      762     M = model.M
+      762     K₀ = model.K₀
+      762     E = model.E
+      762     K = K₀*exp(-E/(Rgas(model)*T))
+      762     return M*log1p(K*p)
+        - end
+        -
+        -
+ 10327713 function loading(model::LangmuirS1, p, T)
+ 10327713     M = model.M
+ 10327713     K₀ = model.K₀
+ 10327713     E = model.E
+ 10327713     K = K₀*exp(-E/(Rgas(model)*T))
+ 10327713     _1 = one(eltype(model))
+        -
+ 10327713     return M * K *p / (_1 + K*p)
+        - end
+        -
+        - #optimizations for LangmuirS1, not necessary, but improve performance
+       81 henry_coefficient(model::LangmuirS1, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
+       24 saturated_loading(model::LangmuirS1, T) = model.M #Some depend on T, some don't
+        - pressure_impl(model::LangmuirS1, Π, T,::typeof(sp_res), approx) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
+        -
+        - #TODO: include effects of temperature. at the moment, the fit procedure ignores temperature dependence.
+        - #probably requires separating the models by temperature and linearizing K to obtain T-dependence.
+        -
+        1 function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: LangmuirS1
+        -     # use first two data points to get the slope
+        -
+        -     #l = M*k*p/(1 + k*p)
+        -     #l*(1 + k*p) = M*k*p
+        -     #l + l*k*p = M*k*p
+        -     #M*k*p - l*k*p = l
+        -     #p*(Mk) - l*p(k) = l
+        -
+        -     # Split data by temperature
+        1     Ts, l_p = split_data_by_temperature(data)
+        -
+        -     # Initialize vectors to store MK and K values
+        2     MKs = Vector{eltype(Ts)}(undef, length(l_p))
+        2     Ks = Vector{eltype(Ts)}(undef, length(l_p))
+        -
+        -     # Perform the fitting for each (l, p) tuple
+        1     for i in eachindex(l_p)
+        5         l_min, p_min = l_p[i]
+        5         MK, K = hcat(p_min, -l_min .* p_min) \ l_min
+        5         MKs[i] = MK
+        5         Ks[i] = K
+        9     end
+        -
+        2     M = sum(MKs./Ks)/length(Ks) #Mean of all values
+        -
+        -     # log(K) = log(K0) - E/RT
+        -
+        1     _1 = one(eltype(Ts))
+        5     _1s = ones(eltype(Ts), length(Ts))
+        -
+        1     if length(l_p) > 1
+        1         logK, E = hcat(_1s, _1./ (Rgas(T).*Ts)) \ log.(Ks)
+        1         K = exp(logK)
+        -     else
+        0         K = first(Ks)
+        0         E = _1
+        -     end
+        -
+        1     return LangmuirS1(M, K, -E)
+        - end
+        -
+        - export LangmuirS1
