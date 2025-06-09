@@ -5,10 +5,16 @@ This is an introductory tutorial for Langmuir.jl. We will demonstrate the basics
 
 ## Installing Langmuir.jl 
 
-To install Langmuir, use the Julia package manager.
+To install Langmuir, use the Julia package manager. This will install the latest release of the package in the Julia package registry.
 
 ```julia
 using Pkg; Pkg.add("Langmuir")
+```
+
+If you want to install the latest development version, you can do so by using the following command:
+
+```julia
+using Pkg; Pkg.add(url = "https://github.com/ClapeyronThermo/Langmuir.jl")
 ```
 
 ## Initializing an `IsothermModel` and estimating properties for single component adsorption
@@ -31,36 +37,24 @@ T = 298.15
 l = loading(isotherm, p, T)
 ```
 
-When estimating loading with a model, it is common to plot isotherms, i.e., pressure vs loading for a fixed temperature. To do it, you can use the `loading_at_T(isotherm, P, T)` function.
+When estimating loading with a model, it is common to plot isotherms, i.e., pressure vs loading for a fixed temperature. To do it, you can use custom plot call to visualize isotherms using `plot(isotherm, T, P_range)`, where `T` is the temperature you want to analyze, `P_range` is a Tuple specifying minimum and maximum of the range. Below is an example of how to plot two isotherms at two different temperatures.
 
 ```@example lang1
 using Plots #hide
-P = 0.0:5_000.0:100_000.0 |> collect
-l_at_300 = loading_at_T(isotherm, P, 300.)
-l_at_350 = loading_at_T(isotherm, P, 350.)
-plot(P, l_at_300, size = (500, 250), label = "300K")
-plot!(P, l_at_350, label = "350K")
-xlabel!("P (Pa)")
-ylabel!("l (mol/kg)")
-```
-
-You can also estimate other properties from the isotherm such as the henry coefficient at a given temperature by calling `henry_coefficient(model::IsothermModel, T)`. The henry coefficient should correspond to the slope of the isotherm when $P \rightarrow 0.0$. In Langmuir.jl, this is obtained using automatic differentiation and introduces no numerical error in the estimate. You can see in the example below how to visualize the tangent line built from the henry coefficient at $300K$.
-
-```@example lang1
-P_ = P[1:3]
-plot(P_, l_at_300[1:3], size = (500, 250), label = "300K") 
-H = henry_coefficient(isotherm, 300.0)
-plot!(P_, H*P_, label = "Tangent line")
+p_range = (0.0, 1e5)
+plot(isotherm, 300.0, p_range)
+plot!(isotherm, 400.0, p_range)
 ```
 
 To finish this section for single component adsorption, one can also estimate the isosteric heat of adsorption by calling `isosteric_heat(model, Vg, p, T)` where Vg is the molar volume of the gas phase, `p` the pressure in Pascal and `T` the temperature in Kelvin. For the Langmuir model, the isosteric heat should be constant and equal to the energy parameter `E`. You can plot the isosteric heat either as a function of the pressure or loading.
 
-Below it is assumed that the ideal gas law is a good approximation to describe the molar volume of the gas phase.
+ Both the `loading` and `isosteric_heat` functions were made to accept scalar arguments. But they can be used to estimate the loading and isosteric heat for a range of pressures with the broadcasting Julia syntax (you insert a dot after the function name) `loading.(model, p, T)` where `p` is an iterable (Vector or Tuple). 
 
 ```@example lang1
-import Langmuir: Rgas
-ΔH = map(P -> isosteric_heat(isotherm, P, 300.), P[2:end]) |> x -> round.(x, digits = 7)
-scatter(l_at_300[2:end], ΔH, size = (500, 250),  ylabel = "Isosteric heat (J/mol)", xlabel = "loading (mol/kg)", label = "Estimated isosteric heat with AD")
+P = 0.0:1000.0:1e5 # A range of pressures from 0 to 100 kPa
+ΔH = round.(isosteric_heat.(isotherm, P[2:end], 300.0), digits = 8)#Calculates the isosteric heat for a range of pressures
+l_at_300 = loading.(isotherm, P[2:end], 300.0) #Calculates the loading at 300 K for a range of pressures since this is a more common visualization
+scatter(l_at_300, ΔH, size = (500, 250),  ylabel = "Isosteric heat (J/mol)", xlabel = "loading (mol/kg)", label = "Estimated isosteric heat with AD")
 plot!([first(l_at_300), last(l_at_300)], [E, E], label = "Expected value") 
 ```
 
@@ -74,21 +68,16 @@ It can be shown analytically that IAST estimation of multicomponent loading is t
 
 ```@example multi1
 using Langmuir
-import Langmuir: Rgas
 isotherm_1 = LangmuirS1(1.913, 6.82e-10, -21_976.40)
 isotherm_2 = LangmuirS1(1.913, 1.801e-9, -16_925.01)
-models = (isotherm_1, isotherm_2)
-(n_total, x, is_success) = iast(models, 101325.0, 300., [0.5, 0.5], FastIAS())
-loading_1 =  n_total*x[1]
-loading_2 = n_total*x[2]
+iastmodel = IASTModels(isotherm_1, isotherm_2)
+ext_langmuir = ExtendedLangmuir(isotherm_1, isotherm_2)
+loading_1, loading_2 = loading(iastmodel, 101325.0, 300., [0.5, 0.5])
 
-K_1 = 6.82e-10*exp(21_976.40/Rgas(isotherm_1)/300.)
-K_2 = 1.801e-9*exp(16_925.01/Rgas(isotherm_2)/300.)
-p_1 = 0.5*101325.0
-p_2 = 0.5*101325.0
-loading_1_expected = 1.913*K_1*p_1/(1.0 + K_1*p_1 + K_2*p_2)
-loading_2_expected = 1.913*K_2*p_2/(1.0 + K_1*p_1 + K_2*p_2)
 
-println("IAST estimated loading for component 1 is: ", round(loading_1, digits = 4))
-println("Extende langmuir estimated loading for component 1 is: ", round(loading_1_expected, digits = 4))
+loading_1_expected, loading_2_expected = loading(ext_langmuir, 101325.0, 300., [0.5, 0.5])
+ 
+
+println("IAST estimated loading for component 1 is: ", round(loading_1, digits = 12))
+println("Extended langmuir estimated loading for component 1 is: ", round(loading_1_expected, digits = 12))
 ```
