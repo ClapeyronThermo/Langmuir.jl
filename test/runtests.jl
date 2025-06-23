@@ -44,14 +44,13 @@ end
         lang = LangmuirS1(5.073, 0.67e-10, -39300.55246960819)
         σ = 0.05
         l = map(pT -> abs(loading(lang, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
-        table = (;P,l,T)
-        d = isotherm_data(table, :P, :l, :T)
+        d = isotherm_data(P, l, T)
 
         prob = IsothermFittingProblem(LangmuirS1, d, abs2)
         alg = DEIsothermFittingSolver(logspace = true)
         loss_fit, fitted_isotherm = fit(prob, alg)
 
-        @test (abs(sqrt(loss_fit) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
+        @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
     end
 
     @testset "quadratic" begin
@@ -63,8 +62,7 @@ end
         quad_ = Quadratic(0.67e-10, 0.37e-11, 4.073, -37300.9, -23300.55)
         σ = 0.05
         l = map(pT -> abs(loading(quad_, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
-        table = (;P,l,T)
-        d = isotherm_data(table, :P, :l, :T)
+        d = isotherm_data(P, l, T)
 
         x0 = to_vec(x0_guess_fit(Quadratic, d))
         lb = (1e-35, 1e-35, 1e-29, -5_000., -5_000.)
@@ -73,7 +71,7 @@ end
         alg = DEIsothermFittingSolver(max_steps = 5000, logspace = true)
         loss_fit, fitted_isotherm = fit(prob, alg)
 
-        @test (abs(sqrt(loss_fit) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
+        @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
     end
 end
 
