@@ -121,7 +121,7 @@ plot!(fig2, model_sips, 323.0, (0.0, maximum(CH4_data.p)), color = :red, linesty
 
 You can build a table with the results of the fitting to compare the models. The `parameters` field of the `IsothermModel` structure contains the fitted parameters, and the `loss` variable contains the loss of the fitting, i.e., $\mathcal{L} = \sum_i^N \frac{(q_i - q*_i)^2}{\sigma^2_i}$. 
 
-# Complex models table (Toth and Sips)
+# Langmuir models (Single Site and Thermodynamic)
 
 ```@example multicomponent
 using DataFrames, Printf
