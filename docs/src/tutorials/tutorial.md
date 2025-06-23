@@ -39,7 +39,8 @@ T_ethylene = ethylene_data[:, 1]
 l_ethylene = ethylene_data[:, 3]
 d_ethylene = isotherm_data(P_ethylene, l_ethylene, T_ethylene) #Alwas read in order of Pressure, Loading, Temperature
 
-plot(d_ethane, 283.0, label = "Ethane at 283K", m = (3, :white, stroke(1, :blue)))
+figsize = (500, 500/1.618)
+plot(d_ethane, 283.0, label = "Ethane at 283K", m = (3, :white, stroke(1, :blue)), size = figsize, xlabel = "Pressure (Pa)", ylabel = "Loading (mol/kg)", markershape = :circle)
 plot!(d_ethane, 323.0, label = "Ethane at 323K", markershape = :square, m = (3, :white, stroke(1, :blue)))
 
 plot!(d_ethylene, 283.0, label = "Ethylene at 283K", markershape = :circle, 
@@ -60,7 +61,7 @@ lb_ethane = (1e-25, 1e-25, 1e-4, -80_000.0, -80_000.0)
 ub_ethane = (1e-1, 1e-1, 100., -1_000.0, -1_000.0)
 
 prob_ethane = IsothermFittingProblem(Quadratic{eltype(d_ethane)}, d_ethane, nothing, abs2, x0_ethane, lb_ethane, ub_ethane) #Bounds have to be manually tweaked. Default interval is too large
-alg = DEIsothermFittingSolver(max_steps = 5000, population_size = 50,
+alg = DEIsothermFittingSolver(max_steps = 500, population_size = 150,
 logspace = true, verbose = true)
 loss_fit_ethane, ethane_isotherm = fit(prob_ethane, alg)
 println("Fitting loss for ethane is $loss_fit_ethane")

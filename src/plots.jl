@@ -9,8 +9,8 @@
 @recipe function f(model::IsothermModel, T::Number, p_range::Tuple{<:Number, <:Number}; npoints = 100)
     # --- Scientific Plot Defaults ---
     # Plot Size and Resolution
-    width = 500 # width in pixels
-    size --> (width, width/1.618) # width, height in pixels
+    #width = 500 # width in pixels
+    #size --> (width, width/1.618) # width, height in pixels
     dpi --> 300
 
     # Font Sizes
@@ -43,8 +43,8 @@
 
     # Plot-specific attributes (can override defaults)
     # title --> "Isotherm Plot" # Generic title, or set by a calling recipe
-    xlabel --> "Pressure [Pa]"
-    ylabel --> "Loading [mol/kg]"
+    #xlabel --> "Pressure [Pa]"
+    #ylabel --> "Loading [mol/kg]"
     
     # Calculate pressure range and loadings
     p_min, p_max = p_range
@@ -69,8 +69,8 @@
 
 @recipe function f(data::AdsIsoTData, T::Number) # T is now a mandatory Number
     # --- Scientific Plot Defaults ---
-    width = 500
-    size --> (width, Int(round(width/ 1.618))) # Golden ratio
+    #width = 500
+    #size --> (width, Int(round(width/ 1.618))) # Golden ratio
     dpi --> 300
     titlefontsize --> 12
     guidefontsize --> 10
@@ -86,8 +86,8 @@
     # --- End Scientific Plot Defaults ---
 
     # Plot-specific attributes
-    xlabel --> "Pressure [Pa]" # Use stored label
-    ylabel --> "Loading [kg/mol]"   # Use stored label
+    #xlabel --> "Pressure [Pa]" # Use stored label
+    #ylabel --> "Loading [mol/kg]"   # Use stored label
     legend --> :best
 
     # Extract all data and split by temperature

@@ -90,9 +90,10 @@ function Base.show(
         crop=crop,
         vcrop_mode=:middle,
         formatters=(v,i,j) -> 
-            j == 1 ? @sprintf("%.3e", v) :  # Pressure
+            j == 1 ? @sprintf("%.3f", v) :  # Pressure
             j == 2 ? @sprintf("%.3f", v) :  # Loading
             j == 3 ? @sprintf("%.2f", v) :  # Temperature
+            j == 4 ? @sprintf("%.3f", v) :  # Uncertainty
             v
     )
 end
