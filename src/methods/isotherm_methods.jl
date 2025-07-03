@@ -74,9 +74,11 @@ function sp_res(model, p, T)
     return sp_res_numerical(model, p, T)
 end
 
+sp_res_numerical(model,p,T;kwargs...) = _sp_res_numerical(model,p,T;kwargs...)
+
 loading_res(model, p, T) = loading(model,p,T)/p
 
-function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-10, reltol = 1e-12, p0 = nothing)
+function _sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), abstol = 1e-10, reltol = 1e-12, p0 = nothing)
     #For cases where the sp_res is not analytical, we use numerical integration
 
     #Part 1 integral
@@ -112,10 +114,19 @@ end
 
 function sp_res_numerical(model::IsothermModel, p::ForwardDiff.Dual{TT}, T::Number, kwargs...) where {TT}
     pp = ForwardDiff.value(p)
-    Π = sp_res_numerical(model, pp, T, kwargs...)
+    Π = _sp_res_numerical(model, pp, T, kwargs...)
     dΠdp = loading(model, pp, T)/pp
     return ForwardDiff.Dual{TT}(Π, dΠdp * ForwardDiff.partials(p))
 end
+
+function sp_res_numerical(model::IsothermModel, p::Number, T::ForwardDiff.Dual{TT}, kwargs...) where {TT}
+    Π = _sp_res_numerical(model, p, T, kwargs...)
+end
+
+function sp_res_numerical(model::IsothermModel, p::ForwardDiff.Dual{TT}, T::ForwardDiff.Dual{TT}, kwargs...) where {TT}
+    Π = _sp_res_numerical(model, p, T, kwargs...)
+end
+
 
 #@ForwardDiff_frule sp_res_numerical(model, p::ForwardDiff.Dual, T; kwargs...)
 
@@ -245,13 +256,13 @@ function pressure_sp_res_integrator(model, Π, T, p0, Π0)
     px_old = p0
     for i in 1:20
         #predictor of new x
-        f0,df0 = f∂f(l,px) #f = f0 + df0(x - x0)
+        f0,df0 = f∂f(l,px) #f = f0 + df0(x - x0) = a + b*px
         a = f0 - df0*px
         b = df0
         px_old = px
         cc = -(Π - Π0 + a*px + 0.5b*px*px)
         aa = 0.5*b
-        bb = a
+        bb = a        
         Δ = max(bb*bb - 4aa*cc,zero(aa*bb*cc)) #incomplete step, but should work
         px = (2cc)/(-bb - sqrt(Δ))
         abs(px-px_old) < 1e-8 && break
