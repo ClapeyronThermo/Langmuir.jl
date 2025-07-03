@@ -16,6 +16,7 @@ using PrettyTables
 using ForwardDiffChainRules
 import ChainRulesCore
 import Polynomials
+using RecipesBase
 #import FastGaussQuadrature
 
 abstract type IsothermModel{T} end
@@ -26,5 +27,5 @@ include("isotherm_data.jl")
 include("models/models.jl")
 include("methods/methods.jl")
 include("base.jl")
-
+include("plots.jl")
 end

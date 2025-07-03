@@ -15,18 +15,18 @@ However, exhibits an unrealistic infinitely large negative value at high surface
 ```@example Toth
 using Langmuir, Plots
 toth = Toth(7.464, 3.6e-7, 8.3144*-5649.81, 0.5, 50.22)
-p_range = 1e-5:10.0:10*101325.0 |> collect
-loading_350_t = loading_at_T(toth, p_range, 350.0)
-loading_300_t = loading_at_T(toth, p_range, 300.0)
-ΔH_350_t = map(p -> isosteric_heat(toth, p, 350.0), p_range)
-ΔH_300_t = map(p -> isosteric_heat(toth, p, 300.0), p_range)
+p_range = 1e-5:500.0:10*101325.0 |> collect
+loading_350_t = loading.(toth, p_range, 350.0)
+loading_300_t = loading.(toth, p_range, 300.0)
+ΔH_350_t = isosteric_heat.(toth, p_range, 350.0)
+ΔH_300_t = isosteric_heat.(toth, p_range, 300.0)
 plot(loading_300_t/toth.M, ΔH_300_t, framestyle=:box, title = "Toth", xlabel = "covered fraction", ylabel = "ΔH (J/mol)", label = "Automatic Differentiation - 300 K")
 plot!(loading_350_t/toth.M, ΔH_350_t, framestyle=:box, label = "Automatic Differentiation - 350 K")
 
 function Q_st1(model::Toth, n1, T)
     E1 = model.E
     β = model.β
-    R = 8.3144  # Assuming Rgas gives the gas constant for the type of T
+    R = 8.31446261815324  # Assuming Rgas gives the gas constant for the type of T
     f = model.f₀ - model.β / T
     n1_0 = model.M  # Assuming saturation loading as reference loading
 
@@ -41,11 +41,11 @@ end
 
 ΔH_analytical = Q_st1(toth, loading_350_t, 350.0)
 
-plot!(loading_350_t/toth.M, ΔH_analytical, label = "Analytical - 350 K", color = :slateblue2)
+scatter!(loading_350_t/toth.M, ΔH_analytical,
+ label = "Analytical - 350 K", m = (3, :white, stroke(1, :red)))
 ```
 
 It can be noticed that the isosteric heat for the Toth isotherm blows for high surface coverages. 
-
 
 Multi-site Langmuir can also account for surface heterogeneity. Below you can see the behavior of the isosteric heat as a function of the surface coverage.
 
@@ -53,11 +53,11 @@ Multi-site Langmuir can also account for surface heterogeneity. Below you can se
 using Langmuir, Plots #hide
 dualsite = MultiSite(LangmuirS1(2.337, 6.6e-11, 8.3144*-5340.87),
  LangmuirS1(3.490, 3.4e-11, 8.3144*-4273.13))
-p_range = 1e-5:10.0:10*101325.0 |> collect
-loading_270 = loading_at_T(dualsite, p_range, 270.0)
-loading_350 = loading_at_T(dualsite, p_range, 350.0)
-ΔH_270 = map(p -> isosteric_heat(dualsite, p, 270.0), p_range)
-ΔH_350 = map(p -> isosteric_heat(dualsite, p, 350.0), p_range)
+p_range = 1e-5:500.0:10*101325.0 |> collect
+loading_270 = loading.(dualsite, p_range, 270.0)
+loading_350 = loading.(dualsite, p_range, 350.0)
+ΔH_270 = isosteric_heat.(dualsite, p_range, 270.0)
+ΔH_350 = isosteric_heat.(dualsite, p_range, 350.0)
 plot(loading_270/(2.337 + 3.490), ΔH_270, framestyle=:box, title = "Dualsite Langmuir", xlabel = "covered fraction", ylabel = "ΔH (J/mol)", label = "270 K")
 plot!(loading_350/(2.337 + 3.490), ΔH_350, framestyle=:box, label = "350 K")
 ```
@@ -91,11 +91,11 @@ Below you can see how to iniatilize the thermodynamic langmuir model in `Langmui
 ```@example tLangmuir
 using Langmuir, Plots #hide
 tlang = ThermodynamicLangmuir(5.890, 6.1e-11, -4599.86*8.3144, -762.51)
-p_range = 1e-5:10.0:10*101325.0 |> collect
-loading_270 = loading_at_T(tlang, p_range, 270.0)
-loading_350 = loading_at_T(tlang, p_range, 350.0)
-ΔH_270 = map(p -> isosteric_heat(tlang, p, 270.0), p_range)
-ΔH_350 = map(p -> isosteric_heat(tlang, p, 350.0), p_range)
+p_range = 1e-5:500.0:10*101325.0 |> collect
+loading_270 = loading.(tlang, p_range, 270.0)
+loading_350 = loading.(tlang, p_range, 350.0)
+ΔH_270 = isosteric_heat.(tlang, p_range, 270.0)
+ΔH_350 = isosteric_heat.(tlang, p_range, 350.0)
 plot(loading_270/tlang.M, ΔH_270, framestyle=:box, xlabel = "covered fraction", ylabel = "ΔH (J/mol)", title = "tLangmuir", label = "270 K")
 plot!(loading_350/tlang.M, ΔH_350, framestyle=:box, label = "350 K")
 plot!([minimum(loading_270), maximum(loading_270)]./tlang.M,  [-4599.86*8.3144, -4599.86*8.3144], label = "Langmuir")

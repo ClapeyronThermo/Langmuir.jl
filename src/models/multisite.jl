@@ -121,6 +121,17 @@ function loading(model::MultiSite,p,T)
     return result
 end
 
+function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: MultiSite
+    isotherms = isotherm_types(T)
+    n_sites = length(isotherms)
+    l_fration = data.l/n_sites
+    new_data = AdsIsoTData(data.p, l_fration, data.T, data.p_label, data.l_label, data.T_label)
+    x0s = map(isotherms) do model_i
+        x0_guess_fit(model_i, new_data)
+    end
+    return _multisite(x0s)
+end
+
 function sp_res(model::M,p,T) where M <: MultiSite
     result = zero(Base.promote_eltype(model,p,T))
     for model_i in model.isotherms

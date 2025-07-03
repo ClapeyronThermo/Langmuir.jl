@@ -30,7 +30,7 @@ The activity coefficients `γᵢ` and `γᵩ` are determined using the Gibbs exc
     (M::T, (0.0, Inf), "saturation loading")
     (K₀::T, (0.0, Inf), "affinity parameter")
     (E::T, (-Inf, 0.0), "energy parameter")
-    (Bᵢᵩ::T, (-Inf, 0.0), "adsorbate-adsorbent interaction coefficient")
+    (Bᵢᵩ::T, (-Inf, Inf), "adsorbate-adsorbent interaction coefficient")
 end
 
 function gibbs_excess_free_energy(model::ThermodynamicLangmuir, T::A, θ::AbstractVector{V}) where {V, A}
@@ -152,6 +152,14 @@ end
 
 function saturated_loading(model::ThermodynamicLangmuir,T)
     return model.M*one(eltype(T))
+end
+
+
+function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: ThermodynamicLangmuir
+    langmuir_model = x0_guess_fit(LangmuirS1,data)
+    M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E    
+    _0 = prevfloat(zero(M))
+    return T(M, K₀, E, _0)
 end
 
 export ThermodynamicLangmuir, gibbs_excess_free_energy

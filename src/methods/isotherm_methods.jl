@@ -42,6 +42,8 @@ function loading_at_T(model::IsothermModel, p, T)
     return map(p-> loading(model, p, T),  p)
 end
 
+f_at_T(f::Function, model::IsothermModel, p, T) = map(p-> f(model, p, T), p)
+
 function loading_ad(model,p,T)
     return p*ForwardDiff.derivative(p -> sp_res(model, p, T), p)
 end
@@ -321,7 +323,7 @@ function isosteric_heat(model::IsothermModel, p, T; Vᵃ = zero(eltype(p)), Vᵍ
 
     ∂n_∂p, ∂n_∂T = _df
 
-    return T*(Vᵍ - Vᵃ)*∂n_∂T/∂n_∂p
+    return (T*(Vᵍ - Vᵃ))*(∂n_∂T/∂n_∂p)
 end
 
 #useful for creating pseudo langmuir models for multicomponent adsoption.
@@ -346,6 +348,11 @@ function pseudo_langmuir_params(model, p, T, Πmin, Πmax)
         return _M,_K
     end
 end
+
+
+Broadcast.broadcasted(::typeof(loading), model, p, T) = f_at_T(loading, model, p, T)
+
+Broadcast.broadcasted(::typeof(isosteric_heat), model, p, T) = f_at_T(isosteric_heat, model, p, T)
 
 export loading, loading_at_T, sp_res, isosteric_heat
 export henry_coefficient, saturated_loading

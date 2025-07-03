@@ -50,9 +50,10 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
     p = pressure(Ðₗ)
     l = loading(Ðₗ)
     T = temperature(Ðₗ)
+    σ² = variance(Ðₗ)
     lb_sign = sign.(nextfloat.(prob.lb)) #Assumes that parameters are either > 0 or < 0.
 
-    function ℓ(θ, is_logspace)
+     ℓ(θ) = let prob = prob, lb_sign = lb_sign, p = p, l = l, T = T, is_logspace = alg.logspace
 
         _θ = copy(θ)
 
@@ -64,7 +65,7 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
 
         ℓr = zero(eltype(model))
 
-        for (pᵢ, nᵢ, Tᵢ) in zip(p, l, T)
+        for (pᵢ, nᵢ, Tᵢ, σ²ᵢ) in zip(p, l, T, σ²)
 
             n̂ᵢ = loading(model, pᵢ, Tᵢ) #Predicted loading
 
@@ -72,16 +73,15 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
                 n̂ᵢ = -one(nᵢ)*nᵢ
             end
 
-			ℓr += prob.loss(nᵢ - n̂ᵢ)
+			ℓr += prob.loss(nᵢ - n̂ᵢ)/σ²ᵢ
         end
 
-        return ℓr/length(p)
+        return ℓr
 
     end
 
 
     if alg.logspace
-
         x0 = log.(sign.(prob.x0) .* prob.x0)
         lb = log.(sign.(nextfloat.(prob.lb)) .* nextfloat.(prob.lb))
         ub = log.(sign.(prevfloat.(prob.ub)) .* prevfloat.(prob.ub))
@@ -98,17 +98,18 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
         end
         
     else
-        lb = prob.lb
-        ub = prob.ub
-        x0 = prob.x0
-        
+
+        lb = nextfloat.(prob.lb)
+        ub = prevfloat.(prob.ub)
+        x0 = prob.x0 
     end
 
 
-    result = BlackBoxOptim.bboptimize(Base.Fix2(ℓ, alg.logspace), x0; 
+    result = BlackBoxOptim.bboptimize(ℓ, x0; 
     SearchRange = [(lb[i], ub[i]) for i in eachindex(lb)],
     PopulationSize = alg.population_size,
     MaxTime = alg.time_limit,
+    MaxSteps = alg.max_steps,
     TraceMode = ifelse(alg.verbose, :verbose, :silent))
 
     opt_M = BlackBoxOptim.best_candidate(result)
