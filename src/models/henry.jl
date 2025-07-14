@@ -42,7 +42,7 @@ function henry_coefficient(model::Henry, T)
     return K
 end
 
-pressure_impl(model::Henry,Π,T,::typeof(sp_res),approx) = Π/model.Kh*exp(-E/(Rgas(model)*T))
+pressure_impl(model::Henry,Π,T,::typeof(sp_res)) = Π/model.Kh*exp(-E/(Rgas(model)*T))
 
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Henry
     # use first two data points to get the slope

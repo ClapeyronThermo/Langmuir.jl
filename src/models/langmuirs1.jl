@@ -54,9 +54,8 @@ end
 #optimizations for LangmuirS1, not necessary, but improve performance
 henry_coefficient(model::LangmuirS1, T) = model.M*model.K₀*exp(-model.E/(Rgas(model)*T))
 saturated_loading(model::LangmuirS1, T) = model.M #Some depend on T, some don't
-pressure_impl(model::LangmuirS1, Π, T,::typeof(sp_res), approx) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
+pressure_impl(model::LangmuirS1, Π, T,::typeof(sp_res)) = expm1(Π/model.M)/(model.K₀*exp(-model.E/(Rgas(model)*T)))
 isosteric_heat(model::LangmuirS1, p, T; Vᵃ = zero(eltype(p)), Vᵍ = Rgas(model)*T/p) = model.E
-
 
 function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: LangmuirS1
     # use first two data points to get the slope

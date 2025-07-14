@@ -46,6 +46,8 @@ function loading(model::BingelWalton, p, T)
     return M * (_1 - exp(-(K + A) * p)) / (_1 + (A/K) * exp(-(K + A) * p))
 end
 
+requires_integration_sp_res(::BingelWalton) = Val{true}()
+
 #optimizations for BingelWalton, not necessary, but improve performance
 henry_coefficient(model::BingelWalton, T) = model.K₀*exp(-E/(Rgas(model)*T)) * model.M
 saturated_loading(model::BingelWalton, T) = model.M #Some depend on T, some don't

@@ -1,7 +1,6 @@
 function reverse_iast(models,p,T,x,Π0 = reverse_iast_Π0(models,p,T,x);ss_iters = 100)
     #Π0 = reverse_iast_Π0(models,p,T,x,y0)
     p_i = similar(x)
-    @show Π0
     Πy = reverse_iast_nested_loop(models,p,T,x,Π0,p_i,ss_iters)
     y = similar(x)
     for i in 1:length(models)
@@ -47,7 +46,6 @@ function reverse_iast_nested_loop(models::TT,p,T,x,Π,p_i = similar(y),iters = 5
             fi = x[i]*p0i/p
             f -= fi #TODO: verify if this is correct
             df -= fi*loading(mi,p0i,T)
-            @show f,df
         end
         return f,f/df
     end

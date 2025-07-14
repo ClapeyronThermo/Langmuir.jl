@@ -43,7 +43,7 @@ function sp_res(model::Freundlich, p, T)
     return K*p^f/f
 end
 
-function pressure_impl(model::Freundlich, Π, T,::typeof(sp_res), approx)
+function pressure_impl(model::Freundlich, Π, T,::typeof(sp_res))
     K₀, f₀, β, E = model.K₀, model.f₀, model.β, model.E
     f = f₀ - β/T
     K = K₀*exp(-E/(Rgas(model)*T))

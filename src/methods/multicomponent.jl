@@ -13,6 +13,9 @@ struct aNRTLModel{T, 𝕀, B <: AbstractMatrix{T}} <: MultiComponentIsothermMode
     Βᵢⱼ::B
 end
 
+const LangmuirS1Tuple{T,N} = NTuple{N,LangmuirS1{T}} where {T,N}
+const MultiSiteTuple{T,N,I} = NTuple{N,MultiSite{T,I}} where {T,N,I}
+
 function _extendedlangmuir(::Type{T}, isotherms::𝕀) where {T,𝕀}
     return ExtendedLangmuir{T,𝕀}(isotherms)
 end
@@ -49,13 +52,13 @@ function aNRTLModel(models::Tuple{I, Vararg{I}}) where I <: IsothermModel
     return aNRTLModel{T,typeof(models),typeof(Bᵢⱼ)}(models, Bᵢⱼ)
 end
 
-function loading(model::ExtendedLangmuir{_T, I}, p, T, yᵢ) where {_T, I <: Tuple{Vararg{<:LangmuirS1{_T}}}}
+function loading(model::ExtendedLangmuir{_T, I}, p, T, yᵢ) where {_T, I <: LangmuirS1Tuple{_T}}
     _y = yᵢ/sum(yᵢ)
     pᵢ = p*_y
     return loading(model, pᵢ, T)
 end
 
-function loading(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: Tuple{Vararg{<:LangmuirS1{_T}}}}
+function loading(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: LangmuirS1Tuple{_T}}
 
     _1_∑kP = one(eltype(T))
     loadings = similar(pᵢ)
@@ -73,7 +76,7 @@ function loading(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: Tuple{
     return loadings./_1_∑kP
 end
 
-function loading(model::ExtendedLangmuir{_T, I}, p, T, y) where {_T, I <: Tuple{Vararg{<:MultiSite{_T}}}}
+function loading(model::ExtendedLangmuir{_T, I}, p, T, y) where {_T, I <: MultiSiteTuple{_T}}
 
         unpack_multisite = getfield.(model.isotherms, :isotherms)
 
@@ -131,7 +134,7 @@ function isosteric_heat(model::IASTModels, p, T, y; Vg = Rgas(model).*T./(p.*y),
 end
 
 
-function isosteric_heat(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: Tuple{Vararg{<:LangmuirS1{_T}}}}
+function isosteric_heat(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: LangmuirS1Tuple{_T}}
 
 #=     pᵢ_T = [pᵢ; T]
     f(pᵢ_T) = loading(model, first(pᵢ_T, length(pᵢ)), last(pᵢ_T))
@@ -144,13 +147,12 @@ function isosteric_heat(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <:
 
 end
 
-function isosteric_heat(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: Tuple{Vararg{<: MultiSite{_T} }}}
+function isosteric_heat(model::ExtendedLangmuir{_T, I}, pᵢ, T) where {_T, I <: MultiSiteTuple{_T}}
     return map(p_model -> isosteric_heat(last(p_model), first(p_model), T), zip(pᵢ, model.isotherms))
 end
 
 
-function isosteric_heat(model::ExtendedLangmuir{_T, I}, p, T, yᵢ) where {_T, I <: Tuple{Vararg{ <: Union{MultiSite{_T}, LangmuirS1{_T}}}}}
-    _y = yᵢ/sum(yᵢ)
+function isosteric_heat(model::ExtendedLangmuir{_T, I}, p, T, yᵢ) where {_T, I <: Union{LangmuirS1Tuple{_T},MultiSiteTuple{_T}}}
     pᵢ = p*_y
     isosteric_heat(model, pᵢ, T)
 end
