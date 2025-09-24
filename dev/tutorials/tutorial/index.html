@@ -21,7 +21,7 @@ plot!(d_ethane, 323.0, label = &quot;Ethane at 323K&quot;, markershape = :square
 plot!(d_ethylene, 283.0, label = &quot;Ethylene at 283K&quot;, markershape = :circle,
 m = (3, :white, stroke(1, :red)))
 scatter!(d_ethylene, 323.0, label = &quot;Ethylene at 323K&quot;,
-markershape = :square, m = (3, :white, stroke(1, :red)))</code></pre><img src="e2c740a2.svg" alt="Example block output"/><p>Following the reference manuscript, the quadratic isotherm is the chosen model for fitting the data. In this tutorial, the same strategy is used. Note that the bounds for the parameters were be manually set since the default ones were too large. Once the bounds are custom, you also need to provide the initial guess. We have default initial guesses for each isotherm, but to expose it, you need to <code>import</code> the <code>x0_guess_fit</code> function. We also import the <code>to_vec</code> function to convert the initial guess into a vector format, which is required by the fitting problem.</p><p>Also observe that the argument next to d_ethane is <code>nothing</code>. This is because the fitting problem does not involve any additional data, such as calorimetric data, to estimate the isotherm parameters.</p><pre><code class="language-julia hljs">import Langmuir: x0_guess_fit, to_vec
+markershape = :square, m = (3, :white, stroke(1, :red)))</code></pre><img src="0ccc23e2.svg" alt="Example block output"/><p>Following the reference manuscript, the quadratic isotherm is the chosen model for fitting the data. In this tutorial, the same strategy is used. Note that the bounds for the parameters were be manually set since the default ones were too large. Once the bounds are custom, you also need to provide the initial guess. We have default initial guesses for each isotherm, but to expose it, you need to <code>import</code> the <code>x0_guess_fit</code> function. We also import the <code>to_vec</code> function to convert the initial guess into a vector format, which is required by the fitting problem.</p><p>Also observe that the argument next to d_ethane is <code>nothing</code>. This is because the fitting problem does not involve any additional data, such as calorimetric data, to estimate the isotherm parameters.</p><pre><code class="language-julia hljs">import Langmuir: x0_guess_fit, to_vec
 #Fitting ethane
 x0_ethane = to_vec(x0_guess_fit(Quadratic, d_ethane))
 lb_ethane = (1e-25, 1e-25, 1e-4, -80_000.0, -80_000.0)
@@ -35,15 +35,15 @@ println(&quot;Fitting loss for ethane is $loss_fit_ethane&quot;)
 println(ethane_isotherm)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Starting optimization with optimizer BlackBoxOptim.DiffEvoOpt{BlackBoxOptim.FitPopulation{Float64}, BlackBoxOptim.RadiusLimitedSelector, BlackBoxOptim.AdaptiveDiffEvoRandBin{3}, BlackBoxOptim.RandomBound{BlackBoxOptim.ContinuousRectSearchSpace}}
 0.00 secs, 0 evals, 0 steps
 DE modify state:
-0.50 secs, 81368 evals, 81060 steps, improv/step: 0.149 (last = 0.1486), fitness=1.784575323
+0.51 secs, 81989 evals, 81653 steps, improv/step: 0.149 (last = 0.1491), fitness=1.784575323
 DE modify state:
 
-Optimization stopped after 165905 steps and 0.85 seconds
+Optimization stopped after 143582 steps and 0.81 seconds
 Termination reason: Too many steps (101) without any function evaluations (probably search has converged)
-Steps per second = 195955.77
-Function evals per second = 159960.76
+Steps per second = 176872.84
+Function evals per second = 160778.60
 Improvements/step = Inf
-Total function evaluations = 135430
+Total function evaluations = 130517
 
 
 Best candidate found: [-15.1983, -42.9896, 1.29228, 8.83902, 10.7746]
@@ -51,11 +51,11 @@ Best candidate found: [-15.1983, -42.9896, 1.29228, 8.83902, 10.7746]
 Fitness: 1.784575323
 
 Fitting loss for ethane is 1.784575322874253
-Quadratic{Float64}(2.508748385039608e-7, 2.1373377769438436e-19, 3.6410796297936803, -6898.206992327613, -47789.59999510016)</code></pre><p>The fitting results can be visualized by plotting the isotherm predictions against the experimental data. The <code>plot!</code> function can be used to overlay the fitted isotherm on the experimental data. This is also a custom case of the <code>plot</code> function from the <code>Plots.jl</code> to facilitate the visualization of isotherms. You can use it to plot the isotherm predictions for a specific temperature and pressure range. </p><pre><code class="language-julia hljs">#Plotting ethane fitting
+Quadratic{Float64}(2.508748500550372e-7, 2.1373377613325557e-19, 3.6410796316782577, -6898.2068504797835, -47789.60000605836)</code></pre><p>The fitting results can be visualized by plotting the isotherm predictions against the experimental data. The <code>plot!</code> function can be used to overlay the fitted isotherm on the experimental data. This is also a custom case of the <code>plot</code> function from the <code>Plots.jl</code> to facilitate the visualization of isotherms. You can use it to plot the isotherm predictions for a specific temperature and pressure range. </p><pre><code class="language-julia hljs">#Plotting ethane fitting
 plot!(ethane_isotherm, 283.0, (0.0, maximum(P_ethane)),
 color = :blue, label = &quot;Quadratic Ethane - 283.0 K&quot;, linestyle = :dash)
 plot!(ethane_isotherm, 323.0, (0.0, maximum(P_ethane)),
-color = :blue, label = &quot;Quadratic Ethane - 323.0 K&quot;)</code></pre><img src="187785b9.svg" alt="Example block output"/><pre><code class="language-julia hljs">#Fitting Ethylene
+color = :blue, label = &quot;Quadratic Ethane - 323.0 K&quot;)</code></pre><img src="a1a4e130.svg" alt="Example block output"/><pre><code class="language-julia hljs">#Fitting Ethylene
 x0_ethylene = to_vec(x0_guess_fit(Quadratic, d_ethylene))
 lb_ethylene = (1e-25, 1e-25, 1e-4, -80_000.0, -80_000.0)
 ub_ethylene = (1e-1, 1e-1, 100., -500.0, -500.0)
@@ -65,27 +65,27 @@ println(&quot;Fitting loss for ethane is $loss_fit_ethylene&quot;)
 println(ethylene_isotherm)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Starting optimization with optimizer BlackBoxOptim.DiffEvoOpt{BlackBoxOptim.FitPopulation{Float64}, BlackBoxOptim.RadiusLimitedSelector, BlackBoxOptim.AdaptiveDiffEvoRandBin{3}, BlackBoxOptim.RandomBound{BlackBoxOptim.ContinuousRectSearchSpace}}
 0.00 secs, 0 evals, 0 steps
 DE modify state:
-0.50 secs, 82365 evals, 82064 steps, improv/step: 0.146 (last = 0.1457), fitness=0.357323989
+0.50 secs, 83694 evals, 83404 steps, improv/step: 0.149 (last = 0.1486), fitness=0.357323989
 DE modify state:
 
-Optimization stopped after 142215 steps and 0.77 seconds
+Optimization stopped after 162995 steps and 0.88 seconds
 Termination reason: Too many steps (101) without any function evaluations (probably search has converged)
-Steps per second = 184568.23
-Function evals per second = 163678.66
+Steps per second = 184599.80
+Function evals per second = 161341.77
 Improvements/step = Inf
-Total function evaluations = 126119
+Total function evaluations = 142459
 
 
 Best candidate found: [-17.4655, -41.785, 1.34342, 9.37504, 10.6383]
 
 Fitness: 0.357323989
 
-Fitting loss for ethane is 0.3573239892979818
-Quadratic{Float64}(2.5992273184576423e-8, 7.128314098341591e-19, 3.8321392374898067, -11790.383765647724, -41702.74712605103)</code></pre><pre><code class="language-julia hljs">#Plotting ethylene isotherms
+Fitting loss for ethane is 0.3573239892979803
+Quadratic{Float64}(2.5992272938940257e-8, 7.128314006804686e-19, 3.8321392377818233, -11790.383778827007, -41702.747153253935)</code></pre><pre><code class="language-julia hljs">#Plotting ethylene isotherms
 plot!(ethylene_isotherm, 283.0, (0.0, maximum(P_ethane)),
 label = &quot;Quadratic Ethylene - 283.0 K&quot;, linestyle = :dash, color = :red)
 plot!(ethylene_isotherm, 323.0, (0.0, maximum(P_ethane)),
-label = &quot;Quadratic Ethylene - 283.0 K&quot;, color = :red)</code></pre><img src="c6d7604a.svg" alt="Example block output"/><p>From the fitting results, the isotherm parameters closely match those reported in the reference manuscript. For example, the parameter <code>M</code> was estimated at 3.68 in the manuscript, while it is 3.64 in this analysis. However, the energy parameters exhibit a greater discrepancy. Without calorimetric data, it&#39;s challenging to determine the accuracy of these values, as parameter identifiability is limited when relying solely on loading data.</p><pre><code class="language-julia hljs">#Ethane isosteric heat
+label = &quot;Quadratic Ethylene - 283.0 K&quot;, color = :red)</code></pre><img src="91671c36.svg" alt="Example block output"/><p>From the fitting results, the isotherm parameters closely match those reported in the reference manuscript. For example, the parameter <code>M</code> was estimated at 3.68 in the manuscript, while it is 3.64 in this analysis. However, the energy parameters exhibit a greater discrepancy. Without calorimetric data, it&#39;s challenging to determine the accuracy of these values, as parameter identifiability is limited when relying solely on loading data.</p><pre><code class="language-julia hljs">#Ethane isosteric heat
 is_283K = d_ethane.T .== 283.0
 P_C₂_283K = d_ethane.p[is_283K]
 l_C₂_283K = d_ethane.l[is_283K]
@@ -98,7 +98,7 @@ l_C₂₌_283K = d_ethylene.l[is_283K_ethylene]
 ΔH_C₂₌_283K = isosteric_heat.(ethylene_isotherm, P_C₂₌_283K, 283.0)
 
 scatter(l_C₂_283K, ΔH_C₂_283K, xlabel = &quot;Loading (mol/kg)&quot;, ylabel = &quot;Isosteric Heat (J/mol)&quot;, m = (4, :white, stroke(1, :lightslateblue)), markershape = :circle, label = &quot;Ethane - 283.0 K&quot;, size = (600, 300))
-scatter!(l_C₂₌_283K, ΔH_C₂₌_283K, xlabel = &quot;Loading (mol/kg)&quot;, ylabel = &quot;Isosteric Heat (J/mol)&quot;, markershape = :square, m = (3, :white, stroke(1, :springgreen2)), label = &quot;Ethylene - 283.0 K&quot;)</code></pre><img src="4745da93.svg" alt="Example block output"/><p>The plot shows the isosteric heat of adsorption for ethane and ethylene at 283.0 K as a function of loading. Ethane exhibits a steeper decline in adsorption heat, suggesting stronger initial interactions that weaken significantly as loading increases, whereas ethylene&#39;s decline is more gradual, indicating a slower reduction in adsorption strength. </p><p>Lastly, the final analysis will utilize IAST to make predictions on the binary adsorption of ethane and ethylene. There are two ways to use IAST in Langmuir.jl.  You can directly use the <code>iast</code> function, which gives you access to extra solution parameters such as convergence criteria, total loading and composition. Another way is to wrap the isotherms into the <code>IASTModels</code> type and use it to estimate quantities such as the loading and the isosteric heat. Below, we are using the first approach, which is more straightforward for this case.</p><pre><code class="language-julia hljs">y_C₂ = range(0.0, 1.00, 51) #51 points from 0.0 to 1.0
+scatter!(l_C₂₌_283K, ΔH_C₂₌_283K, xlabel = &quot;Loading (mol/kg)&quot;, ylabel = &quot;Isosteric Heat (J/mol)&quot;, markershape = :square, m = (3, :white, stroke(1, :springgreen2)), label = &quot;Ethylene - 283.0 K&quot;)</code></pre><img src="14e6c454.svg" alt="Example block output"/><p>The plot shows the isosteric heat of adsorption for ethane and ethylene at 283.0 K as a function of loading. Ethane exhibits a steeper decline in adsorption heat, suggesting stronger initial interactions that weaken significantly as loading increases, whereas ethylene&#39;s decline is more gradual, indicating a slower reduction in adsorption strength. </p><p>Lastly, the final analysis will utilize IAST to make predictions on the binary adsorption of ethane and ethylene. There are two ways to use IAST in Langmuir.jl.  You can directly use the <code>iast</code> function, which gives you access to extra solution parameters such as convergence criteria, total loading and composition. Another way is to wrap the isotherms into the <code>IASTModels</code> type and use it to estimate quantities such as the loading and the isosteric heat. Below, we are using the first approach, which is more straightforward for this case.</p><pre><code class="language-julia hljs">y_C₂ = range(0.0, 1.00, 51) #51 points from 0.0 to 1.0
 success_y_C₂ = []
 x_C₂ = []
 x_C₂₌ = []
@@ -124,4 +124,4 @@ for y_C₂_ᵢ in y_C₂
 end
 
 plot(x_C₂, success_y_C₂, xlabel = &quot;x (adsorbed phase)&quot;, ylabel = &quot;y (gas phase)&quot;, label = &quot;ethane&quot;, framestyle=:box, size = (600, 300))
-plot!(x_C₂₌, 1.0 .- success_y_C₂, label = &quot;ethylene&quot;)</code></pre><img src="735ed533.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting Started</a><a class="docs-footer-nextpage" href="../isosteric_heat/">Comparing the estimation of isosteric heat from isotherms with Langmuir.jl »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 25 August 2025 05:14">Monday 25 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+plot!(x_C₂₌, 1.0 .- success_y_C₂, label = &quot;ethylene&quot;)</code></pre><img src="4b245148.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting Started</a><a class="docs-footer-nextpage" href="../isosteric_heat/">Comparing the estimation of isosteric heat from isotherms with Langmuir.jl »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Wednesday 24 September 2025 19:56">Wednesday 24 September 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
