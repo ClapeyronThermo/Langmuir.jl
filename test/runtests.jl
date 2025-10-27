@@ -5,7 +5,7 @@ import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
 using Test
 const LG = Langmuir
 import Langmuir: R̄
-
+using Clapeyron
 
 #we test that definitions of loading and sp_res are consistent.
 
@@ -193,6 +193,23 @@ end
         @test n1 ≈ n2
         @test w1 ≈ w2
     end
+end
+
+@testset "chempotentialPTA" begin
+    P = 1.2e6
+    T = 312.2
+    x = 1.0
+    components = ["carbon dioxide"]
+    eos = Clapeyron.SRK(components, translation = PenelouxTranslation)
+    #eos = Clapeyron.ReidIdeal(components)
+    #eos = Clapeyron.SAFTVRMie(components)
+    z0_CO2 = 0.306
+    ε0_CO2 = 7541.0
+    potential_CO2 = DRA(ε0_CO2, z0_CO2, 2.0)
+    prob_CO2 = PTAProblem(T, P, x, eos = eos, potential = potential_CO2)
+    abstol = reltol = 1e-8
+    solver = ChemPotentialMethod(prob_CO2, abstol = abstol, reltol = reltol)
+    sol_z = Langmuir.solve_PTAProblem(prob_CO2, solver, verbose = true)
 end
 
 

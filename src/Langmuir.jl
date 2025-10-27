@@ -25,6 +25,7 @@ include("utils.jl")
 include("isotherm_data.jl")
 include("models/models.jl")
 include("methods/methods.jl")
+include("methods/potential_theory/pta.jl")
 include("base.jl")
 include("plots.jl")
 end
