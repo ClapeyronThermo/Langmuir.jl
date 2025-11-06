@@ -36,6 +36,10 @@ function Langmuir.VT_isstable(model::M, v, T, z::Z) where {M <: Clapeyron.EoSMod
     return Clapeyron.VT_isstable(model, v, T, z)
 end
 
+function Langmuir.isstable(model::M, p, T, z) where {M <: Clapeyron.EoSModel}
+    return Clapeyron.isstable(model, p, T, z)
+end
+
 function Langmuir.VT_isstable(model::M, v, T, z::Z) where {M <: Clapeyron.EoSModel, Z <: AbstractVector}
     return Clapeyron.VT_isstable(model, v, T, z)
 end

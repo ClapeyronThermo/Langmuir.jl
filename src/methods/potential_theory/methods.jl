@@ -53,7 +53,7 @@ mutable struct PTASolution{PType,XType,RType,ZType, S <: Symbol}
     end
 end
 
-mutable struct PTAIteration{PType, XType, RzType}
+#= mutable struct PTAIteration{PType, XType, RzType}
     P::PType
     x::XType
     ρ::RzType
@@ -63,7 +63,7 @@ mutable struct PTAIteration{PType, XType, RzType}
         Rz = typeof(ρ)
         return new{Pz, Xz, Rz}(P, x, ρ)
     end
-end
+end =#
 
 function initialize_solution(prob::PTAProblem)
     grid_size = prob.system.structure.ngrids[1]
@@ -75,7 +75,7 @@ function initialize_solution(prob::PTAProblem)
     Xz = Vector{typeof(prob.P)}()
     ρz = Vector{typeof(prob.P)}()
     z = create_grid(prob.system.structure)
-    return PTASolution(P, x, ρ, z, :unconverged), PTAIteration(Pz, Xz, ρz)
+    return PTASolution(P, x, ρ, z, :unconverged)
 end
 
 
@@ -96,7 +96,7 @@ function ChemPotentialMethod(prob::PTAProblem; abstol=1e-7, reltol=1e-7)
 end
 
 function PTA_x0(prob::PTAProblem)
-    sol, iter = initialize_solution(prob)
+    sol = initialize_solution(prob)
     eosmodel = prob.system.model
     potential_model = prob.system.structure.potential
     P = prob.P
@@ -128,13 +128,12 @@ function res_μ(eos, p_ads, T_ads, x_ads::M, μ_bulk::M, Ψ::M) where {M <: Numb
     return Δ
 end
 
-function res_μ(eos, p_ads, T_ads, x_ads::M, μ_bulk::M, Ψ::M) where {M <: AbstractVector}
-    v_ads = volume(eos, p_ads, T_ads, x_ads)
-    #is_stable = VT_isstable(eos, v_ads, T_ads, x_ads)
+function res_μ!(Δ, eos, p_ads, T_ads, x_ads, μ_bulk, Ψ)
+    #is_stable = isstable(eos, p_ads, T_ads, x_ads)
     #is_stable || @warn "Adsorbed phase is not stable - results may be inaccurate"
-    μ_ads = VT_chemical_potential(eos, v_ads, T_ads, x_ads)
+    μ_ads = chemical_potential(eos, p_ads, T_ads, x_ads, :stable)
     ∑x_ads = sum(x_ads)
-    Δ = [(μ_bulk .+ Ψ) .- μ_ads, ∑x_ads - 1.0]  
+    Δ .= [(μ_bulk .+ Ψ) .- μ_ads; ∑x_ads - 1.0]
     return Δ
 end
 
@@ -147,17 +146,34 @@ function create_res_func(eos, T_ads, μ_bulk::M, Ψ::M) where {M <: Number}
 end
 
 function create_res_func(eos, T_ads, μ_bulk::M, Ψ::M) where {M <: AbstractVector}
+    #Δ = similar(μ_bulk, length(μ_bulk) + 1)
     f = let eos = eos, T = T_ads, μ = μ_bulk, Ψ = Ψ
-        return p_x -> res_μ(eos, first(p_x), T, p_x[2:end], μ, Ψ)
+        return (Δ, p_x) -> res_μ!(Δ, eos, first(p_x), T, p_x[2:end], μ, Ψ)
     end
     return f
 end
 
-function solve_at_z(eos, p0_ads, T_ads, μ_bulk::M, Ψ::M, alg::A; abstol = 1e-6, reltol = 1e-6, verbose = true) where {M <: Number, A <: ChemPotentialMethod}
+function solve_at_z(eos, p0_ads, T_ads, x0_ads, μ_bulk::M, Ψ::M, alg::A; verbose = true) where {M <: Number, A <: ChemPotentialMethod}
+    abstol = alg.abstol
+    reltol = alg.reltol
     f = create_res_func(eos, T_ads, μ_bulk, Ψ)
     P_result = Roots.find_zero(x -> to_newton(f, x), p0_ads, Roots.Newton(), abstol = abstol, reltol = reltol, verbose = verbose)
     _1 = one(T_ads)
-    return _1/volume(eos, P_result, T_ads, _1, :stable), P_result
+    return _1/volume(eos, P_result, T_ads, x0_ads, :stable), P_result
+end
+
+function solve_at_z(eos, p0_ads, T_ads, x0_ads::M, μ_bulk::M, Ψ::M, alg::A; verbose = true) where {M <: AbstractVector, A <: ChemPotentialMethod}
+    f! = create_res_func(eos, T_ads, μ_bulk, Ψ)
+    x0 = [p0_ads; x0_ads...]
+    δ = similar(x0)
+    f!(δ, x0)
+    abstol = alg.abstol
+    reltol = alg.reltol
+    options = NEqOptions(f_abstol = abstol, f_reltol = reltol)
+    sol = nlsolve(f!, x0, options = options)
+    _1 = one(T_ads)
+    p, x = sol.info.solution[1], sol.info.solution[2:end]
+    return _1/volume(eos, p, T_ads, x, :stable).*x, p
 end
 
 function solve_PTAProblem(prob::PR, alg::A; verbose = true) where {PR <: PTAProblem, A <: ChemPotentialMethod}
@@ -168,17 +184,17 @@ function solve_PTAProblem(prob::PR, alg::A; verbose = true) where {PR <: PTAProb
     x = prob.x
     μ_bulk = prob.bulkcondition[2]
     sol = isnothing(alg.x0) ? PTA_x0(prob) : alg.x0
-    abstol = alg.abstol
-    reltol = alg.reltol
     Pᵢ = P
+    xᵢ = x
 
     for i ∈ reverse(eachindex(sol.z))
         z = sol.z[i]
         Ψ = potential(_potential, z)
-        ρᵢ, Pᵢ = solve_at_z(eos, Pᵢ, T, μ_bulk, Ψ, alg, abstol = abstol, reltol = reltol, verbose = verbose)
+        ρᵢ, Pᵢ = solve_at_z(eos, Pᵢ, T, xᵢ, μ_bulk, Ψ, alg, verbose = verbose)
+        xᵢ = ρᵢ ./ sum(ρᵢ)
         sol.ρ[i, :] .= ρᵢ
         sol.P[i, 1] = Pᵢ
-        sol.x[i, :] .= ρᵢ ./ sum(ρᵢ)
+        sol.x[i, :] .= xᵢ
     end
 
     sol.retcode = :success
@@ -187,16 +203,18 @@ function solve_PTAProblem(prob::PR, alg::A; verbose = true) where {PR <: PTAProb
     return sol
 end
 
-
-
-function loading(prob; solver = ChemPotentialMethod(prob), abstol = 1e-6, reltol = 1e-6)
+function loading(prob; solver = ChemPotentialMethod(prob))
     sol = solve_PTAProblem(prob, solver; verbose = false)
-    return loading(sol, prob.bulkcondition[1]; abstol = abstol, reltol = reltol)
+    x_bulk = prob.x
+    return loading(sol, prob.bulkcondition[1], x_bulk)
 end
 
-function loading(sol::S, ρ_bulk; integrator = Simpson(), abstol = 1e-6, reltol = 1e-6) where S <: PTASolution
-
-    return nothing
+function loading(sol::S, ρ_bulk, x_bulk; integrator = SimpsonsRule()) where {S <: PTASolution}
+    yᵢ = sol.ρ .- ρ_bulk*x_bulk
+    z = sol.z
+    problem = SampledIntegralProblem(yᵢ, z, dim = 1)
+    solution = Integrals.solve(problem, integrator)
+    return solution.u
 end
 
 export PTAProblem, PTASolution, ChemPotentialMethod

@@ -36,7 +36,7 @@ function potential(model::MultiComponentDRA, z::T) where T <: Real
         p -> potential(p, z)
     end
     
-    return map(f, model.potentials)
+    return [map(f, model.potentials)...]
 end
 
 export DRA, MultiComponentDRA, potential 

@@ -25,4 +25,8 @@ function volume(model::Any, P, T, z, phase = :stable)
     return nothing
 end
 
-export chemical_potential, idealmodel, molar_density, volume
+function isstable(model::Any, p, T, z)
+    return true
+end
+
+export chemical_potential, idealmodel, molar_density, volume, isstable

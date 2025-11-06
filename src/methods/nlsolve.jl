@@ -12,7 +12,7 @@ To obtain the underlying solution vector, use [`x_sol`](@ref)
 
 To see available solvers and options, check `NLSolvers.jl`
 """
-function nlsolve(f!,x0,method=TrustRegion(Newton(), Dogleg()),options=NEqOptions(),chunk = ForwardDiff.Chunk{2}())
+function nlsolve(f!,x0,method=TrustRegion(Newton(), Dogleg()),chunk = ForwardDiff.Chunk{2}(); options=NEqOptions())
     vector_objective = autoVectorObjective(f!,x0,chunk)
     nl_problem = NEqProblem(vector_objective; inplace = _inplace(x0))
     return nlsolve(nl_problem, x0,method, options)
