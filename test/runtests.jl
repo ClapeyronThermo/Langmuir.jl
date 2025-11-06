@@ -1,13 +1,10 @@
 using Langmuir
+using Clapeyron
 import Langmuir: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
 import Langmuir: gibbs_excess_free_energy, activity_coefficient
 import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
 using Test
-const LG = Langmuir
 import Langmuir: R̄
-using Pkg
-Pkg.add("Clapeyron")
-using Clapeyron
 
 #we test that definitions of loading and sp_res are consistent.
 
