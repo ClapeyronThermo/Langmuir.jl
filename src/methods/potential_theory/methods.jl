@@ -173,7 +173,7 @@ function solve_at_z(eos, p0_ads, T_ads, x0_ads::M, μ_bulk::M, Ψ::M, alg::A; ve
     #f!(δ, x0)
     abstol = alg.abstol
     reltol = alg.reltol
-    options = NEqOptions(f_abstol = abstol, f_reltol = reltol)
+    options = NEqOptions(f_abstol = abstol, f_reltol = reltol, maxiter = 1000)
     sol = nlsolve(f!, x0, options = options)
     _1 = one(T_ads)
     p, x = sol.info.solution[1], sol.info.solution[2:end]
@@ -194,7 +194,7 @@ function solve_PTAProblem(prob::PR, alg::A; verbose = true) where {PR <: PTAProb
     for i ∈ reverse(eachindex(sol.z))
         z = sol.z[i]
         Ψ = potential(_potential, z)
-        ρᵢ, Pᵢ = solve_at_z(eos, Pᵢ, T, xᵢ, μ_bulk, Ψ, alg, verbose = verbose)
+        ρᵢ, Pᵢ = solve_at_z(eos, Pᵢ, T, xᵢ, μ_bulk, Ψ, alg, verbose = false)
         xᵢ = ρᵢ ./ sum(ρᵢ)
         sol.ρ[i, :] .= ρᵢ
         sol.P[i, 1] = Pᵢ
