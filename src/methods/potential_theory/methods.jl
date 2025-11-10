@@ -131,7 +131,7 @@ end
 function res_μ!(Δ, eos, p_ads, T_ads, x_ads, μ_bulk, Ψ)
     #is_stable = isstable(eos, p_ads, T_ads, x_ads)
     #is_stable || @warn "Adsorbed phase is not stable - results may be inaccurate"
-    μ_ads = chemical_potential(eos, p_ads, T_ads, x_ads, :stable)
+    μ_ads = chemical_potential(eos, p_ads, T_ads, x_ads, :unknown)
     ∑x_ads = sum(x_ads)
     Δ .= [(μ_bulk .+ Ψ) .- μ_ads; ∑x_ads - 1.0]
     return Δ
@@ -148,7 +148,11 @@ end
 function create_res_func(eos, T_ads, μ_bulk::M, Ψ::M) where {M <: AbstractVector}
     #Δ = similar(μ_bulk, length(μ_bulk) + 1)
     f = let eos = eos, T = T_ads, μ = μ_bulk, Ψ = Ψ
-        return (Δ, p_x) -> res_μ!(Δ, eos, first(p_x), T, p_x[2:end], μ, Ψ)
+        return (Δ, p_x) -> begin
+            p = first(p_x)
+            x = @view p_x[2:end]
+            res_μ!(Δ, eos, p, T, x, μ, Ψ)
+        end
     end
     return f
 end
@@ -165,15 +169,15 @@ end
 function solve_at_z(eos, p0_ads, T_ads, x0_ads::M, μ_bulk::M, Ψ::M, alg::A; verbose = true) where {M <: AbstractVector, A <: ChemPotentialMethod}
     f! = create_res_func(eos, T_ads, μ_bulk, Ψ)
     x0 = [p0_ads; x0_ads...]
-    δ = similar(x0)
-    f!(δ, x0)
+    #δ = similar(x0)
+    #f!(δ, x0)
     abstol = alg.abstol
     reltol = alg.reltol
     options = NEqOptions(f_abstol = abstol, f_reltol = reltol)
     sol = nlsolve(f!, x0, options = options)
     _1 = one(T_ads)
     p, x = sol.info.solution[1], sol.info.solution[2:end]
-    return _1/volume(eos, p, T_ads, x, :stable).*x, p
+    return _1/volume(eos, p, T_ads, x, :unknown).*x, p
 end
 
 function solve_PTAProblem(prob::PR, alg::A; verbose = true) where {PR <: PTAProblem, A <: ChemPotentialMethod}
@@ -217,4 +221,245 @@ function loading(sol::S, ρ_bulk, x_bulk; integrator = SimpsonsRule()) where {S 
     return solution.u
 end
 
-export PTAProblem, PTASolution, ChemPotentialMethod
+#============================================================================
+FUGACITY COEFFICIENT METHOD FOR POTENTIAL THEORY
+Based on paper equations with Clapeyron's lnϕ and ForwardDiff derivatives
+============================================================================#
+
+mutable struct FugacityCoefficientMethod{T <: Real}
+    abstol::T
+    reltol::T
+    maxiter_outer::Int
+    maxiter_inner::Int
+    x0::Union{PTASolution, Nothing}
+    detect_phase_transition::Bool
+end
+
+function FugacityCoefficientMethod(; abstol=1e-7, reltol=1e-7, 
+                                    maxiter_outer=50, maxiter_inner=10,
+                                    x0=nothing, detect_phase_transition=false)
+    FugacityCoefficientMethod(abstol, reltol, maxiter_outer, maxiter_inner, 
+                              x0, detect_phase_transition)
+end
+
+function FugacityCoefficientMethod(prob::PTAProblem; kwargs...)
+    x0 = PTA_x0(prob)
+    FugacityCoefficientMethod(; x0=x0, kwargs...)
+end
+
+"""
+    solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_bulk, ε_vec, alg; verbose=false)
+
+Solve for P(ε) and z(ε) at a single potential value using fugacity coefficient method
+with stability checks to avoid oscillation.
+
+Paper equations:
+- Composition: z^i(ε) = [z_g^i * f_g^i * P_g * exp(ε^i/RT)] / [f^i(P,z)]
+- Constraint:  Σ_i [z_g^i * f_g^i * P_g * exp(ε^i/RT)] / [f^i(P,z)] - 1 = 0
+
+Uses Clapeyron's lnϕ and ForwardDiff for automatic differentiation.
+
+Algorithm (with stability check from Clapeyron bubble pressure):
+OUTER LOOP (Newton on pressure):
+  1. Save checkpoint: z_restart, P_restart
+  2. INNER LOOP (successive substitution on composition):
+     a. Calculate f(P, z) using lnϕ
+     b. Update z from fugacity equation
+     c. Check convergence on z
+     d. STABILITY CHECK: ||z - z_bulk|| < tol_stability?
+        - If yes: restore checkpoint, exit inner loop, force P update
+        - If no: continue
+  3. Calculate pressure residual and derivative using ForwardDiff
+  4. Newton update on P with damping
+  5. Check convergence
+"""
+function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_bulk, ε_vec, alg; verbose=false)
+    
+    # Unpack
+    RT = Rg(eos) * T
+    n_comp = length(z_bulk)
+    
+    # Pre-compute constant term: C^i = z_g^i * f_g^i  * exp(ε^i/RT)
+    C = z_bulk .* f_bulk .* exp.(ε_vec ./ RT)
+    
+    # Tolerances
+    tol_z = alg.abstol
+    tol_P = alg.reltol
+    tol_stability = abs2(cbrt(tol_z))  # Stability threshold (Clapeyron pattern)
+    
+    # Initialize
+    P = P_init
+    z = copy(z_init)
+    
+    # OUTER LOOP: Newton iteration on pressure
+    for j in 1:alg.maxiter_outer
+        
+        # Checkpoint for stability restart
+        z_restart = copy(z)
+        P_restart = P
+        
+        valid_iter = true  # Flag for valid inner loop convergence
+        
+        # INNER LOOP: Successive substitution on composition
+        for i in 1:alg.maxiter_inner
+            
+            # Calculate fugacity coefficients at current (P, z)
+            # Using Clapeyron's lnϕ function
+            lnϕ_z = lnϕ(eos, P, T, z)[1]
+            ϕ_z = exp.(lnϕ_z)
+            f_z = ϕ_z .* P  # Fugacities
+            
+            # Update composition: z^i = C^i / f^i(P,z)
+            z_new = C ./ f_z
+            z_new = z_new / sum(z_new) # Normalize
+            
+            # Check convergence on composition
+            if norm(z_new - z, Inf) < tol_z
+                z = z_new
+                break
+            end
+            
+            #═════════════════════════════════════════════════════
+            # STABILITY CHECK (prevents oscillation/trivial solution)
+            #═════════════════════════════════════════════════════
+            stability = norm(z_new - z_bulk, Inf)  # ||z - z_bulk||∞
+            
+            if stability < tol_stability
+                # Segregated composition too similar to bulk
+                # → Iteration going wrong (weak field, wrong P, near critical)
+                
+                verbose && @warn "Stability check triggered at P=$P: ||z-z_bulk||=$stability < $tol_stability"
+                
+                # Restore to checkpoint
+                z = z_restart
+                P = P_restart
+                
+                # Mark iteration as invalid (skip derivative calc, force P update)
+                valid_iter = false
+                
+                # Exit inner loop
+                break
+            end
+            #═════════════════════════════════════════════════════
+            
+            # Update for next inner iteration
+            z = z_new
+        end
+        
+        # If stability check triggered, skip to pressure update
+        if !valid_iter
+            verbose && @info "Forcing pressure update due to stability check"
+        end
+        
+        # Pressure residual function for ForwardDiff
+        # F = Σ[C^i / f^i(P,z)] - 1 where f^i = ϕ^i * P
+        function F_pressure(P_trial)
+            lnϕ_trial = lnϕ(eos, P_trial, T, z)[1]
+            ϕ_trial = exp.(lnϕ_trial)
+            f_trial = ϕ_trial .* P_trial
+            return sum(C ./ f_trial) - 1.0
+        end
+        
+        # Evaluate residual and derivative using ForwardDiff
+        F = F_pressure(P)
+        ∂F∂P = ForwardDiff.derivative(F_pressure, P)
+        
+        # Newton update with damping
+        ΔP = F / ∂F∂P
+        P_new = P - clamp(ΔP, -0.4*P, 0.4*P)  # Limit step size to ±40%
+        
+        # Check convergence
+        if valid_iter && (abs(F) < tol_P && abs(ΔP/P) < tol_P)
+            verbose && @info "Converged at P=$P_new, ||z-z_bulk||=$(norm(z-z_bulk, Inf))"
+            return P_new, z, true
+        end
+        
+        P = P_new
+    end
+    
+    # Did not converge
+    @warn "solve_at_potential_fugacity did not converge after $(alg.maxiter_outer) iterations"
+    return P, z, false
+end
+
+"""
+    solve_PTAProblem(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=true)
+
+Main solver using fugacity coefficient method. Loops over potential values ε (not distance z).
+
+At each potential value ε, solves the coupled system:
+- Composition equation: z^i(ε) = [z_g^i * f_g^i * P_g * exp(ε^i/RT)] / [f^i(P(ε),z(ε))]
+- Summation constraint: Σ_i z^i(ε) = 1 (implicitly via pressure equation)
+
+Returns PTASolution with density and composition profiles.
+
+Note: Only valid for multicomponent systems. For single components, use ChemPotentialMethod.
+"""
+function solve_PTAProblem(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=true)
+    
+    eos = prob.system.model
+    potential_model = prob.system.structure.potential
+    T = prob.T
+    P_bulk = prob.P
+    z_bulk = prob.x
+    
+    # Check for multicomponent
+    if length(z_bulk) == 1
+        error("FugacityCoefficientMethod only applies to multicomponent systems. Use ChemPotentialMethod for single components.")
+    end
+    
+    # Compute bulk fugacity coefficients using Clapeyron
+    lnϕ_bulk = lnϕ(eos, P_bulk, T, z_bulk)[1]
+    ϕ_bulk = exp.(lnϕ_bulk)
+    f_bulk = ϕ_bulk .* P_bulk  # Bulk fugacities
+    
+    # Initialize solution (already contains grid)
+    sol = isnothing(alg.x0) ? PTA_x0(prob) : alg.x0
+
+
+    # Initial guess: start from bulk conditions
+    P_ε = P_bulk
+    z_ε = copy(z_bulk)
+    
+    # Loop over potential values (from high to low, i.e., z0 to boundary)
+    for i in reverse(eachindex(sol.z))
+        ε = potential(potential_model, sol.z[i])
+        
+        # For MultiComponentDRA, ε is a vector (one per component)
+        # For DRA (single potential), ε is a scalar - broadcast to all components
+        ε_vec = isa(ε, AbstractVector) ? ε : fill(ε, length(z_bulk))
+        
+        # Solve at this potential value
+        P_ε, z_ε, converged = solve_at_potential_fugacity(
+            eos, P_ε, z_ε, T, z_bulk, f_bulk, P_bulk, ε_vec, alg, 
+            verbose=verbose
+        )
+        
+        if !converged
+            @warn "Failed to converge at ε=$ε (i=$i)"
+        end
+        
+        # Calculate density and store results
+        v_ε = volume(eos, P_ε, T, z_ε, :stable)
+        ρ_total = 1.0 / v_ε  # Total molar density
+        ρ_comp = ρ_total .* z_ε  # Component densities
+        
+        sol.P[i, 1] = P_ε
+        sol.x[i, :] .= z_ε
+        sol.ρ[i, :] .= ρ_comp
+    end
+    
+    sol.retcode = :success
+    alg.x0 = sol
+    
+    return sol
+end
+
+function loading(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=false)
+    sol = solve_PTAProblem(prob, alg; verbose=verbose)
+    x_bulk = prob.x
+    ρ_bulk = prob.bulkcondition[1]
+    return loading(sol, ρ_bulk, x_bulk)
+end
+
+export PTAProblem, PTASolution, ChemPotentialMethod, FugacityCoefficientMethod

@@ -44,4 +44,8 @@ function Langmuir.VT_isstable(model::M, v, T, z::Z) where {M <: Clapeyron.EoSMod
     return Clapeyron.VT_isstable(model, v, T, z)
 end
 
+function Langmuir.lnϕ(model::M, p, T, z, phase = :unknown) where {M <: Clapeyron.EoSModel}
+    return Clapeyron.lnϕ(model, p, T, z, phase = phase)
+end
+
 end #module

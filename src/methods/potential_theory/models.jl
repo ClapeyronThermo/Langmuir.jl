@@ -29,4 +29,8 @@ function isstable(model::Any, p, T, z)
     return true
 end
 
-export chemical_potential, idealmodel, molar_density, volume, isstable
+function lnϕ(model::Any, p, T, z, phase = :unknown)
+    return nothing
+end
+
+export chemical_potential, idealmodel, molar_density, volume, isstable, lnϕ

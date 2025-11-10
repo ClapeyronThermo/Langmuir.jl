@@ -213,15 +213,48 @@ end
 end
 
 
+@testset "fugacitycoefficientPTA" begin
+    P = 1.2e6
+    T = 312.2
+    x = [0.8, 0.2]
+    components = ["carbon dioxide", "methane"]
+    eos = Clapeyron.SRK(components, translation = PenelouxTranslation)
+    z0_CO2 = 0.30
+    ε0_CO2 = 7767.0
+    potential_CO2 = DRA(ε0_CO2, z0_CO2, 2.0)
+    z0_CH4 = 0.30
+    ε0_CH4 = 7475.0
+    potential_CH4 = DRA(ε0_CH4, z0_CH4, 2.0)
+    potential_mix = MultiComponentDRA(potential_CO2, potential_CH4)
+    prob_mix = PTAProblem(T, P, x, eos = eos, potential = potential_mix)
+    abstol = reltol = 1e-6
+    
+    # Solve with both methods
+    solver_chem = ChemPotentialMethod(prob_mix, abstol = abstol, reltol = reltol)
+    solver_fug = FugacityCoefficientMethod(prob_mix, abstol = abstol, reltol = reltol)
+    
+    sol_chem = Langmuir.solve_PTAProblem(prob_mix, solver_chem, verbose = false)
+    sol_fug = Langmuir.solve_PTAProblem(prob_mix, solver_fug, verbose = false)
+    
+    # Results should be nearly identical
+    @test sol_chem.ρ ≈ sol_fug.ρ rtol=1e-4
+    @test sol_chem.P ≈ sol_fug.P rtol=1e-4
+    
+    # Test loading calculation
+    Γ_chem = loading(prob_mix, solver = solver_chem)
+    Γ_fug = loading(prob_mix, solver = solver_fug)
+    @test Γ_chem ≈ Γ_fug rtol=1e-4
+end
+
 @testset "chempotentialPTA - multicomponent" begin
     P = 1.2e6
     T = 312.2
     x = [0.8, 0.2]
-    components = ["methane", "carbon dioxide"]
+    components = ["carbon dioxide", "methane"]
     eos = Clapeyron.SRK(components, translation = PenelouxTranslation)
     #eos = Clapeyron.ReidIdeal(components)
     #eos = Clapeyron.SAFTVRMie(components)
-    z0_CO2 = 0.35
+    z0_CO2 = 0.30
     ε0_CO2 = 7767.0
     potential_CO2 = DRA(ε0_CO2, z0_CO2, 2.0)
     z0_CH4 = 0.30

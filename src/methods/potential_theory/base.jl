@@ -23,5 +23,7 @@ function Rg(model::T) where T
     return 8.31446261815324  # Universal gas constant in J/(mol·K)
 end
 
+# Function to be extended by ClapeyronExt for fugacity coefficient calculations
+function lnϕ end
 
 export PTASystem
