@@ -210,7 +210,7 @@ function loading(prob; solver = ChemPotentialMethod(prob))
 end
 
 function loading(sol::S, ρ_bulk, x_bulk; integrator = SimpsonsRule()) where {S <: PTASolution}
-    yᵢ = sol.ρ .- ρ_bulk*x_bulk
+    yᵢ = sol.ρ .- ρ_bulk*x_bulk'
     z = sol.z
     problem = SampledIntegralProblem(yᵢ, z, dim = 1)
     solution = Integrals.solve(problem, integrator)

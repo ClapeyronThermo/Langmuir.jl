@@ -206,16 +206,16 @@ end
     ε0_CO2 = 7541.0
     potential_CO2 = DRA(ε0_CO2, z0_CO2, 2.0)
     prob_CO2 = PTAProblem(T, P, x, eos = eos, potential = potential_CO2)
-    abstol = reltol = 1e-8
+    abstol = reltol = 1e-6
     solver = ChemPotentialMethod(prob_CO2, abstol = abstol, reltol = reltol)
     sol_z = Langmuir.solve_PTAProblem(prob_CO2, solver, verbose = false)
-    Langmuir.loading(prob_CO2, solver = solver) #mol/kg
+    loading(prob_CO2, solver = solver) #mol/kg
 end
 
 
 @testset "chempotentialPTA - multicomponent" begin
-    P = 2.2e6
-    T = 280.15
+    P = 1.2e6
+    T = 312.2
     x = [0.8, 0.2]
     components = ["methane", "carbon dioxide"]
     eos = Clapeyron.SRK(components, translation = PenelouxTranslation)
@@ -231,7 +231,8 @@ end
     prob_mix = PTAProblem(T, P, x, eos = eos, potential = potential_mix)
     abstol = reltol = 1e-6
     solver = ChemPotentialMethod(prob_mix, abstol = abstol, reltol = reltol)
-    sol_z = Langmuir.solve_PTAProblem(prob_mix, solver, verbose = true)
+    sol_z = Langmuir.solve_PTAProblem(prob_mix, solver, verbose = false)
+    l = loading(prob_mix, solver = solver) #mol/kg
 end
 
 
