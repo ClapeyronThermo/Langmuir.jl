@@ -48,4 +48,8 @@ function Langmuir.lnϕ(model::M, p, T, z, phase = :unknown) where {M <: Clapeyro
     return Clapeyron.lnϕ(model, p, T, z, phase = phase)
 end
 
+function Langmuir.∂lnϕ∂n∂P(model::M, p, T, z) where {M <: Clapeyron.EoSModel}
+    return Clapeyron.∂lnϕ∂n∂P(model, p, T, z)
+end
+
 end #module

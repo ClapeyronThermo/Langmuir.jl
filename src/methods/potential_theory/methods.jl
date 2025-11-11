@@ -221,10 +221,8 @@ function loading(sol::S, ρ_bulk, x_bulk; integrator = SimpsonsRule()) where {S 
     return solution.u
 end
 
-#============================================================================
-FUGACITY COEFFICIENT METHOD FOR POTENTIAL THEORY
-Based on paper equations with Clapeyron's lnϕ and ForwardDiff derivatives
-============================================================================#
+
+#FUGACITY COEFFICIENT METHOD FOR POTENTIAL THEORY
 
 mutable struct FugacityCoefficientMethod{T <: Real}
     abstol::T
@@ -322,13 +320,18 @@ function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_b
             #═════════════════════════════════════════════════════
             # STABILITY CHECK (prevents oscillation/trivial solution)
             #═════════════════════════════════════════════════════
-            stability = norm(z_new - z_bulk, Inf)  # ||z - z_bulk||∞
+            # K-value based stability: sum of squared log deviations from bulk
+            # Non-allocating implementation from Clapeyron
+            K_stability = zero(Base.promote_eltype(z_new, z_bulk))
+            for k in eachindex(z_new)
+                K_stability += log(z_new[k] / z_bulk[k])^2
+            end
             
-            if stability < tol_stability
+            if K_stability < tol_stability
                 # Segregated composition too similar to bulk
                 # → Iteration going wrong (weak field, wrong P, near critical)
                 
-                verbose && @warn "Stability check triggered at P=$P: ||z-z_bulk||=$stability < $tol_stability"
+                verbose && @warn "Stability check triggered at P=$P: K_stability=$K_stability < $tol_stability"
                 
                 # Restore to checkpoint
                 z = z_restart
@@ -351,18 +354,19 @@ function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_b
             verbose && @info "Forcing pressure update due to stability check"
         end
         
-        # Pressure residual function for ForwardDiff
-        # F = Σ[C^i / f^i(P,z)] - 1 where f^i = ϕ^i * P
-        function F_pressure(P_trial)
-            lnϕ_trial = lnϕ(eos, P_trial, T, z)[1]
-            ϕ_trial = exp.(lnϕ_trial)
-            f_trial = ϕ_trial .* P_trial
-            return sum(C ./ f_trial) - 1.0
-        end
+        # Calculate fugacity coefficients and residual
+        lnϕᵢ = lnϕ(eos, P, T, z)[1]
+        ϕᵢ = exp.(lnϕᵢ)
+        fᵢ = ϕᵢ .* P
         
-        # Evaluate residual and derivative using ForwardDiff
-        F = F_pressure(P)
-        ∂F∂P = ForwardDiff.derivative(F_pressure, P)
+        # Residual: F = Σ[Cⁱ/fⁱ] - 1
+        F = sum(C ./ fᵢ) - 1.0
+        
+        # Analytical derivative: ∂F/∂P = -Σᵢ[Cⁱ/fⁱ²]·∂fⁱ/∂P
+        # where ∂fⁱ/∂P = ϕⁱ(1 + P·∂ln(ϕⁱ)/∂P)
+        dlnϕdP = ∂lnϕ∂n∂P(eos, P, T, z)[3]  # Optimized function
+        dfᵢdP = ϕᵢ .* (1.0 .+ P .* dlnϕdP)
+        ∂F∂P = -sum((C ./ (fᵢ .^ 2)) .* dfᵢdP)
         
         # Newton update with damping
         ΔP = F / ∂F∂P

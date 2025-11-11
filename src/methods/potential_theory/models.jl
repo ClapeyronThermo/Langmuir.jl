@@ -33,4 +33,8 @@ function lnϕ(model::Any, p, T, z, phase = :unknown)
     return nothing
 end
 
-export chemical_potential, idealmodel, molar_density, volume, isstable, lnϕ
+function ∂lnϕ∂n∂P(model::Any, p, T, z)
+    return nothing
+end
+
+export chemical_potential, idealmodel, molar_density, volume, isstable, lnϕ, ∂lnϕ∂n∂P
