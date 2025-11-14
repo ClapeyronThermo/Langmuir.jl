@@ -1,11 +1,11 @@
 using Langmuir
+using Clapeyron
+using LinearAlgebra
 import Langmuir: loading_ad, sp_res, to_vec, sp_res_numerical, isosteric_heat, Rgas, from_vec, fit, pressure, temperature, x0_guess_fit
 import Langmuir: gibbs_excess_free_energy, activity_coefficient
 import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
 using Test
-const LG = Langmuir
 import Langmuir: R̄
-
 
 #we test that definitions of loading and sp_res are consistent.
 
@@ -194,6 +194,61 @@ end
         @test w1 ≈ w2
     end
 end
+
+@testset "chempotentialPTA" begin
+    P = 1.2e6
+    T = 312.2
+    x = 1.0
+    components = ["carbon dioxide"]
+    eos = Clapeyron.SRK(components, translation = PenelouxTranslation)
+    #eos = Clapeyron.ReidIdeal(components)
+    #eos = Clapeyron.SAFTVRMie(components)
+    z0_CO2 = 0.306
+    ε0_CO2 = 7541.0
+    potential_CO2 = DRA(ε0_CO2, z0_CO2, 2.0)
+    prob_CO2 = PTAProblem(T, P, x, eos = eos, potential = potential_CO2)
+    abstol = reltol = 1e-6
+    solver = ChemPotentialMethod(prob_CO2, abstol = abstol, reltol = reltol)
+    sol_z = Langmuir.solve_PTAProblem(prob_CO2, solver, verbose = false)
+    loading(prob_CO2, solver = solver) #mol/kg
+end
+
+
+
+@testset "fugacitycoefficientPTA" begin
+    P = 1.2e6
+    T = 310.2
+    x = [0.2, 0.8]
+    components = ["carbon dioxide", "methane"]
+    eos = Clapeyron.SRK(components, translation = PenelouxTranslation)
+    z0_CO2 = 0.35
+    ε0_CO2 = 7767.0
+    potential_CO2 = DRA(ε0_CO2, z0_CO2, 3.0)
+    z0_CH4 = 0.30
+    ε0_CH4 = 7475.0
+    potential_CH4 = DRA(ε0_CH4, z0_CH4, 3.0)
+    potential_mix = MultiComponentDRA(potential_CO2, potential_CH4)
+    prob_mix = PTAProblem(T, P, x, eos = eos, potential = potential_mix)
+    abstol = reltol = 1e-8
+    
+    # Solve with both methods
+    solver_chem = ChemPotentialMethod(prob_mix, abstol = abstol, reltol = reltol)
+    solver_fug = FugacityCoefficientMethod(prob_mix, abstol = abstol, reltol = reltol)
+    
+    #sol_chem = Langmuir.solve_PTAProblem(prob_mix, solver_chem, verbose = true)
+    sol_fug = Langmuir.solve_PTAProblem(prob_mix, solver_fug, verbose = true)
+
+    # Results should be nearly identical
+    #@test maximum(sol_chem.x[2:end, :] .- sol_fug.x[2:end, :]) < 1e-5 #Problems with the first point for the chemical potential
+    #@test sol_chem.P[2:end] ≈ sol_fug.P[2:end] 
+    
+    # Test loading calculation
+    #Γ_chem = loading(prob_mix, solver = solver_chem)
+    #Γ_fug = loading(prob_mix, solver = solver_fug)
+    #@test Γ_chem ≈ Γ_fug rtol=1e-4
+end
+
+
 
 
 
