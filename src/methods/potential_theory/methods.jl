@@ -163,21 +163,29 @@ function solve_at_z(eos, p0_ads, T_ads, x0_ads, μ_bulk::M, Ψ::M, alg::A; verbo
     f = create_res_func(eos, T_ads, μ_bulk, Ψ)
     P_result = Roots.find_zero(x -> to_newton(f, x), p0_ads, Roots.Newton(), abstol = abstol, reltol = reltol, verbose = verbose)
     _1 = one(T_ads)
-    return _1/volume(eos, P_result, T_ads, x0_ads, :stable), P_result
+    ρ = _1/volume(eos, P_result, T_ads, x0_ads, :stable)
+    
+    # For single component, always return true for convergence (Roots.jl will throw if it doesn't converge)
+    return ρ, P_result, true
 end
 
 function solve_at_z(eos, p0_ads, T_ads, x0_ads::M, μ_bulk::M, Ψ::M, alg::A; verbose = true) where {M <: AbstractVector, A <: ChemPotentialMethod}
     f! = create_res_func(eos, T_ads, μ_bulk, Ψ)
     x0 = [p0_ads; x0_ads...]
-    #δ = similar(x0)
-    #f!(δ, x0)
     abstol = alg.abstol
     reltol = alg.reltol
-    options = NEqOptions(f_abstol = abstol, f_reltol = reltol, maxiter = 1000)
+    options = NEqOptions(f_abstol = abstol, f_reltol = reltol, maxiter = 10_000)
     sol = nlsolve(f!, x0, options = options)
     _1 = one(T_ads)
     p, x = sol.info.solution[1], sol.info.solution[2:end]
-    return _1/volume(eos, p, T_ads, x, :unknown).*x, p
+    ρ = _1/volume(eos, p, T_ads, x, :unknown).*x
+    
+    # Check convergence: norm of residual should be small
+    res_norm = norm(sol.info.best_residual)
+    converged = res_norm < abstol || res_norm < reltol * norm(sol.info.ρF0)
+    
+    # Return density, pressure, and convergence flag
+    return ρ, p, converged
 end
 
 function solve_PTAProblem(prob::PR, alg::A; verbose = true) where {PR <: PTAProblem, A <: ChemPotentialMethod}
@@ -194,7 +202,16 @@ function solve_PTAProblem(prob::PR, alg::A; verbose = true) where {PR <: PTAProb
     for i ∈ reverse(eachindex(sol.z))
         z = sol.z[i]
         Ψ = potential(_potential, z)
-        ρᵢ, Pᵢ = solve_at_z(eos, Pᵢ, T, xᵢ, μ_bulk, Ψ, alg, verbose = false)
+        ρᵢ, Pᵢ, converged = solve_at_z(eos, Pᵢ, T, xᵢ, μ_bulk, Ψ, alg, verbose = false)
+        
+        # Warn if not converged - indicates potential issue with solution at this point
+        # Note: ChemPotentialMethod can converge to incorrect solutions at very high potentials
+        # (near the wall) when using previous point as initial guess. FugacityCoefficientMethod
+        # is more robust for such cases.
+        if !converged && verbose
+            @warn "solve_at_z did not converge at i=$i (z=$z, Ψ=$Ψ). Solution at this point may be inaccurate."
+        end
+        
         xᵢ = ρᵢ ./ sum(ρᵢ)
         sol.ρ[i, :] .= ρᵢ
         sol.P[i, 1] = Pᵢ
@@ -234,7 +251,7 @@ mutable struct FugacityCoefficientMethod{T <: Real}
 end
 
 function FugacityCoefficientMethod(; abstol=1e-7, reltol=1e-7, 
-                                    maxiter_outer=50, maxiter_inner=10,
+                                    maxiter_outer=150, maxiter_inner=100,
                                     x0=nothing, detect_phase_transition=false)
     FugacityCoefficientMethod(abstol, reltol, maxiter_outer, maxiter_inner, 
                               x0, detect_phase_transition)

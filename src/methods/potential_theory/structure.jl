@@ -14,11 +14,11 @@ function upper_bound(potential::MultiComponentDRA)
     return maximum(z0_values)
 end
 
-function lower_bound(potential::DRA; cutoff = 1e-6)
+function lower_bound(potential::DRA; cutoff = 1e-8)
     return potential.z0*cutoff
 end
 
-function lower_bound(potential::MultiComponentDRA; cutoff = 1e-6)
+function lower_bound(potential::MultiComponentDRA; cutoff = 1e-8)
     potentials = potential.potentials
     z0_values = map(p -> lower_bound(p; cutoff = cutoff), potentials)
     return minimum(z0_values)
