@@ -26,7 +26,7 @@ IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, lo
 Base.@kwdef struct DEIsothermFittingSolver <: IsothermFittingSolver
     max_steps::Int = 2e4
     population_size::Int = 50
-    time_limit::Float64 = Inf
+    time_limit::Float64 = 20.0
     verbose::Bool = false
     logspace::Bool = true
 end

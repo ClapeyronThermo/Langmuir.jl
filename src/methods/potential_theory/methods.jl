@@ -28,7 +28,7 @@ end
 
 function PTAProblem(T, P, x; eos, potential::V) where {V <: AbstractPotential}
     system = PTASystem(eos, potential)
-    v = volume(eos, P, T, x, :stable)
+    v = volume(eos, P, T, x, :unknown)
     #is_stable = VT_isstable(eos, v, T, x)
     #is_stable || error("Phase is not stable")
     bulk_μ = ifelse(length(x) == 1, first(VT_chemical_potential(eos, v, T, x)), VT_chemical_potential(eos, v, T, x))
@@ -404,6 +404,59 @@ function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_b
 end
 
 """
+    solve_at_potential_fugacity_single(eos, P_init, T, f_bulk, P_bulk, ε, alg; verbose=false)
+
+Solve for P(ε) for a single component using fugacity coefficient method.
+
+For single component, the equation simplifies to:
+- f_bulk * exp(ε/RT) = f(P) = ϕ(P) * P
+- Solve for P using Newton's method with ForwardDiff for derivatives
+"""
+function solve_at_potential_fugacity_single(eos, P_init, T, f_bulk, P_bulk, ε, alg; verbose=false)
+    
+    RT = Rg(eos) * T
+    
+    # Pre-compute constant: C = f_bulk * exp(ε/RT)
+    C = f_bulk * exp(ε / RT)
+    
+    tol_P = alg.reltol
+    
+    # Define residual function outside the loop to avoid allocations
+    residual = let eos = eos, T = T, C = C
+        P -> begin
+            lnϕ_P = lnϕ(eos, P, T, [1.0])[1][1]
+            f_P = exp(lnϕ_P) * P
+            return C - f_P
+        end
+    end
+    
+    P = P_init
+    
+    # Newton iteration on pressure using ForwardDiff
+    for j in 1:alg.maxiter_outer
+        
+        # Compute residual and derivative using ForwardDiff
+        F = residual(P)
+        ∂F∂P = ForwardDiff.derivative(residual, P)
+        
+        # Newton update with damping
+        ΔP = F / ∂F∂P
+        P_new = P - clamp(ΔP, -0.8*P, 0.8*P)
+        
+        # Check convergence
+        if abs(F) < tol_P * C && abs(ΔP/P) < tol_P
+            verbose && @info "Single component converged at P=$P_new"
+            return P_new, true
+        end
+        
+        P = P_new
+    end
+    
+    @warn "solve_at_potential_fugacity_single did not converge after $(alg.maxiter_outer) iterations"
+    return P, false
+end
+
+"""
     solve_PTAProblem(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=true)
 
 Main solver using fugacity coefficient method. Loops over potential values ε (not distance z).
@@ -414,7 +467,7 @@ At each potential value ε, solves the coupled system:
 
 Returns PTASolution with density and composition profiles.
 
-Note: Only valid for multicomponent systems. For single components, use ChemPotentialMethod.
+Now supports both single-component and multicomponent systems.
 """
 function solve_PTAProblem(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=true)
     
@@ -424,11 +477,6 @@ function solve_PTAProblem(prob::PTAProblem, alg::FugacityCoefficientMethod; verb
     P_bulk = prob.P
     z_bulk = prob.x
     
-    # Check for multicomponent
-    if length(z_bulk) == 1
-        error("FugacityCoefficientMethod only applies to multicomponent systems. Use ChemPotentialMethod for single components.")
-    end
-    
     # Compute bulk fugacity coefficients using Clapeyron
     lnϕ_bulk = lnϕ(eos, P_bulk, T, z_bulk)[1]
     ϕ_bulk = exp.(lnϕ_bulk)
@@ -437,37 +485,67 @@ function solve_PTAProblem(prob::PTAProblem, alg::FugacityCoefficientMethod; verb
     # Initialize solution (already contains grid)
     sol = isnothing(alg.x0) ? PTA_x0(prob) : alg.x0
 
-
-    # Initial guess: start from bulk conditions
-    P_ε = P_bulk
-    z_ε = copy(z_bulk)
+    # Check if single component
+    is_single = length(z_bulk) == 1
     
-    # Loop over potential values (from high to low, i.e., z0 to boundary)
-    for i in reverse(eachindex(sol.z))
-        ε = potential(potential_model, sol.z[i])
+    if is_single
+        # Single component case
+        P_ε = P_bulk
+        f_bulk_scalar = f_bulk[1]
         
-        # For MultiComponentDRA, ε is a vector (one per component)
-        # For DRA (single potential), ε is a scalar - broadcast to all components
-        ε_vec = isa(ε, AbstractVector) ? ε : fill(ε, length(z_bulk))
-        
-        # Solve at this potential value
-        P_ε, z_ε, converged = solve_at_potential_fugacity(
-            eos, P_ε, z_ε, T, z_bulk, f_bulk, P_bulk, ε_vec, alg, 
-            verbose=verbose
-        )
-        
-        if !converged
-            @warn "Failed to converge at ε=$ε (i=$i)"
+        for i in reverse(eachindex(sol.z))
+            ε = potential(potential_model, sol.z[i])
+            
+            # Solve for pressure at this potential
+            P_ε, converged = solve_at_potential_fugacity_single(
+                eos, P_ε, T, f_bulk_scalar, P_bulk, ε, alg, 
+                verbose=verbose
+            )
+            
+            if !converged
+                @warn "Failed to converge at ε=$ε (i=$i)"
+            end
+            
+            # Calculate density
+            v_ε = volume(eos, P_ε, T, [1.0], :unknown)
+            ρ_total = 1.0 / v_ε
+            
+            sol.P[i, 1] = P_ε
+            sol.x[i, 1] = 1.0
+            sol.ρ[i, 1] = ρ_total
         end
+    else
+        # Multicomponent case (original implementation)
+        P_ε = P_bulk
+        z_ε = copy(z_bulk)
         
-        # Calculate density and store results
-        v_ε = volume(eos, P_ε, T, z_ε, :stable)
-        ρ_total = 1.0 / v_ε  # Total molar density
-        ρ_comp = ρ_total .* z_ε  # Component densities
-        
-        sol.P[i, 1] = P_ε
-        sol.x[i, :] .= z_ε
-        sol.ρ[i, :] .= ρ_comp
+        # Loop over potential values (from high to low, i.e., z0 to boundary)
+        for i in reverse(eachindex(sol.z))
+            ε = potential(potential_model, sol.z[i])
+            
+            # For MultiComponentDRA, ε is a vector (one per component)
+            # For DRA (single potential), ε is a scalar - broadcast to all components
+            ε_vec = isa(ε, AbstractVector) ? ε : fill(ε, length(z_bulk))
+            
+            # Solve at this potential value
+            P_ε, z_ε, converged = solve_at_potential_fugacity(
+                eos, P_ε, z_ε, T, z_bulk, f_bulk, P_bulk, ε_vec, alg, 
+                verbose=verbose
+            )
+            
+            if !converged
+                @warn "Failed to converge at ε=$ε (i=$i)"
+            end
+            
+            # Calculate density and store results
+            v_ε = volume(eos, P_ε, T, z_ε, :unknown)
+            ρ_total = 1.0 / v_ε  # Total molar density
+            ρ_comp = ρ_total .* z_ε  # Component densities
+            
+            sol.P[i, 1] = P_ε
+            sol.x[i, :] .= z_ε
+            sol.ρ[i, :] .= ρ_comp
+        end
     end
     
     sol.retcode = :success
