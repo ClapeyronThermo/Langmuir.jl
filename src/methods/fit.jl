@@ -1,6 +1,6 @@
 abstract type IsothermFittingSolver end
 
-struct IsothermFittingProblem{M <: IsothermModel, TT, DL, DC, L, X, LB, UB}
+struct IsothermFittingProblem{M <: IsothermModel, TT, DL, DC, L, X, LB, UB, F}
     IsothermModel::Type{M}
     LoadingData::AdsIsoTData{TT}
     CalorimetricData::DC
@@ -8,19 +8,39 @@ struct IsothermFittingProblem{M <: IsothermModel, TT, DL, DC, L, X, LB, UB}
     x0::X
     lb::LB
     ub::UB
+    fittable::F
+    model_template::M
 end
 
 
 # Constructor with all arguments
-IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, calorimetric_data::DC, loss::L, x0::X, lb::LB, ub::UB) where {M <: IsothermModel, TT, DC, L, X, LB, UB} = 
-IsothermFittingProblem{M, TT, typeof(loading_data), DC, L, X, LB, UB}(IsothermModel, loading_data, calorimetric_data, loss, x0, lb, ub)
+IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, calorimetric_data::DC, loss::L, x0::X, lb::LB, ub::UB, fittable::F, model_template::M) where {M <: IsothermModel, TT, DC, L, X, LB, UB, F} = 
+IsothermFittingProblem{M, TT, typeof(loading_data), DC, L, X, LB, UB, F}(IsothermModel, loading_data, calorimetric_data, loss, x0, lb, ub, fittable, model_template)
 
 # Simplified constructor
-IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, loss::L) where {M <: IsothermModel, TT, L} = 
-    IsothermFittingProblem(IsothermModel, loading_data, nothing, loss,
-        to_vec(x0_guess_fit(IsothermModel, loading_data)),
-        isotherm_lower_bound(eltype(loading_data), IsothermModel),
-        isotherm_upper_bound(eltype(loading_data), IsothermModel))
+function IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, loss::L; fittable::Union{Nothing,AbstractVector{Bool}}=nothing) where {M <: IsothermModel, TT, L}
+    model_template = x0_guess_fit(IsothermModel, loading_data)
+    
+    # Default: all parameters are fittable
+    if fittable === nothing
+        fittable = trues(model_length(IsothermModel))
+    end
+    
+    # Validate fittable length
+    length(fittable) == model_length(IsothermModel) || throw(ArgumentError("fittable vector length must match number of model parameters"))
+    
+    # Extract fittable parameters
+    x0 = to_vec_fittable(model_template, fittable)
+    full_lb = isotherm_lower_bound(eltype(loading_data), IsothermModel)
+    full_ub = isotherm_upper_bound(eltype(loading_data), IsothermModel)
+    
+    # Get bounds for only fittable parameters
+    fittable_indices = findall(fittable)
+    lb = [full_lb[i] for i in fittable_indices]
+    ub = [full_ub[i] for i in fittable_indices]
+    
+    return IsothermFittingProblem(IsothermModel, loading_data, nothing, loss, x0, lb, ub, fittable, model_template)
+end
 
 
 Base.@kwdef struct DEIsothermFittingSolver <: IsothermFittingSolver
@@ -41,8 +61,8 @@ end
 
 end =#
 
-function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB},
-alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
+function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
+alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     
     Ðₗ = prob.LoadingData
     Ðₕ = prob.CalorimetricData
@@ -61,7 +81,8 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
             _θ .= lb_sign .* exp.(θ)
         end
         
-        model = from_vec(prob.IsothermModel, _θ)
+        # Reconstruct full model from fittable parameters
+        model = from_vec_fittable(prob.IsothermModel, _θ, prob.model_template, prob.fittable)
 
         ℓr = zero(eltype(model))
 
@@ -124,7 +145,8 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
         opt_θ = opt_M
     end
 
-    return loss_opt_M, from_vec(prob.IsothermModel, opt_θ)
+    # Reconstruct full model from fitted fittable parameters
+    return loss_opt_M, from_vec_fittable(prob.IsothermModel, opt_θ, prob.model_template, prob.fittable)
 
 end
 
@@ -132,11 +154,44 @@ function CommonSolve.solve(solver::NewtonIsothermFittingSolver)
         nothing #TODO
 end
 
-function fit(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB},
-    alg::IsothermFittingSolver) where {M, L, DL, DC, X, LB, UB}
+function fit(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
+    alg::IsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     
     return solve(prob, alg)
 
+end
+
+"""
+    fit(::Type{M}, data::AdsIsoTData; fittable=nothing, loss=abs2, solver=DEIsothermFittingSolver()) where M <: IsothermModel
+
+Fit an isotherm model to adsorption data.
+
+## Arguments
+- `M`: The isotherm model type to fit
+- `data`: Adsorption isotherm data
+- `fittable`: Optional `Vector{Bool}` indicating which parameters to fit (default: all parameters are fittable)
+- `loss`: Loss function (default: `abs2`)
+- `solver`: Fitting solver (default: `DEIsothermFittingSolver()`)
+
+## Returns
+- `(loss_value, fitted_model)`: Tuple of the final loss value and the fitted model
+
+## Example
+```julia
+# Fit all parameters
+loss, model = fit(Freundlich, data)
+
+# Fit only K₀, f₀, and E (keep β fixed at its initial value)
+loss, model = fit(Freundlich, data, fittable=[true, true, false, true])
+```
+"""
+function fit(::Type{M}, data::AdsIsoTData; 
+             fittable::Union{Nothing,AbstractVector{Bool}}=nothing,
+             loss=abs2,
+             solver::IsothermFittingSolver=DEIsothermFittingSolver()) where M <: IsothermModel
+    
+    prob = IsothermFittingProblem(M, data, loss; fittable=fittable)
+    return fit(prob, solver)
 end
 
 #= function fit(data::AdsIsoTData{TT}, ::Type{M}, loss = abs2, x0 = to_vec(x0_guess_fit(M, data))) where {M <: IsothermModel,TT}

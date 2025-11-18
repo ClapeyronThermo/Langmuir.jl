@@ -79,6 +79,49 @@ function to_tuple(model::IsothermModel)
     return ntuple(i -> getfield(model,i), model_length(model))
 end
 
+"""
+    to_vec_fittable(model::IsothermModel, fittable::AbstractVector{Bool})
+
+Extract only the fittable parameters from a model into a vector.
+The `fittable` vector indicates which parameters should be included (true = fittable).
+"""
+function to_vec_fittable(model::M, fittable::AbstractVector{Bool}) where M <: IsothermModel
+    length(fittable) == model_length(M) || throw(ArgumentError("fittable vector length must match number of model parameters"))
+    fittable_indices = findall(fittable)
+    x = Vector{eltype(model)}(undef, length(fittable_indices))
+    for (i, idx) in enumerate(fittable_indices)
+        x[i] = getfield(model, idx)
+    end
+    return x
+end
+
+"""
+    from_vec_fittable(::Type{M}, x_fit, model_template::M, fittable::AbstractVector{Bool}) where M <: IsothermModel
+
+Reconstruct a model from fittable parameters `x_fit` and fixed parameters from `model_template`.
+The `fittable` vector indicates which parameters are fittable (true) vs fixed (false).
+"""
+function from_vec_fittable(::Type{M}, x_fit, model_template::M, fittable::AbstractVector{Bool}) where M <: IsothermModel
+    length(fittable) == model_length(M) || throw(ArgumentError("fittable vector length must match number of model parameters"))
+    fittable_indices = findall(fittable)
+    fixed_indices = findall(.!fittable)
+    
+    # Create full parameter vector
+    x_full = Vector{eltype(model_template)}(undef, model_length(M))
+    
+    # Fill in fittable parameters
+    for (i, idx) in enumerate(fittable_indices)
+        x_full[idx] = x_fit[i]
+    end
+    
+    # Fill in fixed parameters from template
+    for idx in fixed_indices
+        x_full[idx] = getfield(model_template, idx)
+    end
+    
+    return from_vec(M, x_full, false)
+end
+
 Base.zero(model::M) where M <: IsothermModel = Base.zero(M)
 
 function Base.zero(model::Type{M}) where M <: IsothermModel{T} where T
@@ -225,18 +268,22 @@ macro with_metadata(_struct_def)
             elseif arg_i.head == :(::)
                 tuple_expr = Any[arg_i,:nothing,""] #no metadata provided
             end
+            
+            # Parse bounds (index 2)
             if length(tuple_expr) > 1
                 bounds = tuple_expr[2] #bounds provided
             else
                 bounds = :nothing #default, converted to (-Inf,Inf)
             end
 
+            # Parse description (index 3)
             if length(tuple_expr) > 2
                 description_i = tuple_expr[3] #description provided
             else
                 description_i = "" #default
             end
 
+            # Process bounds
             if bounds isa Expr && bounds.head == :tuple
                 lb_i = bounds.args[1]
                 ub_i = bounds.args[2]
@@ -246,6 +293,7 @@ macro with_metadata(_struct_def)
                 push!(_lb,-Inf)
                 push!(_ub,Inf)
             end
+            
             push!(descriptions,description_i)
             struct_fields.args[i] = tuple_expr[1]
         end
@@ -257,6 +305,7 @@ macro with_metadata(_struct_def)
     lb_tuple = Expr(:tuple,float_lb...)
     ub_tuple = Expr(:tuple,float_ub...)
     descriptions_tuple = Expr(:tuple,descriptions...)
+    
     quote
         Base.@__doc__ $struct_def
 
@@ -275,6 +324,7 @@ macro with_metadata(_struct_def)
 end
 
 export isotherm_lower_bound, isotherm_upper_bound, model_length
+export to_vec_fittable, from_vec_fittable
 export IsothermModel
 
 include("freundlich.jl")
