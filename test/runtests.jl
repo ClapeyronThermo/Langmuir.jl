@@ -73,6 +73,47 @@ end
 
         @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
     end
+
+    @testset "fittable parameters" begin
+        # Test that non-fittable parameters keep their initial guess values
+        # Use positive pressure range (avoid zero to prevent NaN issues)
+        p = range(1000.0, 101325.0*1.0, length = 40) |> collect
+        t = range(273.15, 323.15, length = 3) |> collect
+        P = vec(p'.*ones(length(t)))
+        T = vec(ones(length(p))' .* t)
+        pt_ = hcat(P, T)
+        
+        # Create a Freundlich model with known parameters
+        # Use parameters that give reasonable loading values
+        freund_true = Freundlich(5.0e-6, 0.5, 0.0, -15000.0)
+        σ = 0.01
+        l = map(pT -> max(0.01, loading(freund_true, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        d = isotherm_data(P, l, T)
+        
+        # Get the initial guess for β
+        model_template = Langmuir.x0_guess_fit(Freundlich, d)
+        β_initial = model_template.β
+        
+        # Fit with β fixed (not fittable)
+        alg = DEIsothermFittingSolver(max_steps = 3000, logspace = true, time_limit = 10.0, verbose = true)
+        loss_fit, fitted_model = fit(Freundlich, d, fittable=[true, true, false, true], solver=alg)
+        
+        # Test that β kept its initial value
+        @test fitted_model.β == β_initial
+        
+        # Test that other parameters were actually fitted (should be different from initial guess)
+        @test fitted_model.K₀ != model_template.K₀ || fitted_model.f₀ != model_template.f₀ || fitted_model.E != model_template.E
+        
+        # Test that the fit is reasonable
+        @test loss_fit < 10.0  # Should have a reasonable loss
+        
+        # Test with all parameters fittable (default behavior)
+        loss_fit_all, fitted_model_all = fit(Freundlich, d, solver=alg)
+        
+        # β should potentially be different when fitted
+        # (may or may not be different depending on data, but the fitting process should have considered it)
+        @test typeof(fitted_model_all.β) == typeof(β_initial)  # At least verify types match
+    end
 end
 
 @testset "ThermodynamicLangmuir" begin

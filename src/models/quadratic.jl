@@ -30,11 +30,11 @@ Where:
 
 """
 @with_metadata struct Quadratic{T} <: IsothermModel{T}
-    (K₀a::T, (0.0, Inf), "Affinity parameter A")
-    (K₀b::T, (0.0, Inf), "Affinity parameter B")
-    (M::T, (0.0, Inf), "Saturation loading")
-    (Ea::T, (-Inf, 0.0), "Energy parameter A")
-    (Eb::T, (-Inf, 0.0), "Energy parameter B")
+    (K₀a::T, (0.0, 1e2), "Affinity parameter A")
+    (K₀b::T, (0.0, 1e2), "Affinity parameter B")
+    (M::T, (0.0, 1e3), "Saturation loading")
+    (Ea::T, (-2e5, 0.0), "Energy parameter A")
+    (Eb::T, (-2e5, 0.0), "Energy parameter B")
 end
 
 function sp_res(model::Quadratic, p, T)
@@ -61,9 +61,8 @@ function pressure_impl(model::Quadratic, Π, T, ::typeof(sp_res), approx)
 end
 
 function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Quadratic
-    #langmuir_model = x0_guess_fit(Langmuir,data)
-    #M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E
-
+    # Original implementation - commented out due to numerical instability
+    #=
     #l*(1 + p*(Ka + Kb*p)) = M*(Ka*p + 2*Kb*p*p)
     #p*Ka*l + Kb*p*p*l - M*Ka*p - 2*M*Kb*p*p = -l
     #-p*Ka*l - Kb*p*p*l + M*Ka*p + 2*M*Kb*p*p = l
@@ -108,7 +107,24 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Quadratic
         Eb = _1
     end
 
-    Quadratic(abs(Ka), abs(Kb), M, -abs(Ea), -abs(Eb))
+    return T(abs(Ka), abs(Kb), M, -abs(Ea), -abs(Eb))
+    =#
+
+    # Simplified approach: Use Langmuir fit as initial guess for both sites
+    # This provides more stable initial values than trying to fit 5 parameters independently
+    langmuir_model = x0_guess_fit(LangmuirS1, data)
+    M = langmuir_model.M
+    K₀ = langmuir_model.K₀
+    E = langmuir_model.E
+    
+    # Use the same affinity and energy for both Ka and Kb
+    # Set Kb to be smaller (typically the quadratic term is a smaller correction)
+    K₀a = K₀
+    K₀b = K₀ * 0.1  # 10% of the primary affinity
+    Ea = E
+    Eb = E
+    
+    return T(K₀a, K₀b, M, Ea, Eb)
 end
 
 export Quadratic
