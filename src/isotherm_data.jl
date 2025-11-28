@@ -72,6 +72,8 @@ end
 
 isotherm_data(p::AbstractVector,l::AbstractVector) = isotherm_data(p,l,zeros(eltype(p),length(p)))
 isotherm_data(p::AbstractVector,l::AbstractVector,T::AbstractVector) = isotherm_data(p,l,T,:p,:l,:T)
+isotherm_data(p::V, l::V, T::A) where {V<:AbstractVector, A<:AbstractFloat} = isotherm_data(p, l, fill(T, length(p)))
+
 
 function isotherm_data(table,p_label::String,l_label::String,T_label::String, σ²_label::String)
     return isotherm_data(table,Symbol(p_label),Symbol(l_label),Symbol(T_label), Symbol(σ²_label))

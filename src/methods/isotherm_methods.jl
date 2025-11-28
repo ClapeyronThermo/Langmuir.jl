@@ -81,7 +81,7 @@ function sp_res_numerical(model::IsothermModel, p, T; solver = QuadGKJL(), absto
 
     #Part 2 integral    
     f = let model = model
-        (p, T) ->loading(model, p, T)/p
+        (p, T) -> loading(model, p, T)/p
     end
 
     prob = IntegralProblem(IntegralFunction(f), (ϵ, p), T)

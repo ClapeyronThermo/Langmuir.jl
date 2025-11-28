@@ -15,20 +15,19 @@ The processing of the data consists of the following steps:
 using DelimitedFiles, Plots, Langmuir
 Temperatures = [273.0, 298.0, 323.0]
 
-#Data only has pressure and loading, so we need to create a temperature vector
+#Data only has pressure and loading at a fixed tempererature
 CH4_273 = readdlm(joinpath(@__DIR__, "sample_data/ch4_273K.csv"), ',')
-T⃗_237 = fill(273.0, size(CH4_273, 1))
 
 CH4_298 = readdlm(joinpath(@__DIR__, "sample_data/ch4_298K.csv"), ',')
-T⃗_298 = fill(298.0, size(CH4_298, 1))
 
 CH4_323 = readdlm(joinpath(@__DIR__, "sample_data/ch4_323K.csv"), ',')
-T⃗_323 = fill(323.0, size(CH4_323, 1))
 
 #Individual isotherm data for each temperature
-CH4_data_273 = isotherm_data(CH4_273[:, 1], CH4_273[:, 2], T⃗_237) # Pressure, Loading, Temperature
-CH4_data_298 = isotherm_data(CH4_298[:, 1], CH4_298[:, 2], T⃗_298)
-CH4_data_323 = isotherm_data(CH4_323[:, 1], CH4_323[:, 2], T⃗_323)
+CH4_data_273 = isotherm_data(CH4_273[:, 1], CH4_273[:, 2], 273.0) # Pressure, Loading, Temperature
+CH4_data_298 = isotherm_data(CH4_298[:, 1], CH4_298[:, 2], 298.0)
+CH4_data_323 = isotherm_data(CH4_323[:, 1], CH4_323[:, 2], 323.0)
+
+CH4_data_273
 
 # Merge the isotherm data into a single structure
 CH4_data = merge_isotherm_data(CH4_data_273, CH4_data_298, CH4_data_323)
@@ -62,13 +61,9 @@ plot!(fig1, model_lang, 323.0, (0.0, maximum(CH4_data.p)), color = :red)
 Now, we will compare similar models, i.e., the Toth and Sips models, which are both more complex than the Langmuir model. The Toth model is a more flexible model that can fit a wider range of isotherm shapes, while the Sips model is a combination of the Langmuir and Freundlich models.
 
 ```@example multicomponent 
-x0_tlang = [model_lang.M, model_lang.K₀, model_lang.E, -1e-10]
-lb_tlang = (1e-10, 1e-25, -70_000.0, -2000.0)
-ub_tlang = (20.0, 1e-1, -1000.0, 0.0)
-calorimetric_data = nothing # No calorimetric data available for this example
-prob_tlang = IsothermFittingProblem(ThermodynamicLangmuir, CH4_data, calorimetric_data, abs2, x0_tlang, lb_tlang, ub_tlang)
-alg = DEIsothermFittingSolver(max_steps = 1000, population_size = 500,
-logspace = true, verbose = true, time_limit = 15)
+prob_tlang = IsothermFittingProblem(ThermodynamicLangmuir, CH4_data, abs2)
+alg = DEIsothermFittingSolver(max_steps = 1000, population_size = 1000,
+logspace = false, verbose = true, time_limit = 40)
 loss_tlang, model_tlang = fit(prob_tlang, alg)
 plot!(fig1, model_tlang, 273.0, (0.0, maximum(CH4_data.p)), color = :blue, linestyle = :dot)
 plot!(fig1, model_tlang, 298.0, (0.0, maximum(CH4_data.p)), color = :green, linestyle = :dot)
@@ -89,17 +84,13 @@ plot!(fig2, CH4_data, 298.0, label = "CH4 at 298K", markershape = :square, m = (
 plot!(fig2, CH4_data, 323.0, label = "CH4 at 323K", markershape = :circle, m = (4, :white, stroke(1, :red)))
 
 
-x0_toth = [model_lang.M, model_lang.K₀, model_lang.E, 1.0, -1e-10]
-lb_toth = (1e-10, 1e-25, -70_000.0, 0.0, -300.0)
-ub_toth = (20.0, 1e-1, -1000.0, 2.0, 0.0)
-calorimetric_data = nothing # No calorimetric data available for this example
-prob_toth = IsothermFittingProblem(Toth, CH4_data, calorimetric_data, abs2, x0_toth, lb_toth, ub_toth)
+prob_toth = IsothermFittingProblem(Toth, CH4_data, abs2)
 alg = DEIsothermFittingSolver(max_steps = 500, population_size = 100,
-logspace = true, verbose = true, time_limit = 15)
+logspace = false, verbose = true, time_limit = 15)
 loss_toth, model_toth = fit(prob_toth, alg)
-plot!(fig2, model_toth, 273.0, (0.0, maximum(CH4_data.p)), color = :blue, linestyle = :dash)
-plot!(fig2, model_toth, 298.0, (0.0, maximum(CH4_data.p)), color = :green, linestyle = :dash)
-plot!(fig2, model_toth, 323.0, (0.0, maximum(CH4_data.p)), color = :red, linestyle = :dash)
+plot!(fig2, model_toth, 273.0, (0.0, 5.0), color = :blue, linestyle = :dash)
+plot!(fig2, model_toth, 298.0, (0.0, 5.0), color = :green, linestyle = :dash)
+plot!(fig2, model_toth, 323.0, (0.0, 5.0), color = :red, linestyle = :dash)
 ```
 
 A good reminder about our formulation of the Toth model is that the $f$ parameter has a temperature dependency of $f = f_0 - \frac{\beta}{T}$. The $\beta$ parameter is initially defined with bounds in $(-\infty, \infty)$ while $f_0$ is bounded to $(0, \infty)$. However, it is good practice to investigate the direction in which $\beta$ value changes with temperature. After empirical testing, it became evident that $\beta$ should be constrained to the interval $(-\infty, 0)$ instead of including positive numbers and the bounds were updated accordingly. Nevertheless, the fitted model tends to push $\beta$ to the lower bound, effectively driving the $f_0$ term towards zero, i.e., the temperature dependency of $f$ that leads to the lowest fitting error effectively becomes $f = -\frac{\beta}{T}$. 
@@ -107,16 +98,13 @@ A good reminder about our formulation of the Toth model is that the $f$ paramete
 This behavior reflects a common issue in isotherm models with a high number of parameters: parameter correlation leads to identifiability problems, where different parameter combinations can yield similar loss values. As a result, optimization may favor extreme values that are not physically meaningful. 
 
 ```@example multicomponent
-x0_sips = [model_lang.M, model_lang.K₀, model_lang.E, 1.0, -1.0]
-lb_sips = (1e-10, 1e-25, -70_000.0, 0.0, -300.0)
-ub_sips = (20.0, 1e-1, -1000.0, 2.0, 0.0)
-prob_sips = IsothermFittingProblem(Sips, CH4_data, calorimetric_data, abs2, x0_sips, lb_sips, ub_sips)
+prob_sips = IsothermFittingProblem(Sips, CH4_data, abs2)
 alg = DEIsothermFittingSolver(max_steps = 500, population_size = 100,
-logspace = true, verbose = true, time_limit = 15)
+logspace = false, verbose = true, time_limit = 15)
 loss_sips, model_sips = fit(prob_sips, alg)
-plot!(fig2, model_sips, 273.0, (0.0, maximum(CH4_data.p)), color = :blue, linestyle = :dashdot)
-plot!(fig2, model_sips, 298.0, (0.0, maximum(CH4_data.p)), color = :green, linestyle = :dashdot)
-plot!(fig2, model_sips, 323.0, (0.0, maximum(CH4_data.p)), color = :red, linestyle = :dashdot)
+plot!(fig2, model_sips, 273.0, (0.0, 5.0), color = :blue, linestyle = :dashdot)
+plot!(fig2, model_sips, 298.0, (0.0, 5.0), color = :green, linestyle = :dashdot)
+plot!(fig2, model_sips, 323.0, (0.0, 5.0), color = :red, linestyle = :dashdot)
 ```
 
 You can build a table with the results of the fitting to compare the models. The `parameters` field of the `IsothermModel` structure contains the fitted parameters, and the `loss` variable contains the loss of the fitting, i.e., $\mathcal{L} = \sum_i^N \frac{(q_i - q*_i)^2}{\sigma^2_i}$. 

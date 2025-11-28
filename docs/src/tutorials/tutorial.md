@@ -28,19 +28,19 @@ using Plots, DelimitedFiles, Langmuir
 ethane_data_path = joinpath(@__DIR__, "sample_data/ethane_tpl_data.csv")
 ethylene_data_path = joinpath(@__DIR__, "sample_data/ethylene_tpl_data.csv")
 ethane_data = readdlm(ethane_data_path, ',')
-P_ethane = ethane_data[:, 2]*1e5 # Convert bar to Pa
+P_ethane = ethane_data[:, 2] # Convert bar to Pa
 T_ethane = ethane_data[:, 1]
 l_ethane = ethane_data[:, 3]
 d_ethane = isotherm_data(P_ethane, l_ethane, T_ethane)
 
 ethylene_data = readdlm(ethylene_data_path, ',')
-P_ethylene = ethylene_data[:, 2]*1e5 # Convert bar to Pa
+P_ethylene = ethylene_data[:, 2] # Convert bar to Pa
 T_ethylene = ethylene_data[:, 1]
 l_ethylene = ethylene_data[:, 3]
 d_ethylene = isotherm_data(P_ethylene, l_ethylene, T_ethylene) #Alwas read in order of Pressure, Loading, Temperature
 
 figsize = (500, 500/1.618)
-plot(d_ethane, 283.0, label = "Ethane at 283K", m = (3, :white, stroke(1, :blue)), size = figsize, xlabel = "Pressure (Pa)", ylabel = "Loading (mol/kg)", markershape = :circle)
+plot(d_ethane, 283.0, label = "Ethane at 283K", m = (3, :white, stroke(1, :blue)), size = figsize, xlabel = "Pressure (bar)", ylabel = "Loading (mol/kg)", markershape = :circle)
 plot!(d_ethane, 323.0, label = "Ethane at 323K", markershape = :square, m = (3, :white, stroke(1, :blue)))
 
 plot!(d_ethylene, 283.0, label = "Ethylene at 283K", markershape = :circle, 
@@ -54,18 +54,12 @@ Following the reference manuscript, the quadratic isotherm is the chosen model f
  Also observe that the argument next to d_ethane is `nothing`. This is because the fitting problem does not involve any additional data, such as calorimetric data, to estimate the isotherm parameters.
 
 ```@example fitting
-import Langmuir: x0_guess_fit, to_vec
-#Fitting ethane
-x0_ethane = to_vec(x0_guess_fit(Quadratic, d_ethane))
-lb_ethane = (1e-25, 1e-25, 1e-4, -80_000.0, -80_000.0)
-ub_ethane = (1e-1, 1e-1, 100., -1_000.0, -1_000.0)
-
-prob_ethane = IsothermFittingProblem(Quadratic{eltype(d_ethane)}, d_ethane, nothing, abs2, x0_ethane, lb_ethane, ub_ethane) #Bounds have to be manually tweaked. Default interval is too large
-alg = DEIsothermFittingSolver(max_steps = 500, population_size = 150,
-logspace = true, verbose = true)
+prob_ethane = IsothermFittingProblem(Quadratic, d_ethane, abs2) #Bounds have to be manually tweaked. Default interval is too large
+alg = DEIsothermFittingSolver(max_steps = 1500, population_size = 500,
+logspace = true, verbose = true, time_limit = 40)
 loss_fit_ethane, ethane_isotherm = fit(prob_ethane, alg)
 println("Fitting loss for ethane is $loss_fit_ethane")
-println(ethane_isotherm)
+ethane_isotherm
 ```
 
 The fitting results can be visualized by plotting the isotherm predictions against the experimental data. The `plot!` function can be used to overlay the fitted isotherm on the experimental data. This is also a custom case of the `plot` function from the `Plots.jl` to facilitate the visualization of isotherms. You can use it to plot the isotherm predictions for a specific temperature and pressure range. 
@@ -81,13 +75,10 @@ color = :blue, label = "Quadratic Ethane - 323.0 K")
 
 ```@example fitting
 #Fitting Ethylene
-x0_ethylene = to_vec(x0_guess_fit(Quadratic, d_ethylene))
-lb_ethylene = (1e-25, 1e-25, 1e-4, -80_000.0, -80_000.0)
-ub_ethylene = (1e-1, 1e-1, 100., -500.0, -500.0)
-prob_ethylene = IsothermFittingProblem(Quadratic{eltype(d_ethylene)}, d_ethylene, nothing, abs2, x0_ethylene, lb_ethylene, ub_ethylene)
+prob_ethylene = IsothermFittingProblem(Quadratic, d_ethylene, abs2)
 loss_fit_ethylene, ethylene_isotherm = fit(prob_ethylene, alg)
 println("Fitting loss for ethane is $loss_fit_ethylene")
-println(ethylene_isotherm)
+ethylene_isotherm
 ```
 
 ```@example fitting
@@ -126,7 +117,7 @@ y_C₂ = range(0.0, 1.00, 51) #51 points from 0.0 to 1.0
 success_y_C₂ = []
 x_C₂ = []
 x_C₂₌ = []
-p = 1*101325.0
+p = 1.0 #bar
 T = 303.0
 for y_C₂_ᵢ in y_C₂
    y = [y_C₂_ᵢ, (1.0 - y_C₂_ᵢ)]

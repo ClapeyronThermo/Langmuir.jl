@@ -27,10 +27,10 @@ where:
 The activity coefficients `γᵢ` and `γᵩ` are determined using the Gibbs excess free energy, `gᴱ/RT`, which is calculated based on the surface fractions (`θᵢ`, `θᵩ`) and interaction parameters derived from `Bᵢᵩ`. This free energy value is used in the `activity_coefficient` function to compute the activity coefficients of the adsorbate and phantom molecules.
 """
 @with_metadata struct ThermodynamicLangmuir{T} <: IsothermModel{T}
-    (M::T, (0.0, Inf), "saturation loading")
-    (K₀::T, (0.0, Inf), "affinity parameter")
-    (E::T, (-Inf, 0.0), "energy parameter")
-    (Bᵢᵩ::T, (-Inf, Inf), "adsorbate-adsorbent interaction coefficient")
+    (M::T, (0.0, 1e3), "saturation loading")
+    (K₀::T, (0.0, 1e2), "affinity parameter")
+    (E::T, (-2e5, 0.0), "energy parameter")
+    (Bᵢᵩ::T, (-1e3, 1e3), "adsorbate-adsorbent interaction coefficient")
 end
 
 
@@ -152,7 +152,7 @@ end
 function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: ThermodynamicLangmuir
     langmuir_model = x0_guess_fit(LangmuirS1,data)
     M, K₀, E = langmuir_model.M, langmuir_model.K₀, langmuir_model.E    
-    _0 = prevfloat(zero(M))
+    _0 = nextfloat(zero(M))
     return T(M, K₀, E, _0)
 end
 
