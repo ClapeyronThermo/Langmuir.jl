@@ -45,7 +45,7 @@ end
 
 Base.@kwdef struct DEIsothermFittingSolver <: IsothermFittingSolver
     max_steps::Int = 2e4
-    population_size::Int = 50
+    population_size::Int = 500
     time_limit::Float64 = 20.0
     verbose::Bool = false
     logspace::Bool = true
@@ -53,6 +53,14 @@ end
 
 Base.@kwdef struct NewtonIsothermFittingSolver <: IsothermFittingSolver
     logspace::Bool = false
+end
+
+Base.@kwdef struct NLSolversIsothermFittingSolver <: IsothermFittingSolver
+    max_iter::Int = 1000
+    verbose::Bool = false
+    logspace::Bool = false
+    ftol::Float64 = 1e-8
+    xtol::Float64 = 1e-8
 end
 
 #= function heterogeneity_penalty(M::Union{Freundlich, LangmuirFreundlich, Sips, RedlichPeterson}, T)
@@ -154,6 +162,65 @@ function CommonSolve.solve(solver::NewtonIsothermFittingSolver)
         nothing #TODO
 end
 
+function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
+alg::NLSolversIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
+    
+    Ðₗ = prob.LoadingData
+    p = pressure(Ðₗ)
+    l = loading(Ðₗ)
+    T = temperature(Ðₗ)
+    σ² = variance(Ðₗ)
+    
+    # Box constraints for NLSolvers
+    lb = collect(prob.lb)
+    ub = collect(prob.ub)
+    
+    # Objective function (sum of squared errors)
+    function loss_fn(θ)
+        # Reconstruct full model from fittable parameters
+        model = from_vec_fittable(prob.IsothermModel, θ, prob.model_template, prob.fittable)
+        
+        ℓr = zero(eltype(model))
+        for (pᵢ, nᵢ, Tᵢ, σ²ᵢ) in zip(p, l, T, σ²)
+            n̂ᵢ = loading(model, pᵢ, Tᵢ)
+            if isnan(n̂ᵢ)
+                n̂ᵢ = -one(nᵢ) * nᵢ
+            end
+            ℓr += prob.loss(nᵢ - n̂ᵢ) / σ²ᵢ
+        end
+        return ℓr
+    end
+    
+    # Use NLSolvers with box constraints
+    x0 = copy(prob.x0)
+    
+    # Set up optimization options
+    options = NLSolvers.OptimizationOptions(
+        maxiter = alg.max_iter,
+        f_abstol = alg.ftol,
+        x_abstol = alg.xtol,
+        show_trace = alg.verbose
+    )
+    
+    # Use L-BFGS method - for bounded optimization, use through TrustRegion/ActiveBox
+    method = NLSolvers.BFGS()
+    
+    # Create objective with automatic differentiation
+    obj = ADScalarObjective(loss_fn, x0)
+    
+    # Create optimization problem with bounds (inplace=true required)
+    prob_opt = NLSolvers.OptimizationProblem(obj, (lb, ub); inplace = true)
+    
+    # Solve the optimization problem starting from x0
+    result = NLSolvers.solve(prob_opt, x0, method, options)
+    
+    opt_θ = result.info.solution
+    loss_opt = result.info.fx
+    
+    # Reconstruct full model from fitted fittable parameters
+    return result, loss_opt, from_vec_fittable(prob.IsothermModel, opt_θ, prob.model_template, prob.fittable)
+end
+
 function fit(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
     alg::IsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     
@@ -172,17 +239,22 @@ Fit an isotherm model to adsorption data.
 - `fittable`: Optional `Vector{Bool}` indicating which parameters to fit (default: all parameters are fittable)
 - `loss`: Loss function (default: `abs2`)
 - `solver`: Fitting solver (default: `DEIsothermFittingSolver()`)
+  - `DEIsothermFittingSolver()`: Global stochastic optimizer (Differential Evolution)
+  - `NLSolversIsothermFittingSolver()`: Local deterministic optimizer (L-BFGS)
 
 ## Returns
 - `(loss_value, fitted_model)`: Tuple of the final loss value and the fitted model
 
 ## Example
 ```julia
-# Fit all parameters
+# Fit all parameters with default stochastic solver
 loss, model = fit(Freundlich, data)
 
 # Fit only K₀, f₀, and E (keep β fixed at its initial value)
 loss, model = fit(Freundlich, data, fittable=[true, true, false, true])
+
+# Use deterministic L-BFGS solver
+loss, model = fit(Freundlich, data, solver=NLSolversIsothermFittingSolver())
 ```
 """
 function fit(::Type{M}, data::AdsIsoTData; 
@@ -232,4 +304,4 @@ end
 end =#
 
 
-export IsothermFittingProblem, DEIsothermFittingSolver, fit
+export IsothermFittingProblem, DEIsothermFittingSolver, NLSolversIsothermFittingSolver, fit

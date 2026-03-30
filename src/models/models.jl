@@ -106,8 +106,9 @@ function from_vec_fittable(::Type{M}, x_fit, model_template::M, fittable::Abstra
     fittable_indices = findall(fittable)
     fixed_indices = findall(.!fittable)
     
-    # Create full parameter vector
-    x_full = Vector{eltype(model_template)}(undef, model_length(M))
+    # Create full parameter vector with eltype that can handle dual numbers
+    T_full = promote_type(eltype(x_fit), eltype(model_template))
+    x_full = Vector{T_full}(undef, model_length(M))
     
     # Fill in fittable parameters
     for (i, idx) in enumerate(fittable_indices)

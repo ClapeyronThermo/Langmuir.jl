@@ -27,9 +27,9 @@ where:
 
 """
 @with_metadata struct LangmuirS1{T} <: IsothermModel{T}
-    (M::T, (0.0, Inf), "saturation loading")
-    (K₀::T, (0.0, Inf), "affinity parameter") #Using Inf cause trouble in bboxoptimize
-    (E::T, (-Inf, 0.0), "energy parameter")
+    (M::T, (0.0, 1e5), "saturation loading")
+    (K₀::T, (0.0, 1e5), "affinity parameter") #Using Inf cause trouble in bboxoptimize
+    (E::T, (-2e5, 0.0), "energy parameter")
 end
 
 function sp_res(model::LangmuirS1, p, T)
@@ -78,8 +78,8 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: LangmuirS1
     for i in eachindex(l_p)
         l_min, p_min = l_p[i]
         MK, K = hcat(p_min, -l_min .* p_min) \ l_min
-        MKs[i] = MK
-        Ks[i] = K
+        MKs[i] = abs(MK)
+        Ks[i] = abs(K)
     end
 
     M = sum(MKs./Ks)/length(Ks) #Mean of all values
@@ -89,15 +89,37 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: LangmuirS1
     _1 = one(eltype(Ts))
     _1s = ones(eltype(Ts), length(Ts))
 
-    if length(l_p) > 1
-        logK, E = hcat(_1s, _1./ (Rgas(T).*Ts)) \ log.(Ks)
-        K = exp(logK)
-    else
-        K = first(Ks)
-        E = _1
-    end
+    # Get bounds for the model
+    lb = isotherm_lower_bound(eltype(Ts), T)
+    ub = isotherm_upper_bound(eltype(Ts), T)
     
-    return LangmuirS1(M, K, -E)
+    if length(l_p) > 1
+        # Regression: log(K) = log(K₀) - E/(R*T)
+        # So: log(K) = a₀ + a₁/(R*T), where a₀ = log(K₀) and a₁ = -E
+        # Clamp Ks to avoid numerical issues with log (but use wide bounds, not K₀ bounds)
+        # K values can be much larger than K₀ due to exp(-E/RT) term
+        Ks_safe = clamp.(Ks, 1e-30, 1e15)
+        coeffs = hcat(_1s, _1./ (Rgas(T).*Ts)) \ log.(Ks_safe)
+        logK₀ = coeffs[1]
+        slope = coeffs[2]
+        K = exp(logK₀)
+        E = -slope  # Since slope = -E, we have E = -slope
+        
+        # Clamp to model bounds
+        M = clamp(M, lb[1], ub[1])
+        K = clamp(K, lb[2], ub[2])
+        # Ensure E is negative - if regression gives bad result, use default
+        if E > 0.0 || !isfinite(E)
+            E = -10000.0
+        end
+        E = clamp(E, lb[3], ub[3])
+    else
+        K = clamp(first(Ks), lb[2], ub[2])
+        E = -10000.0  # Default energy for single temperature
+        E = clamp(E, lb[3], ub[3])
+    end
+
+    return LangmuirS1(M, K, E)
 end
 
 export LangmuirS1

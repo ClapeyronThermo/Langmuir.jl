@@ -231,9 +231,9 @@ function loading(prob; solver = ChemPotentialMethod(prob))
 end
 
 function loading(sol::S, ρ_bulk, x_bulk; integrator = SimpsonsRule()) where {S <: PTASolution}
-    yᵢ = sol.ρ .- ρ_bulk*x_bulk'
-    z = sol.z
-    problem = SampledIntegralProblem(yᵢ, z, dim = 1)
+    yᵢ = eltype(sol.ρ)
+    yᵢ .= sol.ρ .- ρ_bulk.*transpose(x_bulk)
+    problem = SampledIntegralProblem(yᵢ, sol.z, dim = 1)
     solution = Integrals.solve(problem, integrator)
     return solution.u
 end
@@ -305,6 +305,14 @@ function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_b
     # Initialize
     P = P_init
     z = copy(z_init)
+
+    #Outer variables cache
+    ϕᵢ = similar(z)
+    fᵢ = similar(z)
+
+    #Inner variables cache
+    Δz = similar(z)
+    zᵢ₊₁ = similar(z)
     
     # OUTER LOOP: Newton iteration on pressure
     for j in 1:alg.maxiter_outer
@@ -325,23 +333,24 @@ function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_b
             f_z = ϕ_z .* P  # Fugacities
             
             # Update composition: z^i = C^i / f^i(P,z)
-            z_new = C ./ f_z
-            z_new = z_new / sum(z_new) # Normalize
+            zᵢ₊₁ = C ./ f_z
+            zᵢ₊₁ .= zᵢ₊₁ ./ sum(zᵢ₊₁) # Normalize
+
+            Δz .= zᵢ₊₁ .- z
             
             # Check convergence on composition
-            if norm(z_new - z, Inf) < tol_z
-                z = z_new
+            if norm(Δz, Inf) < tol_z
+                z = zᵢ₊₁
                 break
             end
             
-            #═════════════════════════════════════════════════════
             # STABILITY CHECK (prevents oscillation/trivial solution)
-            #═════════════════════════════════════════════════════
+
             # K-value based stability: sum of squared log deviations from bulk
-            # Non-allocating implementation from Clapeyron
-            K_stability = zero(Base.promote_eltype(z_new, z_bulk))
-            for k in eachindex(z_new)
-                K_stability += log(z_new[k] / z_bulk[k])^2
+            # Non-allocating
+            K_stability = zero(Base.promote_eltype(zᵢ₊₁, z_bulk))
+            for k in eachindex(zᵢ₊₁)
+                K_stability += log(zᵢ₊₁[k] / z_bulk[k])^2
             end
             
             if K_stability < tol_stability
@@ -363,7 +372,7 @@ function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_b
             #═════════════════════════════════════════════════════
             
             # Update for next inner iteration
-            z = z_new
+            z = zᵢ₊₁
         end
         
         # If stability check triggered, skip to pressure update
@@ -373,8 +382,8 @@ function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_b
         
         # Calculate fugacity coefficients and residual
         lnϕᵢ = lnϕ(eos, P, T, z)[1]
-        ϕᵢ = exp.(lnϕᵢ)
-        fᵢ = ϕᵢ .* P
+        ϕᵢ .= exp.(lnϕᵢ)
+        fᵢ .= ϕᵢ .* P
         
         # Residual: F = Σ[Cⁱ/fⁱ] - 1
         F = sum(C ./ fᵢ) - 1.0
@@ -387,7 +396,7 @@ function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_b
         
         # Newton update with damping
         ΔP = F / ∂F∂P
-        P_new = P - clamp(ΔP, -0.4*P, 0.4*P)  # Limit step size to ±40%
+        P_new = P - clamp(ΔP, -0.4*P, 0.4*P)  # Limit step size to ±40% of P
         
         # Check convergence
         if valid_iter && (abs(F) < tol_P && abs(ΔP/P) < tol_P)
