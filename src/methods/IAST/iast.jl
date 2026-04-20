@@ -47,7 +47,7 @@ function ast_solve!(state::ASTIteration)
     converged = state.iter.converged
     state.iter.converged && return state,:success
     for i in 1:maxiters
-        state = step!(state)
+        state = ast_step!(state)
         state.iter.converged && return state,:success
     end
     return state,:maxiters_exceeded
