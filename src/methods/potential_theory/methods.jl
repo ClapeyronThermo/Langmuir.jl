@@ -231,7 +231,7 @@ function loading(prob; solver = ChemPotentialMethod(prob))
 end
 
 function loading(sol::S, ρ_bulk, x_bulk; integrator = SimpsonsRule()) where {S <: PTASolution}
-    yᵢ = eltype(sol.ρ)
+    yᵢ = similar(sol.ρ)
     yᵢ .= sol.ρ .- ρ_bulk.*transpose(x_bulk)
     problem = SampledIntegralProblem(yᵢ, sol.z, dim = 1)
     solution = Integrals.solve(problem, integrator)
