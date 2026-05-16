@@ -27,15 +27,14 @@ CH4_data_273 = isotherm_data(CH4_273[:, 1], CH4_273[:, 2], 273.0) # Pressure, Lo
 CH4_data_298 = isotherm_data(CH4_298[:, 1], CH4_298[:, 2], 298.0)
 CH4_data_323 = isotherm_data(CH4_323[:, 1], CH4_323[:, 2], 323.0)
 
-CH4_data_273
-
 # Merge the isotherm data into a single structure
 CH4_data = merge_isotherm_data(CH4_data_273, CH4_data_298, CH4_data_323)
 
-fig1 = Plots.plot()
+fig1 = Plots.plot();
+default(fontfamily = "Computer Modern", tickfontfamily="Computer Modern")
 xlabel = "Pressure (MPa)"
 ylabel = "Loading (mol/kg)"
-plot!(fig1, CH4_data, 273.0, label = "CH4 at 273K", markershape = :hexagon, xlabel = xlabel, ylabel = ylabel, m = (4, :white, stroke(1, :blue)), size = (800, 350), legend_columns=1)
+plot!(fig1, CH4_data, 273.0, label = "CH4 at 273K", markershape = :hexagon, xlabel = xlabel, ylabel = ylabel, m = (4, :white, stroke(1, :blue)), legend_columns=1)
 plot!(fig1, CH4_data, 298.0, label = "CH4 at 298K", markershape = :square, m = (4, :white, stroke(1, :green)))
 plot!(fig1, CH4_data, 323.0, label = "CH4 at 323K", markershape = :circle, m = (4, :white, stroke(1, :red)))
 ```
@@ -76,10 +75,10 @@ The Toth model is more trick to fit as the `f` parameter is made temperature dep
     **It is important to set a time limit for the optimization algorithm** to prevent it from running indefinitely in search of a better fit - from previous experience, you won't need more than 10s to fit an isotherm with a good initial guess. You can do this by setting the `time_limit` parameter in the `DEIsothermFittingSolver` constructor.
 
 ```@example multicomponent
-fig2 = Plots.plot()
+fig2 = Plots.plot();
 xlabel = "Pressure (MPa)"
 ylabel = "Loading (mol/kg)"
-plot!(fig2, CH4_data, 273.0, label = "CH4 at 273K", markershape = :hexagon, xlabel = xlabel, ylabel = ylabel, m = (4, :white, stroke(1, :blue)), size = (800, 350), legend_columns=1)
+plot!(fig2, CH4_data, 273.0, label = "CH4 at 273K", markershape = :hexagon, xlabel = xlabel, ylabel = ylabel, m = (4, :white, stroke(1, :blue)), legend_columns=1)
 plot!(fig2, CH4_data, 298.0, label = "CH4 at 298K", markershape = :square, m = (4, :white, stroke(1, :green)))
 plot!(fig2, CH4_data, 323.0, label = "CH4 at 323K", markershape = :circle, m = (4, :white, stroke(1, :red)))
 

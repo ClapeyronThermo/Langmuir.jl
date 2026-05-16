@@ -18,12 +18,13 @@
     guidefontsize --> 10 # For x/y labels
     tickfontsize --> 8
     legendfontsize --> 8
+    fontfamily --> "Computer modern"
 
     # Frame and Grid
     framestyle --> :box # Adds a box around the plot
-    grid --> true
+    grid --> false
     gridalpha --> 0.2 # Make grid lines less prominent
-    minorgrid --> true
+    minorgrid --> false
     minorgridalpha --> 0.1
 
     # Ticks
@@ -77,9 +78,9 @@
     tickfontsize --> 8
     legendfontsize --> 8
     framestyle --> :box
-    grid --> true
+    grid --> false
     gridalpha --> 0.2
-    minorgrid --> true
+    minorgrid --> false
     minorgridalpha --> 0.1
     tick_direction --> :in
     minorticks --> 5

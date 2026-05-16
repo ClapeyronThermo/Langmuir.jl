@@ -252,7 +252,7 @@ end
     prob_CO2 = PTAProblem(T, P, x, eos = eos, potential = potential_CO2)
     abstol = reltol = 1e-6
     solver = ChemPotentialMethod(prob_CO2, abstol = abstol, reltol = reltol)
-    sol_z = Langmuir.solve_PTAProblem(prob_CO2, solver, verbose = false)
+    sol_z = solve(prob_CO2, solver, verbose = false)
     loading(prob_CO2, solver = solver) #mol/kg
 end
 
@@ -270,11 +270,11 @@ end
     
     # Test with FugacityCoefficientMethod
     solver_fug = FugacityCoefficientMethod(prob_CO2, abstol = abstol, reltol = reltol)
-    sol_fug = Langmuir.solve_PTAProblem(prob_CO2, solver_fug, verbose = false)
+    sol_fug = solve(prob_CO2, solver_fug, verbose = false)
     
     # Test with ChemPotentialMethod for comparison
     solver_chem = ChemPotentialMethod(prob_CO2, abstol = abstol, reltol = reltol)
-    sol_chem = Langmuir.solve_PTAProblem(prob_CO2, solver_chem, verbose = false)
+    sol_chem = Langmuir.solve(prob_CO2, solver_chem, verbose = false)
     
     # Results should be nearly identical
     @test sol_fug.x ≈ sol_chem.x rtol=1e-4
@@ -310,7 +310,7 @@ end
     solver_fug = FugacityCoefficientMethod(prob_mix, abstol = abstol, reltol = reltol)
     
     #sol_chem = Langmuir.solve_PTAProblem(prob_mix, solver_chem, verbose = true)
-    sol_fug = Langmuir.solve_PTAProblem(prob_mix, solver_fug, verbose = false)
+    sol_fug = Langmuir.solve(prob_mix, solver_fug, verbose = false)
 
     # Results should be nearly identical
     #@test maximum(sol_chem.x[2:end, :] .- sol_fug.x[2:end, :]) < 1e-5 #Problems with the first point for the chemical potential

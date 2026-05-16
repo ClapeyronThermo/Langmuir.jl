@@ -1,7 +1,7 @@
-struct DRA{T} <: SingleComponentPotential
-    ε0::T
-    z0::T
-    Β::T
+@with_metadata struct DRA{T} <: SingleComponentPotential
+    (ε0::T, (1e3, 20e3), "Energy parameter")
+    (z0::T, (1e-5, 5.0), "limiting micropore volume")
+    (Β::T, (0.0, 10.0), "Shape parameter")
 end
 
 struct MultiComponentDRA{T, I} <: MultiComponentPotential

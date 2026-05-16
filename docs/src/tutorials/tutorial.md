@@ -28,17 +28,19 @@ using Plots, DelimitedFiles, Langmuir
 ethane_data_path = joinpath(@__DIR__, "sample_data/ethane_tpl_data.csv")
 ethylene_data_path = joinpath(@__DIR__, "sample_data/ethylene_tpl_data.csv")
 ethane_data = readdlm(ethane_data_path, ',')
-P_ethane = ethane_data[:, 2] # Convert bar to Pa
+P_ethane = ethane_data[:, 2] # bar
 T_ethane = ethane_data[:, 1]
 l_ethane = ethane_data[:, 3]
 d_ethane = isotherm_data(P_ethane, l_ethane, T_ethane)
 
 ethylene_data = readdlm(ethylene_data_path, ',')
-P_ethylene = ethylene_data[:, 2] # Convert bar to Pa
+P_ethylene = ethylene_data[:, 2] # bar
 T_ethylene = ethylene_data[:, 1]
 l_ethylene = ethylene_data[:, 3]
 d_ethylene = isotherm_data(P_ethylene, l_ethylene, T_ethylene) #Alwas read in order of Pressure, Loading, Temperature
 
+
+default(fontfamily = "Computer Modern", tickfontfamily="Computer Modern")
 figsize = (500, 500/1.618)
 plot(d_ethane, 283.0, label = "Ethane at 283K", m = (3, :white, stroke(1, :blue)), size = figsize, xlabel = "Pressure (bar)", ylabel = "Loading (mol/kg)", markershape = :circle)
 plot!(d_ethane, 323.0, label = "Ethane at 323K", markershape = :square, m = (3, :white, stroke(1, :blue)))
@@ -104,8 +106,25 @@ P_C₂₌_283K = d_ethylene.p[is_283K_ethylene]
 l_C₂₌_283K = d_ethylene.l[is_283K_ethylene]
 ΔH_C₂₌_283K = isosteric_heat.(ethylene_isotherm, P_C₂₌_283K, 283.0) 
 
-scatter(l_C₂_283K, ΔH_C₂_283K, xlabel = "Loading (mol/kg)", ylabel = "Isosteric Heat (J/mol)", m = (4, :white, stroke(1, :lightslateblue)), markershape = :circle, label = "Ethane - 283.0 K", size = (600, 300))
-scatter!(l_C₂₌_283K, ΔH_C₂₌_283K, xlabel = "Loading (mol/kg)", ylabel = "Isosteric Heat (J/mol)", markershape = :square, m = (3, :white, stroke(1, :springgreen2)), label = "Ethylene - 283.0 K")
+scatter(l_C₂_283K, ΔH_C₂_283K,
+       xlabel = "Loading (mol/kg)",
+       ylabel = "Isosteric Heat (J/mol)",
+       m = (4, :white, stroke(1, :lightslateblue)), markershape = :circle,
+       label = "Ethane - 283.0 K",
+       size = figsize,
+       framestyle = :box,
+       tick_direction = :in,
+       grid = false,
+       minorticks = 5,
+       dpi = 300)
+
+scatter!(l_C₂₌_283K, ΔH_C₂₌_283K,
+         xlabel = "Loading (mol/kg)",
+         ylabel = "Isosteric Heat (J/mol)",
+         label = "Ethylene - 283.0 K",
+         markershape = :square,
+         m = (3, :white, stroke(1, :springgreen2)),
+         )
 ```
 The plot shows the isosteric heat of adsorption for ethane and ethylene at 283.0 K as a function of loading. Ethane exhibits a steeper decline in adsorption heat, suggesting stronger initial interactions that weaken significantly as loading increases, whereas ethylene's decline is more gradual, indicating a slower reduction in adsorption strength. 
 
@@ -138,7 +157,16 @@ for y_C₂_ᵢ in y_C₂
    end
 end
 
-plot(x_C₂, success_y_C₂, xlabel = "x (adsorbed phase)", ylabel = "y (gas phase)", label = "ethane", framestyle=:box, size = (600, 300))
+
+plot(x_C₂, success_y_C₂,
+     xlabel = "x (adsorbed phase)", ylabel = "y (gas phase)", label = "ethane",
+     size = figsize,
+     grid = false,
+     framestyle = :box,
+     tick_direction = :in,
+     minorticks = 5,
+     dpi = 300
+ )
 plot!(x_C₂₌, 1.0 .- success_y_C₂, label = "ethylene")
 ```
  
