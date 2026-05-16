@@ -121,6 +121,8 @@ end
 
 function res_μ(eos, p_ads, T_ads, x_ads::M, μ_bulk::M, Ψ::M) where {M <: Number}
     v_ads = volume(eos, p_ads, T_ads, x_ads)
+    #is_stable = VT_isstable(eos, v_ads, T_ads, x_ads)
+    #is_stable || @warn "Adsorbed phase is not stable - results may be inaccurate"
     μ_ads = VT_chemical_potential(eos, v_ads, T_ads, x_ads)
     Δ = (μ_bulk .+ Ψ) .- μ_ads  
     return Δ
@@ -161,7 +163,7 @@ function solve_at_z(eos, p0_ads, T_ads, x0_ads, μ_bulk::M, Ψ::M, alg::A; verbo
     f = create_res_func(eos, T_ads, μ_bulk, Ψ)
     P_result = Roots.find_zero(x -> to_newton(f, x), p0_ads, Roots.Newton(), abstol = abstol, reltol = reltol, verbose = verbose)
     _1 = one(T_ads)
-    ρ = _1/volume(eos, P_result, T_ads, x0_ads)
+    ρ = _1/volume(eos, P_result, T_ads, x0_ads, :stable)
     
     # For single component, always return true for convergence (Roots.jl will throw if it doesn't converge)
     return ρ, P_result, true
@@ -186,7 +188,7 @@ function solve_at_z(eos, p0_ads, T_ads, x0_ads::M, μ_bulk::M, Ψ::M, alg::A; ve
     return ρ, p, converged
 end
 
-function CommonSolve.solve(prob::PR, alg::A; verbose = true) where {PR <: PTAProblem, A <: ChemPotentialMethod}
+function solve_PTAProblem(prob::PR, alg::A; verbose = true) where {PR <: PTAProblem, A <: ChemPotentialMethod}
     eos = prob.system.model
     _potential = prob.system.structure.potential
     T = prob.T
@@ -196,16 +198,18 @@ function CommonSolve.solve(prob::PR, alg::A; verbose = true) where {PR <: PTAPro
     sol = isnothing(alg.x0) ? PTA_x0(prob) : alg.x0
     Pᵢ = P
     xᵢ = x
-    sol.retcode = :success
 
     for i ∈ reverse(eachindex(sol.z))
         z = sol.z[i]
         Ψ = potential(_potential, z)
         ρᵢ, Pᵢ, converged = solve_at_z(eos, Pᵢ, T, xᵢ, μ_bulk, Ψ, alg, verbose = false)
         
+        # Warn if not converged - indicates potential issue with solution at this point
+        # Note: ChemPotentialMethod can converge to incorrect solutions at very high potentials
+        # (near the wall) when using previous point as initial guess. FugacityCoefficientMethod
+        # is more robust for such cases.
         if !converged && verbose
             @warn "solve_at_z did not converge at i=$i (z=$z, Ψ=$Ψ). Solution at this point may be inaccurate."
-            sol.retcode = :failed
         end
         
         xᵢ = ρᵢ ./ sum(ρᵢ)
@@ -214,21 +218,21 @@ function CommonSolve.solve(prob::PR, alg::A; verbose = true) where {PR <: PTAPro
         sol.x[i, :] .= xᵢ
     end
 
-
+    sol.retcode = :success
     alg.x0 = sol # update the algorithm's initial guess for future calls
 
     return sol
 end
 
-function loading(prob; solver)
-    sol = solve(prob, solver, verbose = false)
+function loading(prob; solver = ChemPotentialMethod(prob))
+    sol = solve_PTAProblem(prob, solver; verbose = false)
     x_bulk = prob.x
     return loading(sol, prob.bulkcondition[1], x_bulk)
 end
 
 function loading(sol::S, ρ_bulk, x_bulk; integrator = SimpsonsRule()) where {S <: PTASolution}
     yᵢ = similar(sol.ρ)
-    yᵢ .= sol.ρ .- ρ_bulk.*x_bulk
+    yᵢ .= sol.ρ .- ρ_bulk.*transpose(x_bulk)
     problem = SampledIntegralProblem(yᵢ, sol.z, dim = 1)
     solution = Integrals.solve(problem, integrator)
     return solution.u
@@ -365,6 +369,7 @@ function solve_at_potential_fugacity(eos, P_init, z_init, T, z_bulk, f_bulk, P_b
                 # Exit inner loop
                 break
             end
+            #═════════════════════════════════════════════════════
             
             # Update for next inner iteration
             z = zᵢ₊₁
@@ -461,7 +466,7 @@ function solve_at_potential_fugacity_single(eos, P_init, T, f_bulk, P_bulk, ε, 
 end
 
 """
-    solve(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=true)
+    solve_PTAProblem(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=true)
 
 Main solver using fugacity coefficient method. Loops over potential values ε (not distance z).
 
@@ -473,7 +478,7 @@ Returns PTASolution with density and composition profiles.
 
 Now supports both single-component and multicomponent systems.
 """
-function CommonSolve.solve(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=true)
+function solve_PTAProblem(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=true)
     
     eos = prob.system.model
     potential_model = prob.system.structure.potential
@@ -558,4 +563,11 @@ function CommonSolve.solve(prob::PTAProblem, alg::FugacityCoefficientMethod; ver
     return sol
 end
 
-export PTAProblem, PTASolution, ChemPotentialMethod, FugacityCoefficientMethod, solve
+function loading(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=false)
+    sol = solve_PTAProblem(prob, alg; verbose=verbose)
+    x_bulk = prob.x
+    ρ_bulk = prob.bulkcondition[1]
+    return loading(sol, ρ_bulk, x_bulk)
+end
+
+export PTAProblem, PTASolution, ChemPotentialMethod, FugacityCoefficientMethod
