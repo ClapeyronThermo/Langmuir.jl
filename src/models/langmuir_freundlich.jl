@@ -61,6 +61,34 @@ function loading(model::LangmuirFreundlich, p, T)
     Kpf = K*p^f
     _1 = one(eltype(p))
     return M*Kpf/(_1 + Kpf)
+end 
+
+function henry_coefficient(model::LangmuirFreundlich, T)
+    M = model.M
+    K₀ = model.K₀
+    E = model.E
+    f = model.f₀ - model.β/T
+    K = K₀*exp(-E/(Rgas(model)*T))
+    ε = 1e-14
+    MKf = M*K*f
+    _1_Kεf⁻¹ = 1/(1.0 + K*ε^f)
+    q = loading(model, ε, T)
+    f_1 = f - 1.0
+    _2f_1 = 2.0*f - 1.0
+
+    ∂q∂p_1 = MKf * ε^f_1 * _1_Kεf⁻¹
+    ∂q∂p_2 = MKf * K * ε^(_2f_1) * _1_Kεf⁻¹^2
+    ∂q∂p = ∂q∂p_1 - ∂q∂p_2
+
+    if f_1 < 1.0 || _2f_1 < 1.0 
+        #Quadratic polynomial approximation for exponents ∈ (0,1) - CADET does something similar.
+        a2 = -(q - ∂q∂p*ε)/ε^2
+        a1 = ∂q∂p - 2.0*a2*ε
+        return a1
+    else
+        return ∂q∂p
+    end
+
 end
 
 #optimizations for LangmuirFreundlich, not necessary, but improve performance
