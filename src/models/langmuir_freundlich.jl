@@ -71,14 +71,9 @@ function henry_coefficient(model::LangmuirFreundlich, T)
     K = K₀*exp(-E/(Rgas(model)*T))
     ε = 1e-14
     MKf = M*K*f
-    _1_Kεf⁻¹ = 1/(1.0 + K*ε^f)
     q = loading(model, ε, T)
     f_1 = f - 1.0
-    _2f_1 = 2.0*f - 1.0
-
-    ∂q∂p_1 = MKf * ε^f_1 * _1_Kεf⁻¹
-    ∂q∂p_2 = MKf * K * ε^(_2f_1) * _1_Kεf⁻¹^2
-    ∂q∂p = ∂q∂p_1 - ∂q∂p_2
+    ∂q∂p = MKf * ε^f_1 * (1.0 + K*ε^f)^(-2)
 
     if f_1 < 1.0 || _2f_1 < 1.0 
         #Quadratic polynomial approximation for exponents ∈ (0,1) - CADET does something similar.

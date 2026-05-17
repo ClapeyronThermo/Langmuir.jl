@@ -60,7 +60,7 @@ end
         T = vec(ones(length(p))' .* t)
         pt_ = hcat(P, T)
         quad_ = Quadratic(0.67e-10, 0.37e-11, 4.073, -37300.9, -23300.55)
-        σ = 0.05
+        σ = 0.001
         l = map(pT -> abs(loading(quad_, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
         d = isotherm_data(P, l, T)
 
@@ -71,7 +71,7 @@ end
         alg = DEIsothermFittingSolver(max_steps = 5000, logspace = true)
         loss_fit, fitted_isotherm = fit(prob, alg)
 
-        @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
+        @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 10% 
     end
 end
 
