@@ -224,8 +224,9 @@ function solve_PTAProblem(prob::PR, alg::A; verbose = true) where {PR <: PTAProb
     return sol
 end
 
+
 function loading(prob; solver = ChemPotentialMethod(prob))
-    sol = solve_PTAProblem(prob, solver; verbose = false)
+    sol = solve_PTAProblem(prob, solver, verbose = false)
     x_bulk = prob.x
     return loading(sol, prob.bulkcondition[1], x_bulk)
 end
@@ -570,4 +571,6 @@ function loading(prob::PTAProblem, alg::FugacityCoefficientMethod; verbose=false
     return loading(sol, ρ_bulk, x_bulk)
 end
 
-export PTAProblem, PTASolution, ChemPotentialMethod, FugacityCoefficientMethod
+CommonSolve.solve(prob::PTAProblem, alg; verbose=true) = solve_PTAProblem(prob, alg, verbose=verbose)
+
+export PTAProblem, PTASolution, ChemPotentialMethod, FugacityCoefficientMethod, solve_PTAProblem

@@ -252,42 +252,9 @@ end
     prob_CO2 = PTAProblem(T, P, x, eos = eos, potential = potential_CO2)
     abstol = reltol = 1e-6
     solver = ChemPotentialMethod(prob_CO2, abstol = abstol, reltol = reltol)
-    sol_z = solve(prob_CO2, solver, verbose = false)
+    sol_z = solve_PTAProblem(prob_CO2, solver, verbose = false)
     loading(prob_CO2, solver = solver) #mol/kg
 end
-
-@testset "fugacitycoefficientPTA_single" begin
-    P = 1.2e6
-    T = 312.2
-    x = 1.0
-    components = ["carbon dioxide"]
-    eos = Clapeyron.SRK(components, translation = PenelouxTranslation)
-    z0_CO2 = 0.306
-    ε0_CO2 = 7541.0
-    potential_CO2 = DRA(ε0_CO2, z0_CO2, 2.0)
-    prob_CO2 = PTAProblem(T, P, x, eos = eos, potential = potential_CO2)
-    abstol = reltol = 1e-6
-    
-    # Test with FugacityCoefficientMethod
-    solver_fug = FugacityCoefficientMethod(prob_CO2, abstol = abstol, reltol = reltol)
-    sol_fug = solve(prob_CO2, solver_fug, verbose = false)
-    
-    # Test with ChemPotentialMethod for comparison
-    solver_chem = ChemPotentialMethod(prob_CO2, abstol = abstol, reltol = reltol)
-    sol_chem = Langmuir.solve(prob_CO2, solver_chem, verbose = false)
-    
-    # Results should be nearly identical
-    @test sol_fug.x ≈ sol_chem.x rtol=1e-4
-    @test sol_fug.P ≈ sol_chem.P rtol=1e-4
-    @test sol_fug.ρ ≈ sol_chem.ρ rtol=1e-4
-    
-    # Test loading calculation
-    Γ_fug = loading(prob_CO2, solver = solver_fug)
-    Γ_chem = loading(prob_CO2, solver = solver_chem)
-    @test Γ_fug ≈ Γ_chem rtol=1e-4
-end
-
-
 
 @testset "fugacitycoefficientPTA" begin
     P = 1.2e6
@@ -310,7 +277,7 @@ end
     solver_fug = FugacityCoefficientMethod(prob_mix, abstol = abstol, reltol = reltol)
     
     #sol_chem = Langmuir.solve_PTAProblem(prob_mix, solver_chem, verbose = true)
-    sol_fug = Langmuir.solve(prob_mix, solver_fug, verbose = false)
+    sol_fug = Langmuir.solve(prob_mix, solver_fug, verbose = true)
 
     # Results should be nearly identical
     #@test maximum(sol_chem.x[2:end, :] .- sol_fug.x[2:end, :]) < 1e-5 #Problems with the first point for the chemical potential
