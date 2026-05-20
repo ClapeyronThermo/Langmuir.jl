@@ -236,7 +236,7 @@ end
     solver_fug = FugacityCoefficientMethod(prob_mix, abstol = abstol, reltol = reltol)
     
     #sol_chem = Langmuir.solve_PTAProblem(prob_mix, solver_chem, verbose = true)
-    sol_fug = Langmuir.solve_PTAProblem(prob_mix, solver_fug, verbose = true)
+    sol_fug = Langmuir.solve_PTAProblem(prob_mix, solver_fug, verbose = false)
 
     # Results should be nearly identical
     #@test maximum(sol_chem.x[2:end, :] .- sol_fug.x[2:end, :]) < 1e-5 #Problems with the first point for the chemical potential

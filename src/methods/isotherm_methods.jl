@@ -167,6 +167,18 @@ function henry_coefficient(model::IsothermModel, T)
     return ForwardDiff.derivative(p -> loading(model, p , T),  _0)
 end
 
+function henry_coefficient(model::M, T) where M <: Union{Freundlich, LangmuirFreundlich, Sips}
+    l(p) = loading(model, p, T)
+    ε = 1e-14
+    q, ∂q∂p = Langmuir.f∂f(l, ε)
+
+    a2 = -(q - ∂q∂p*ε)/ε^2
+    a1 = ∂q∂p - 2.0*a2*ε
+    
+    return a1
+
+end
+
 #high pressure loading (Is it necessary?)
 
 """
