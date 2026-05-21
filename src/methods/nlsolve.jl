@@ -213,7 +213,6 @@ function ls_restricted(φ::P,λ) where P
     _d = φ.d
     _x = φ.z
     λmax = λ
-    @show _x
     #=
     x -  λ*d = 0
     λ = x/d

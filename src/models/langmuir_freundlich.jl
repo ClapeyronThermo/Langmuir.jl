@@ -61,7 +61,8 @@ function loading(model::LangmuirFreundlich, p, T)
     Kpf = K*p^f
     _1 = one(eltype(p))
     return M*Kpf/(_1 + Kpf)
-end
+end 
+
 
 #optimizations for LangmuirFreundlich, not necessary, but improve performance
 saturated_loading(model::LangmuirFreundlich, T) = model.M #Some depend on T, some don't

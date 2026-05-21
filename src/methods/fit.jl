@@ -81,7 +81,9 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     σ² = variance(Ðₗ)
     lb_sign = sign.(nextfloat.(prob.lb)) #Assumes that parameters are either > 0 or < 0.
 
-     ℓ(θ) = let prob = prob, lb_sign = lb_sign, p = p, l = l, T = T, is_logspace = alg.logspace
+    n_max,i_max = findmax(l)
+    n_max += 3*sqrt(σ²[i_max]) #maximum bound
+    ℓ(θ) = let prob = prob, lb_sign = lb_sign, p = p, l = l, T = T, is_logspace = alg.logspace, n_max = n_max
 
         _θ = copy(θ)
 
@@ -93,16 +95,14 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
         model = from_vec_fittable(prob.IsothermModel, _θ, prob.model_template, prob.fittable)
 
         ℓr = zero(eltype(model))
-
+        
         for (pᵢ, nᵢ, Tᵢ, σ²ᵢ) in zip(p, l, T, σ²)
-
             n̂ᵢ = loading(model, pᵢ, Tᵢ) #Predicted loading
-
-            if isnan(n̂ᵢ)
-                n̂ᵢ = -one(nᵢ)*nᵢ
-            end
-
-			ℓr += prob.loss(nᵢ - n̂ᵢ)/σ²ᵢ
+            ℓrᵢ = iszero(σ²ᵢ) ? prob.loss(nᵢ - n̂ᵢ) : prob.loss(nᵢ - n̂ᵢ)/σ²ᵢ #if zero variance, just use the loss
+            !isfinite(ℓrᵢ) && (ℓrᵢ += 1e100) #if not finite, add a big number
+            n̂ᵢ < 0 && (ℓrᵢ *= exp(10*abs(n̂ᵢ))) #if loading is negative, add a penalty multiplier, proportional to the negativity
+            n̂ᵢ > n_max && (ℓrᵢ *= exp(abs(n_max - n̂ᵢ))) #if loading is greater than maximum loading, also add penalty
+            ℓr += ℓrᵢ
         end
 
         return ℓr

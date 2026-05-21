@@ -57,3 +57,29 @@ v = @MultiSite{LangmuirS1,LangmuirS1} #we create a multisite model, consisting
     #total adsorbed amount, fractions of adsorbed components.
     q_tot,x,status = iast(models,p,T,y) 
 ```
+
+## Citation
+
+If you use Langmuir.jl in your research, please cite the following paper:
+
+> Santana, V., Riedemann, A., Walker, P. J., & Nogueira, I. (2025). Langmuir.jl: An efficient and composable Julia package for adsorption thermodynamics. *Systems and Control Transactions*, *4*, 1505–1511. https://doi.org/10.69997/sct.144752
+
+Or in BibTeX format:
+
+```bibtex
+@inproceedings{santana2025langmuirjl,
+  title     = {{Langmuir.jl}: An Efficient and Composable {Julia} Package for Adsorption Thermodynamics},
+  author    = {Santana, Vinicius and Riedemann, Andr\'{e}s and Walker, Pierre J. and Nogueira, Idelfonso},
+  booktitle = {Proceedings of the 35th European Symposium on Computer Aided Process Engineering (ESCAPE-35)},
+  editor    = {Van Impe, Jan F.M. and L\'{e}onard, Gr\'{e}goire and Bhonsale, Satyajeet S. and Pola\'{n}ska, Monika E. and Logist, Filip},
+  journal   = {Systems and Control Transactions},
+  volume    = {4},
+  pages     = {1505--1511},
+  year      = {2025},
+  address   = {Ghent, Belgium},
+  doi       = {10.69997/sct.144752},
+  note      = {LAPSE:2025.0394}
+}
+```
+
+

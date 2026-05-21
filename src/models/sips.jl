@@ -60,7 +60,7 @@ end
 
 saturated_loading(model::Sips, T) = model.M #Some depend on T, some don't
 
-function pressure_impl(model::Sips, Π, T,::typeof(sp_res), approx) 
+function pressure_impl(model::Sips, Π, T,::typeof(sp_res)) 
     M = model.M
     K₀ = model.K₀
     E = model.E
