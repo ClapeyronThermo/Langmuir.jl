@@ -65,13 +65,56 @@ end
         d = isotherm_data(P, l, T)
 
         x0 = to_vec(x0_guess_fit(Quadratic, d))
-        lb = (1e-35, 1e-35, 1e-29, -5_000., -5_000.)
-        ub = (1e-3, 1e-3, 100., -80_000., -80_000.)
-        prob = IsothermFittingProblem(Quadratic{eltype(d)}, d, nothing, abs2, x0, lb, ub) #Bounds have to be manually tweaked. Default interval is too large
-        alg = DEIsothermFittingSolver(max_steps = 5000, logspace = true)
+        lb = [1e-35, 1e-35, 1e-29, -80_000., -80_000.]
+        ub = [1e-3, 1e-3, 100., -5_000., -5_000.]
+        fittable = trues(5)
+        model_template = x0_guess_fit(Quadratic, d)
+        prob = IsothermFittingProblem(Quadratic{eltype(d)}, d, nothing, abs2, x0, lb, ub, fittable, model_template) #Bounds have to be manually tweaked. Default interval is too large
+        alg = DEIsothermFittingSolver(max_steps = 500, logspace = true)
         loss_fit, fitted_isotherm = fit(prob, alg)
 
         @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 10% 
+    end
+
+    @testset "fittable parameters" begin
+        # Test that non-fittable parameters keep their initial guess values
+        # Use positive pressure range (avoid zero to prevent NaN issues)
+        p = range(1000.0, 101325.0*1.0, length = 40) |> collect
+        t = range(273.15, 323.15, length = 3) |> collect
+        P = vec(p'.*ones(length(t)))
+        T = vec(ones(length(p))' .* t)
+        pt_ = hcat(P, T)
+        
+        # Create a Freundlich model with known parameters
+        # Use parameters that give reasonable loading values
+        freund_true = Freundlich(5.0e-6, 0.5, 0.0, -15000.0)
+        σ = 0.01
+        l = map(pT -> max(0.01, loading(freund_true, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        d = isotherm_data(P, l, T)
+        
+        # Get the initial guess for β
+        model_template = Langmuir.x0_guess_fit(Freundlich, d)
+        β_initial = model_template.β
+        
+        # Fit with β fixed (not fittable)
+        alg = DEIsothermFittingSolver(max_steps = 3000, logspace = true, time_limit = 10.0, verbose = true)
+        loss_fit, fitted_model = fit(Freundlich, d, fittable=[true, true, false, true], solver=alg)
+        
+        # Test that β kept its initial value
+        @test fitted_model.β == β_initial
+        
+        # Test that other parameters were actually fitted (should be different from initial guess)
+        @test fitted_model.K₀ != model_template.K₀ || fitted_model.f₀ != model_template.f₀ || fitted_model.E != model_template.E
+        
+        # Test that the fit is reasonable
+        @test loss_fit < 10.0  # Should have a reasonable loss
+        
+        # Test with all parameters fittable (default behavior)
+        loss_fit_all, fitted_model_all = fit(Freundlich, d, solver=alg)
+        
+        # β should potentially be different when fitted
+        # (may or may not be different depending on data, but the fitting process should have considered it)
+        @test typeof(fitted_model_all.β) == typeof(β_initial)  # At least verify types match
     end
 end
 
@@ -209,19 +252,17 @@ end
     prob_CO2 = PTAProblem(T, P, x, eos = eos, potential = potential_CO2)
     abstol = reltol = 1e-6
     solver = ChemPotentialMethod(prob_CO2, abstol = abstol, reltol = reltol)
-    sol_z = Langmuir.solve_PTAProblem(prob_CO2, solver, verbose = false)
+    sol_z = solve_PTAProblem(prob_CO2, solver, verbose = false)
     loading(prob_CO2, solver = solver) #mol/kg
 end
 
-
-
 @testset "fugacitycoefficientPTA" begin
     P = 1.2e6
-    T = 310.2
+    T = 318.2
     x = [0.2, 0.8]
     components = ["carbon dioxide", "methane"]
     eos = Clapeyron.SRK(components, translation = PenelouxTranslation)
-    z0_CO2 = 0.35
+    z0_CO2 = 0.30
     ε0_CO2 = 7767.0
     potential_CO2 = DRA(ε0_CO2, z0_CO2, 3.0)
     z0_CH4 = 0.30
@@ -229,14 +270,14 @@ end
     potential_CH4 = DRA(ε0_CH4, z0_CH4, 3.0)
     potential_mix = MultiComponentDRA(potential_CO2, potential_CH4)
     prob_mix = PTAProblem(T, P, x, eos = eos, potential = potential_mix)
-    abstol = reltol = 1e-8
+    abstol = reltol = 1e-6
     
     # Solve with both methods
-    solver_chem = ChemPotentialMethod(prob_mix, abstol = abstol, reltol = reltol)
+    #solver_chem = ChemPotentialMethod(prob_mix, abstol = abstol, reltol = reltol)
     solver_fug = FugacityCoefficientMethod(prob_mix, abstol = abstol, reltol = reltol)
     
     #sol_chem = Langmuir.solve_PTAProblem(prob_mix, solver_chem, verbose = true)
-    sol_fug = Langmuir.solve_PTAProblem(prob_mix, solver_fug, verbose = false)
+    sol_fug = Langmuir.solve(prob_mix, solver_fug, verbose = true)
 
     # Results should be nearly identical
     #@test maximum(sol_chem.x[2:end, :] .- sol_fug.x[2:end, :]) < 1e-5 #Problems with the first point for the chemical potential

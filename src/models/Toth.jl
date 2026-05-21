@@ -34,11 +34,11 @@ where:
 
 """
 @with_metadata struct Toth{T} <: IsothermModel{T}
-    (M::T, (0.0, Inf), "saturation loading")
-    (K₀::T, (0.0, Inf), "affinity parameter")
-    (E::T, (-Inf, 0.0), "energy parameter")
-    (f₀::T, (0.0, Inf), "surface heterogeneity parameter at T → ∞")
-    (β::T, (-Inf, Inf), "surface heterogeneity coefficient")
+    (M::T, (0.0, 1e3), "saturation loading")
+    (K₀::T, (0.0, 1e2), "affinity parameter")
+    (E::T, (-2e5, 0.0), "energy parameter")
+    (f₀::T, (0.0, 1e2), "surface heterogeneity parameter at T → ∞")
+    (β::T, (-1e3, 1e3), "surface heterogeneity coefficient")
 end
 
 function loading(model::Toth, p, T)

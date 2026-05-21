@@ -1,4 +1,5 @@
 """
+    `Freundlich(K₀, f₀, E; β=0.0)`
     `Freundlich(K₀, f₀, β, E)`
 
      Freundlich <: IsothermModel
@@ -8,7 +9,7 @@
 
 - `K₀::T`: Affinity parameter at T → ∞, `[1/Pa]`
 - `f₀::T`: Surface heterogeneity parameter at T → ∞, `[-]`
-- `β::T`: Surface heterogeneity coefficient `[K]`
+- `β::T`: Surface heterogeneity coefficient `[K]` (optional, default: 0.0)
 - `E::T`: Adsorption energy, `[J/mol]`
 
 ## Description
@@ -17,23 +18,43 @@ The Freundlich isotherm is given by:
 
 n = K_f × pᶠ
 
-The affinity parameter `K_f` is a temperature dependent and can be linked to adsorption energy `E` by:
+The affinity parameter `K_f` is temperature dependent and can be linked to adsorption energy `E` by:
 
 K_f = K₀ × exp(-E / (RT))
 
-The exponent f is also temperature dependent and can be expressed as: 
+The exponent f can be temperature dependent: 
 
 f = f₀ - β/T
 
 Where:
-- `R` is the gas constant,
-- `T` is the temperature.
+- `R` is the gas constant
+- `T` is the temperature
+
+## Parameter Fitting
+
+By default, β is set to 0.0 for simplicity (constant heterogeneity parameter f = f₀).
+
+To control which parameters are fitted:
+```julia
+# Fit all parameters except β (keep β=0)
+model = fit(Freundlich, data, fittable=[true, true, false, true])
+
+# Fit all parameters including β
+model = fit(Freundlich, data, fittable=[true, true, true, true])
+# or equivalently (all fittable by default):
+model = fit(Freundlich, data)
+```
 """
 @with_metadata struct Freundlich{T} <: IsothermModel{T}
     (K₀::T, (0.0, Inf), "Affinity parameter")
     (f₀::T, (0.0, Inf), "Surface heterogeneity parameter at T → ∞")
     (β::T, (0.0, Inf), "Surface heterogeneity coefficient")
     (E::T, (-Inf, 0.0), "Energy parameter")
+end
+
+# Convenience constructor with β=0 (recommended for most users)
+function Freundlich(K₀::T, f₀::T, E::T) where T
+    return Freundlich(K₀, f₀, zero(T), E)
 end
 
 function sp_res(model::Freundlich, p, T)
@@ -60,7 +81,6 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Freundlich
     fs = Vector{eltype(Ts)}(undef, length(l_p))
     _1_ = ones(eltype(Ts), length(first(first(l_p))))
 
-
     _1 = one(eltype(Ts))
     _0 = zero(eltype(Ts))
     _1s = ones(eltype(Ts), length(Ts))
@@ -74,18 +94,17 @@ function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Freundlich
     #l = K*p^f
     #log(l) = log(K) + f*log(p)
 
-
     if length(l_p) > 1
         logK0, E = hcat(_1s, _1./ (Rgas(T).*Ts)) \ logKs
-        f0, β = hcat(_1s, -_1./Ts) \ fs
+        # Fit f = f₀ - β/T from temperature dependence
+        f0, β = hcat(_1s, _1./Ts) \ fs
         K0 = exp(logK0)
     else
-        K0 = first(exp(logKs))
-        f0 = _1
+        K0 = exp(first(logKs))
+        f0 = first(fs)
         β = _0
         E = _1
     end
-
 
     return T(K0, f0, β, -E)
 end

@@ -31,11 +31,11 @@ where:
 
 """
 @with_metadata struct Sips{T} <: IsothermModel{T}
-    (M::T, (0.0, Inf), "saturation loading")
-    (K₀::T, (0.0, Inf), "affinity parameter")
-    (E::T, (-Inf, 0.0), "energy parameter")
-    (f₀::T, (0.0, Inf), "surface heterogeneity parameter at T → ∞")
-    (β::T, (-Inf, Inf), "surface heterogeneity coefficient")
+    (M::T, (0.0, 1e3), "saturation loading")
+    (K₀::T, (0.0, 1e2), "affinity parameter")
+    (E::T, (-2e5, 0.0), "energy parameter")
+    (f₀::T, (0.0, 1e2), "surface heterogeneity parameter at T → ∞")
+    (β::T, (-1e3, 1e3), "surface heterogeneity coefficient")
 end
 
 
@@ -90,12 +90,20 @@ function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Sips
         l_i, p_i = l_p[i]
         idx = findall(>(0.0), l_i)
         l_i, p_i = l_i[idx], p_i[idx]
-        M = maximum(l_i) + eps(maximum(l_i)*1.1)
+        M = maximum(l_i) * 1.1
         logp = log.(p_i)
         loglml = log.(l_i ./ (M .- l_i))
         _1 = one.(p_i)
         flogk,f = hcat(_1, logp)\loglml
-        logk = flogk/f
+        
+        # Safeguard against f being too small (close to zero)
+        if abs(f) < 1e-6
+            f = 1.0  # Default to Langmuir-like behavior
+            logk = flogk  # When f≈1, logk ≈ flogk
+        else
+            logk = flogk/f
+        end
+        
         logKs[i] = logk
         Ms[i] = M
         fs[i] = f
@@ -105,7 +113,8 @@ function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Sips
     _1s = ones(eltype(Ts), length(Ts))
 
     if length(l_p) > 1
-        logK0, E = hcat(_1s, _1./ (Rgas(T).*Ts)) \ logKs
+        # Fit logK = logK0 - E/(R*T), so use negative sign in regression
+        logK0, E = hcat(_1s, -_1./ (Rgas(T).*Ts)) \ logKs
         f₀, β = hcat(_1s, -_1./Ts) \ fs
         M = sum(Ms)/length(Ms)
         K0 = exp(logK0)
@@ -114,10 +123,24 @@ function x0_guess_fit(::Type{T},data::AdsIsoTData) where T <: Sips
         K0 = exp(first(logKs))
         f₀ = first(fs)
         β = 0.0
+        E = -10000.0  # Default energy value
     end
 
+    # Safeguard against NaN or Inf values
+    if !isfinite(K0)
+        K0 = 1e-5
+    end
+    if !isfinite(E)
+        E = -10000.0
+    end
+    if !isfinite(f₀)
+        f₀ = 1.0
+    end
+    if !isfinite(β)
+        β = nextfloat(zero(M))
+    end
 
-    return T(M, K0, -E, f₀, β)
+    return T(M, K0, E, f₀, β)
 end
 
 export Sips
