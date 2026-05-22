@@ -81,8 +81,9 @@ function auto_interp_eval(_x,_lb,_ub,logspace = false)
         at x = 0 -> y = -Inf
         at x = 1 -> y = ub
         =#
-        maybe_logspace_ub = log2(abs(ub)) < -16
-        if logspace || maybe_logspace_ub
+        maybe_logspace_ub = log2(abs(ub)) < -16 && !iszero(ub)
+        _logspace = logspace && !iszero(ub)
+        if _logspace || maybe_logspace_ub
             u = log2(x)
             x̄ =  1/(1 - u)
         else
@@ -103,9 +104,11 @@ function auto_interp_eval(_x,_lb,_ub,logspace = false)
         at x = 0 -> y = lb
         at x = 1 -> y = Inf
         =#
-        maybe_logspace_lb = log2(abs(lb)) < -16
+        maybe_logspace_lb = log2(abs(lb)) < -16 && !iszero(lb)
+        _logspace = logspace && !iszero(lb)
+        
         w = min(zero(lb),-2*lb)
-        if logspace || maybe_logspace_lb
+        if _logspace || maybe_logspace_lb
             u = log2(x)
             x̄ =  1 - 1/(1 - u)
         else
@@ -139,8 +142,9 @@ function auto_interp_inv(_y, _lb, _ub, logspace = false)
     y,lb,ub = promote(_y,_lb,_ub)
     y = clamp(y,lb,ub)
     @assert lb < ub "invalid bounds, lb is equal or greater than ub"
-    if isinf(lb) && !isinf(ub)
-        maybe_logspace_ub = log2(abs(ub)) < -16
+    if isinf(lb) && !isinf(ub) 
+        maybe_logspace_ub = log2(abs(ub)) < -16 && !iszero(ub)
+        _logspace = logspace && !iszero(ub)
         w = max(zero(ub),-2*ub)
         #0 = -1/x̄  + (ub + w)*x̄ + 1 - w - y
         #0 = -1/x̄  + (ub + w)*x̄ + 1 - w - y
@@ -157,7 +161,7 @@ function auto_interp_inv(_y, _lb, _ub, logspace = false)
         else
             x̄ = -c/b
         end
-        if logspace || maybe_logspace_ub
+        if _logspace || maybe_logspace_ub
             #=
             x̄ =  1/(1 - log(x))
             =#
@@ -169,7 +173,8 @@ function auto_interp_inv(_y, _lb, _ub, logspace = false)
         # y = tanpi(x - 0.5)  →  x = atan(y)/π + 0.5
         x = atan(y)/π + 0.5
     elseif !isinf(lb) && isinf(ub)
-        maybe_logspace_lb = log2(abs(lb)) < -16
+        maybe_logspace_lb = log2(abs(lb)) < -16 && !iszero(lb)
+        _logspace = logspace && iszero(lb)
         w = min(zero(lb),-2*lb)
         #y = 1/x̄ + (lb + w)*x̄   - 1 - w
         #0 = 1/x̄ + (ub + w)*x̄   - 1 - w - y
@@ -187,7 +192,7 @@ function auto_interp_inv(_y, _lb, _ub, logspace = false)
             x̄ = -c/b
         end
         u = 1 - x̄
-        if logspace || maybe_logspace_lb
+        if _logspace || maybe_logspace_lb
             #=x̄ =  1 - 1/(1 - log(x))
             u = 1/(1 - log(x))
             =#
