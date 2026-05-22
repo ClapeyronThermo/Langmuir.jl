@@ -97,9 +97,7 @@ function x0_guess_fit(::Type{Q}, data::AdsIsoTData) where Q <: Quadratic
     logK₀b = coeffs[1]
     slope = coeffs[2]
     K₀b = exp(logK₀b)
-     Eb = -slope  # Since slope = -E, we have E = -slope
-    @show M,Ea,K₀a
-   
+    Eb = -slope  # Since slope = -E, we have E = -slope
     return Q(K₀a, K₀b, M, Ea, Eb)
 end
 
