@@ -48,7 +48,7 @@ end
         d = isotherm_data(P, l, T)
 
         prob = IsothermFittingProblem(LangmuirS1, d, abs2)
-        loss_fit, fitted_isotherm = fit(prob, ECA())
+        loss_fit, fitted_isotherm = fit(prob, Metaheuristics.ECA())
 
         @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
     end
@@ -99,7 +99,7 @@ end
         
         # Fit with β fixed (not fittable)
         alg = DEIsothermFittingSolver(max_steps = 3000, logspace = true, time_limit = 10.0, verbose = true)
-        loss_fit, fitted_model = fit(Freundlich, d, fittable=[true, true, false, true], solver=ECA())
+        loss_fit, fitted_model = fit(Freundlich, d, fittable=[true, true, false, true], solver=Metaheuristics:ECA())
         
         # Test that β kept its initial value
         @test fitted_model.β == β_initial
