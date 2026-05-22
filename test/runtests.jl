@@ -48,8 +48,7 @@ end
         d = isotherm_data(P, l, T)
 
         prob = IsothermFittingProblem(LangmuirS1, d, abs2)
-        alg = DEIsothermFittingSolver(logspace = true)
-        loss_fit, fitted_isotherm = fit(prob, alg)
+        loss_fit, fitted_isotherm = fit(prob, ECA())
 
         @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
     end
