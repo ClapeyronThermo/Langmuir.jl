@@ -99,7 +99,7 @@ end
         
         # Fit with β fixed (not fittable)
         alg = DEIsothermFittingSolver(max_steps = 3000, logspace = true, time_limit = 10.0, verbose = true)
-        loss_fit, fitted_model = fit(Freundlich, d, fittable=[true, true, false, true], solver=alg)
+        loss_fit, fitted_model = fit(Freundlich, d, fittable=[true, true, false, true], solver=ECA())
         
         # Test that β kept its initial value
         @test fitted_model.β == β_initial
