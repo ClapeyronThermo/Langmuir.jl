@@ -49,14 +49,15 @@ Base.@kwdef struct DEIsothermFittingSolver <: IsothermFittingSolver
     time_limit::Float64 = 20.0
     verbose::Bool = false
     logspace::Bool = true
+    seed::Int = 314159265358
 end
 
 Base.@kwdef struct NewtonIsothermFittingSolver <: IsothermFittingSolver
     logspace::Bool = false
 end
 
-Base.@kwdef struct NLSolversIsothermFittingSolver <: IsothermFittingSolver
-    max_iter::Int = 1000
+Base.@kwdef struct NLSolversIsothermFittingSolver{T} <: IsothermFittingSolver
+    method::T = NLSolvers.BFGS()
     verbose::Bool = false
     logspace::Bool = false
     ftol::Float64 = 1e-8
@@ -69,6 +70,162 @@ end
 
 end =#
 
+#from (0,1) to (lb,ub)
+function auto_interp_eval(_x,_lb,_ub,logspace = false)
+    x,lb,ub = promote(_x,_lb,_ub)
+    
+    x = clamp(x,zero(x),one(x))
+    if isinf(lb) && !isinf(ub)
+        #=
+        from -Inf to ub
+        at x = 0 -> y = -Inf
+        at x = 1 -> y = ub
+        =#
+        maybe_logspace_ub = log2(abs(ub)) < -16
+        if logspace || maybe_logspace_ub
+            u = log2(x)
+            x̄ =  1/(1 - u)
+        else
+            x̄ =  x
+        end
+        w = max(zero(ub),-2*ub)
+        y = -1/x̄  + (ub + w)*x̄ + 1 - w
+    elseif isinf(lb) && isinf(ub)
+        #=
+        from -Inf to Inf
+        at x = 0 -> y = -Inf
+        at x = 1 -> y = Inf
+        =#
+        y = tanpi(x - 0.5)
+    elseif !isinf(lb) && isinf(ub)
+        #=
+        from lb to Inf
+        at x = 0 -> y = lb
+        at x = 1 -> y = Inf
+        =#
+        maybe_logspace_lb = log2(abs(lb)) < -16
+        w = min(zero(lb),-2*lb)
+        if logspace || maybe_logspace_lb
+            u = log2(x)
+            x̄ =  1 - 1/(1 - u)
+        else
+            x̄ =  1 - x
+        end
+        y = 1/x̄ + (lb + w)*x̄ - 1 - w
+    else
+        maybe_log_positive = (0 < abs(lb) < max(ub,ub - 2*lb)) && max(ub,ub - 2*lb)/abs(lb) > 100
+        maybe_log_negative = (min(lb,lb - 2*ub) < -abs(ub) < 0) && -abs(ub)/min(lb,lb - 2*ub) > 100
+        if logspace || maybe_log_positive || maybe_log_negative
+            if iszero(ub) #[ub,0]
+                lny = (1 - x)*log2(-lb + 1)
+                y = 1 - exp2(lny)
+            elseif iszero(lb) #[0,ub]
+                lny = x*log2(ub + 1)
+                y = 1exp2(lny) - 1
+            else #[lb,ub]
+                w = abs(lb) > abs(ub) ? min(zero(ub),-2*ub) : max(zero(lb),-2*lb)
+                ratio = (ub + w)/(lb + w)
+                y = (lb + w)*exp2(x*log2(ratio)) - w
+            end
+        else
+            y = x*ub + (1 - x)*lb
+        end
+    end
+    return y
+end
+
+#from (lb,ub) to (0,1)
+function auto_interp_inv(_y, _lb, _ub, logspace = false)
+    y,lb,ub = promote(_y,_lb,_ub)
+    y = clamp(y,lb,ub)
+    @assert lb < ub "invalid bounds, lb is equal or greater than ub"
+    if isinf(lb) && !isinf(ub)
+        maybe_logspace_ub = log2(abs(ub)) < -16
+        w = max(zero(ub),-2*ub)
+        #0 = -1/x̄  + (ub + w)*x̄ + 1 - w - y
+        #0 = -1/x̄  + (ub + w)*x̄ + 1 - w - y
+        #0 =   -1  + (ub + w)*x̄^2 + (1 - w - y)*x̄
+        a = (ub + w)
+        b = (1 - w - y)
+        c = -1
+        if !iszero(a)
+            disc2 = b^2 - 4*a*c
+            disc = sqrt(disc2)
+            x̄₁ = (-b + disc) / (2*a)
+            x̄₂ = (-b - disc) / (2*a)
+            x̄ = (0 < x̄₁ < 1) ? x̄₁ : x̄₂
+        else
+            x̄ = -c/b
+        end
+        if logspace || maybe_logspace_ub
+            #=
+            x̄ =  1/(1 - log(x))
+            =#
+            x = exp2(1 - 1/x̄)
+        else
+            x = x̄
+        end
+    elseif isinf(lb) && isinf(ub)
+        # y = tanpi(x - 0.5)  →  x = atan(y)/π + 0.5
+        x = atan(y)/π + 0.5
+    elseif !isinf(lb) && isinf(ub)
+        maybe_logspace_lb = log2(abs(lb)) < -16
+        w = min(zero(lb),-2*lb)
+        #y = 1/x̄ + (lb + w)*x̄   - 1 - w
+        #0 = 1/x̄ + (ub + w)*x̄   - 1 - w - y
+        #0 = 1 +   (ub + w)*x̄^2 + (-1 - w - y)*x̄
+        a = (lb + w)
+        b = (-1 - w - y)
+        c = 1
+        if !iszero(a)
+            disc2 = b^2 - 4*a*c
+            disc = sqrt(disc2)
+            x̄₁ = (-b + disc) / (2*a)
+            x̄₂ = (-b - disc) / (2*a)
+            x̄ = (0 < x̄₁ < 1) ? x̄₁ : x̄₂
+        else
+            x̄ = -c/b
+        end
+        u = 1 - x̄
+        if logspace || maybe_logspace_lb
+            #=x̄ =  1 - 1/(1 - log(x))
+            u = 1/(1 - log(x))
+            =#
+            x = exp2(1 - 1/u)
+        else
+            x = u
+        end
+    else
+        maybe_log_positive = (0 < abs(lb) < max(ub,ub - 2*lb)) && max(ub,ub - 2*lb)/abs(lb) > 100
+        maybe_log_negative = (min(lb,lb - 2*ub) < -abs(ub) < 0) && -abs(ub)/min(lb,lb - 2*ub) > 100
+        
+        
+        if logspace || maybe_log_positive || maybe_log_negative
+            if iszero(ub) #[ub,0]
+                #=
+                lny = (1 - x)*log2(-lb + 1)
+                y = 1 - exp2((1 - x)*log2(-lb + 1))
+                log2(1 - y) = (1 - x)*log2(-lb + 1)
+                =#
+                u = log2(1 - y)/log2(-lb + 1)
+                x = 1 - u
+            elseif iszero(lb) #[0,ub]
+                x = log2(y + 1)/log2(ub + 1)
+                #lny = x*log2(ub + 1)
+                #y = exp2(lny) - 1
+            else
+                w = abs(lb) > abs(ub) ? min(zero(ub),-2*ub) : max(zero(lb),-2*lb)
+                ratio = (ub + w)/(lb + w)
+                x = log2((y + w)/(lb + w))/log2(ratio)
+            end
+        else
+            # y = x*ub + (1-x)*lb  →  x = (y - lb)/(ub - lb)
+            x = (y - lb) / (ub - lb)
+        end
+    end
+    return x
+end
+
 function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
 alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     
@@ -79,18 +236,15 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     l = loading(Ðₗ)
     T = temperature(Ðₗ)
     σ² = variance(Ðₗ)
-    lb_sign = sign.(nextfloat.(prob.lb)) #Assumes that parameters are either > 0 or < 0.
-
+    _0 = zero(Base.promote_eltype(p,l,T,σ²))
+    _1 = one(_0)
     n_max,i_max = findmax(l)
     n_max += 3*sqrt(σ²[i_max]) #maximum bound
-    ℓ(θ) = let prob = prob, lb_sign = lb_sign, p = p, l = l, T = T, is_logspace = alg.logspace, n_max = n_max
+    ℓ(θ) = let prob = prob, p = p, l = l, T = T, is_logspace = alg.logspace, n_max = n_max,ub = prob.ub, lb = prob.lb
 
         _θ = copy(θ)
+        _θ .= auto_interp_eval.(θ,lb,ub,is_logspace)
 
-        if is_logspace
-            _θ .= lb_sign .* exp.(θ)
-        end
-        
         # Reconstruct full model from fittable parameters
         model = from_vec_fittable(prob.IsothermModel, _θ, prob.model_template, prob.fittable)
 
@@ -99,9 +253,9 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
         for (pᵢ, nᵢ, Tᵢ, σ²ᵢ) in zip(p, l, T, σ²)
             n̂ᵢ = loading(model, pᵢ, Tᵢ) #Predicted loading
             ℓrᵢ = iszero(σ²ᵢ) ? prob.loss(nᵢ - n̂ᵢ) : prob.loss(nᵢ - n̂ᵢ)/σ²ᵢ #if zero variance, just use the loss
-            !isfinite(ℓrᵢ) && (ℓrᵢ += 1e100) #if not finite, add a big number
-            n̂ᵢ < 0 && (ℓrᵢ *= exp(10*abs(n̂ᵢ))) #if loading is negative, add a penalty multiplier, proportional to the negativity
-            n̂ᵢ > n_max && (ℓrᵢ *= exp(abs(n_max - n̂ᵢ))) #if loading is greater than maximum loading, also add penalty
+            #!isfinite(ℓrᵢ) && (ℓrᵢ += 1e100) #if not finite, add a big number
+            #n̂ᵢ < 0 && (ℓrᵢ *= exp(100*abs(n̂ᵢ))) #if loading is negative, add a penalty multiplier, proportional to the negativity
+            #n̂ᵢ > n_max && (ℓrᵢ *= exp(abs(n_max - n̂ᵢ))) #if loading is greater than maximum loading, also add penalty
             ℓr += ℓrᵢ
         end
 
@@ -109,53 +263,28 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
 
     end
 
-
-    if alg.logspace
-        x0 = log.(sign.(prob.x0) .* prob.x0)
-        lb = log.(sign.(nextfloat.(prob.lb)) .* nextfloat.(prob.lb))
-        ub = log.(sign.(prevfloat.(prob.ub)) .* prevfloat.(prob.ub))
+    x0 = auto_interp_inv.(prob.x0,prob.lb,prob.ub,alg.logspace)
+    seed0 = BlackBoxOptim.Random.seed!()
+    BlackBoxOptim.Random.seed!(alg.seed)
     
-        # Ensure lb and ub are mutable arrays
-        lb = collect(lb)
-        ub = collect(ub)
-    
-        # Swap lb and ub in logspace if the parameter is between -Inf and 0
-        for i in eachindex(lb)
-            if lb[i] > ub[i]
-                lb[i], ub[i] = ub[i], lb[i]
-            end
-        end
-        
-    else
-
-        lb = nextfloat.(prob.lb)
-        ub = prevfloat.(prob.ub)
-        x0 = prob.x0 
-    end
-
-
     result = BlackBoxOptim.bboptimize(ℓ, x0; 
-    SearchRange = [(lb[i], ub[i]) for i in eachindex(lb)],
-    PopulationSize = alg.population_size,
-    MaxTime = alg.time_limit,
-    MaxSteps = alg.max_steps,
-    TraceMode = ifelse(alg.verbose, :verbose, :silent))
+                                    SearchRange = [(_0, _1) for i in eachindex(x0)],
+                                    PopulationSize = alg.population_size,
+                                    MaxTime = alg.time_limit,
+                                    MaxSteps = alg.max_steps,
+                                    TraceMode = ifelse(alg.verbose, :verbose, :silent))
 
-    opt_M = BlackBoxOptim.best_candidate(result)
+    BlackBoxOptim.Random.seed!(seed0)
+
+    x_best = BlackBoxOptim.best_candidate(result)
 
     loss_opt_M = BlackBoxOptim.best_fitness(result)
 
-    opt_θ = similar(opt_M)
-
-    if alg.logspace
-        opt_θ .= lb_sign .* exp.(opt_M)
-    else
-        opt_θ = opt_M
-    end
+    θ_best = similar(x_best)
+    θ_best .= auto_interp_eval.(x_best,prob.lb,prob.ub,alg.logspace)
 
     # Reconstruct full model from fitted fittable parameters
-    return loss_opt_M, from_vec_fittable(prob.IsothermModel, opt_θ, prob.model_template, prob.fittable)
-
+    return loss_opt_M, from_vec_fittable(prob.IsothermModel, θ_best, prob.model_template, prob.fittable)
 end
 
 function CommonSolve.solve(solver::NewtonIsothermFittingSolver)
@@ -203,7 +332,7 @@ alg::NLSolversIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     )
     
     # Use L-BFGS method - for bounded optimization, use through TrustRegion/ActiveBox
-    method = NLSolvers.BFGS()
+    method = alg.method
     
     # Create objective with automatic differentiation
     obj = ADScalarObjective(loss_fn, x0)
@@ -222,7 +351,7 @@ alg::NLSolversIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
 end
 
 function fit(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
-    alg::IsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
+    alg) where {M, L, DL, DC, X, LB, UB, F}
     
     return solve(prob, alg)
 
@@ -260,7 +389,7 @@ loss, model = fit(Freundlich, data, solver=NLSolversIsothermFittingSolver())
 function fit(::Type{M}, data::AdsIsoTData; 
              fittable::Union{Nothing,AbstractVector{Bool}}=nothing,
              loss=abs2,
-             solver::IsothermFittingSolver=DEIsothermFittingSolver()) where M <: IsothermModel
+             solver=DEIsothermFittingSolver()) where M <: IsothermModel
     
     prob = IsothermFittingProblem(M, data, loss; fittable=fittable)
     return fit(prob, solver)
