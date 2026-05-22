@@ -35,6 +35,8 @@ end
     end
 end
 
+biased_rand(σ) = max(0.5,1 + σ*Langmuir.BlackBoxOptim.randn())
+
 @testset "isotherm fitting" begin
     @testset "langmuir" begin
         p = range(0.0, 101325.0*1.0, length = 50) |> collect
@@ -42,9 +44,9 @@ end
         P = vec(p'.*ones(length(t)))
         T = vec(ones(length(p))' .* t)
         pt_ = hcat(P, T)
-        lang = LangmuirS1(5.073, 0.67e-10, -39300.55246960819)
+        langmuir_true = LangmuirS1(5.073, 0.67e-10, -39300.55246960819)
         σ = 0.05
-        l = map(pT -> abs(loading(lang, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        l = map(pT -> loading(langmuir_true, pT[1]*biased_rand(σ), pT[2]), eachrow(pt_))
         d = isotherm_data(P, l, T)
 
         prob = IsothermFittingProblem(LangmuirS1, d, abs2)
@@ -59,9 +61,9 @@ end
         P = vec(p'.*ones(length(t)))
         T = vec(ones(length(p))' .* t)
         pt_ = hcat(P, T)
-        quad_ = Quadratic(0.67e-10, 0.37e-11, 4.073, -37300.9, -23300.55)
+        quad_true = Quadratic(0.67e-10, 0.37e-11, 4.073, -37300.9, -23300.55)
         σ = 0.001
-        l = map(pT -> abs(loading(quad_, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        l = map(pT -> loading(quad_true, pT[1]*biased_rand(σ), pT[2]), eachrow(pt_))
         d = isotherm_data(P, l, T)
 
         x0 = Langmuir.to_vec(Langmuir.x0_guess_fit(Quadratic, d))
@@ -90,7 +92,7 @@ end
         # Use parameters that give reasonable loading values
         freund_true = Freundlich(5.0e-6, 0.5, 0.0, -15000.0)
         σ = 0.01
-        l = map(pT -> max(0.01, loading(freund_true, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        l = map(pT -> loading(freund_true, pT[1]*biased_rand(σ), pT[2]), eachrow(pt_))
         d = isotherm_data(P, l, T)
         
         # Get the initial guess for β
@@ -99,7 +101,7 @@ end
         
         # Fit with β fixed (not fittable)
         alg = DEIsothermFittingSolver(max_steps = 3000, logspace = true, time_limit = 10.0, verbose = true)
-        loss_fit, fitted_model = fit(Freundlich, d, fittable=[true, true, false, true], solver=Metaheuristics.ECA())
+        loss_fit, fitted_model = fit(Freundlich, d, fittable=[true, true, false, true], solver=alg)
         
         # Test that β kept its initial value
         @test fitted_model.β == β_initial
