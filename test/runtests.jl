@@ -6,6 +6,7 @@ import Langmuir: gibbs_excess_free_energy, activity_coefficient
 import Langmuir: IsothermFittingProblem, DEIsothermFittingSolver
 using Test
 import Langmuir: R̄
+import Metaheuristics
 
 #we test that definitions of loading and sp_res are consistent.
 
@@ -34,6 +35,8 @@ end
     end
 end
 
+biased_rand(σ) = max(0.5,1 + σ*Langmuir.BlackBoxOptim.randn())
+
 @testset "isotherm fitting" begin
     @testset "langmuir" begin
         p = range(0.0, 101325.0*1.0, length = 50) |> collect
@@ -41,14 +44,13 @@ end
         P = vec(p'.*ones(length(t)))
         T = vec(ones(length(p))' .* t)
         pt_ = hcat(P, T)
-        lang = LangmuirS1(5.073, 0.67e-10, -39300.55246960819)
+        langmuir_true = LangmuirS1(5.073, 0.67e-10, -39300.55246960819)
         σ = 0.05
-        l = map(pT -> abs(loading(lang, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        l = map(pT -> loading(langmuir_true, pT[1]*biased_rand(σ), pT[2]), eachrow(pt_))
         d = isotherm_data(P, l, T)
 
         prob = IsothermFittingProblem(LangmuirS1, d, abs2)
-        alg = DEIsothermFittingSolver(logspace = true)
-        loss_fit, fitted_isotherm = fit(prob, alg)
+        loss_fit, fitted_isotherm = fit(prob, Metaheuristics.ECA())
 
         @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
     end
@@ -59,20 +61,21 @@ end
         P = vec(p'.*ones(length(t)))
         T = vec(ones(length(p))' .* t)
         pt_ = hcat(P, T)
-        quad_ = Quadratic(0.67e-10, 0.37e-11, 4.073, -37300.9, -23300.55)
+        quad_true = Quadratic(0.67e-10, 0.37e-11, 4.073, -37300.9, -23300.55)
         σ = 0.001
-        l = map(pT -> abs(loading(quad_, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        l = map(pT -> loading(quad_true, pT[1]*biased_rand(σ), pT[2]), eachrow(pt_))
         d = isotherm_data(P, l, T)
 
-        x0 = to_vec(x0_guess_fit(Quadratic, d))
-        lb = [1e-35, 1e-35, 1e-29, -80_000., -80_000.]
-        ub = [1e-3, 1e-3, 100., -5_000., -5_000.]
+        x0 = Langmuir.to_vec(Langmuir.x0_guess_fit(Quadratic, d))
+        lb = [0.0, 0.0, 0.0, -80_000., -80_000.]
+        lb = [0.0,0.0,0.0,-Inf,-Inf]
+        ub = [1e-3, 1e-3, 100., 0., -5_000.]
+        ub = [1.,1.,100.0,-5000.0,-5000.0]
         fittable = trues(5)
-        model_template = x0_guess_fit(Quadratic, d)
+        model_template = Langmuir.x0_guess_fit(Quadratic, d)
         prob = IsothermFittingProblem(Quadratic{eltype(d)}, d, nothing, abs2, x0, lb, ub, fittable, model_template) #Bounds have to be manually tweaked. Default interval is too large
         alg = DEIsothermFittingSolver(max_steps = 500, logspace = true)
-        loss_fit, fitted_isotherm = fit(prob, alg)
-
+        loss_fit, fitted_isotherm = fit(prob, Metaheuristics.ECA())
         @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 10% 
     end
 
@@ -89,7 +92,7 @@ end
         # Use parameters that give reasonable loading values
         freund_true = Freundlich(5.0e-6, 0.5, 0.0, -15000.0)
         σ = 0.01
-        l = map(pT -> max(0.01, loading(freund_true, pT[1], pT[2]) + σ*randn()), eachrow(pt_))
+        l = map(pT -> loading(freund_true, pT[1]*biased_rand(σ), pT[2]), eachrow(pt_))
         d = isotherm_data(P, l, T)
         
         # Get the initial guess for β
@@ -287,6 +290,23 @@ end
     #Γ_chem = loading(prob_mix, solver = solver_chem)
     #Γ_fug = loading(prob_mix, solver = solver_fug)
     #@test Γ_chem ≈ Γ_fug rtol=1e-4
+end
+
+cases = [(-Inf, 1.0), (-Inf, Inf), (0.5, Inf), (1.0, 200.0), (1.0, 1.5),(-Inf,0.0),(-Inf,-1.0),(0.0,Inf),(-1.0,Inf),(-10.0,Inf),(-1.0,200)]
+
+
+@testset "misc" begin
+    @testset "auto_interp" begin
+        for (lb,ub) in cases
+            for x in range(0.01,0.99,100)
+                for logspace in (false,true)
+                    yy = Langmuir.auto_interp_eval(x,lb,ub,logspace)
+                    xx = Langmuir.auto_interp_inv(yy,lb,ub,logspace)
+                    @test x ≈ xx atol = 1e-10
+                end
+            end
+        end
+    end
 end
 
 

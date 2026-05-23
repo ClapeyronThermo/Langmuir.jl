@@ -42,6 +42,13 @@ function IsothermBoundsError(::Type{M},lb,ub,datai,i) where M <: IsothermModel
     throw(ArgumentError(lazy"$(nameof(M)): value for the field `$symbol` $(d)is out of the parameter bounds: ($lb <= $datai <= $ub) == false"))
 end
 
+@generated function ___unsafe_build_model(::Type{M},p) where M <: IsothermModel
+    N = model_length(M)
+    ex = Expr(:tuple, [:(p[$i]) for i in 1:N]...)
+    MM = M.name.name
+    return :($MM($(ex)...))
+end
+
 function from_vec(m::IsothermModel,x)
     return from_vec(typeof(m),x,true)
 end
@@ -57,9 +64,10 @@ function from_vec(::Type{M},p,check) where {M <: IsothermModel}
 end
 
 function from_vec(::Type{M},p,check) where M <: IsothermModel{T} where T
-    data = ntuple(i -> T(p[i]), model_length(M))
+    TT = Base.promote_type(eltype(p),eltype(M))
+    data = ntuple(i -> TT(p[i]), model_length(M))
     check && isotherm_checkbounds(M,data)
-    return M(data...)
+    return ___unsafe_build_model(M,data)
 end
 
 function to_vec!(model::IsothermModel,x)
@@ -101,13 +109,13 @@ end
 Reconstruct a model from fittable parameters `x_fit` and fixed parameters from `model_template`.
 The `fittable` vector indicates which parameters are fittable (true) vs fixed (false).
 """
-function from_vec_fittable(::Type{M}, x_fit, model_template::M, fittable::AbstractVector{Bool}) where M <: IsothermModel
+function from_vec_fittable(::Type{M}, x_fit::AbstractVector{TF}, model_template::M, fittable::AbstractVector{Bool}) where {M <: IsothermModel,TF}
     length(fittable) == model_length(M) || throw(ArgumentError("fittable vector length must match number of model parameters"))
     fittable_indices = findall(fittable)
     fixed_indices = findall(.!fittable)
     
     # Create full parameter vector with eltype that can handle dual numbers
-    T_full = promote_type(eltype(x_fit), eltype(model_template))
+    T_full = Base.promote_eltype(x_fit, model_template)
     x_full = Vector{T_full}(undef, model_length(M))
     
     # Fill in fittable parameters

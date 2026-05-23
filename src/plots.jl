@@ -6,7 +6,7 @@
 
 """
 
-@recipe function f(model::IsothermModel, T::Number, p_range::Tuple{<:Number, <:Number}; npoints = 100)
+RecipesBase.@recipe function f(model::IsothermModel, T::Number, p_range::Tuple{<:Number, <:Number}; npoints = 100)
     # --- Scientific Plot Defaults ---
     # Plot Size and Resolution
     #width = 500 # width in pixels
@@ -56,7 +56,7 @@
     model_name = typeof(model).name.name
     label --> Printf.@sprintf("%s, T = %.2f K", model_name, T) 
 
-    @series begin
+    RecipesBase.@series begin
         
     # Return x and y data for the series
     seriestype := :line
@@ -68,7 +68,7 @@
     end
 
 
-@recipe function f(data::AdsIsoTData, T::Number) # T is now a mandatory Number
+RecipesBase.@recipe function f(data::AdsIsoTData, T::Number) # T is now a mandatory Number
     # --- Scientific Plot Defaults ---
     #width = 500
     #size --> (width, Int(round(width/ 1.618))) # Golden ratio
@@ -108,7 +108,7 @@
     p_for_T = temp_specific_data_all[idx][2] # pressure is the second element
 
     # Define the series for plotting
-    @series begin
+    RecipesBase.@series begin
         seriestype := :scatter # Plot data as points
         markersize --> 4
         markerstrokewidth --> 0.5

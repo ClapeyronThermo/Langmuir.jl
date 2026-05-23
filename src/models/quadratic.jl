@@ -52,6 +52,8 @@ function loading(model::Quadratic, p, T)
     return M*(Ka + 2.0*Kb*p)*p/(_1 + p*(Ka + Kb*p))
 end
 
+henry_coefficient(model::Quadratic, T) = model.M*model.K₀a*exp(-model.Ea/(Rgas(model)*T))
+
 function pressure_impl(model::Quadratic, Π, T, ::typeof(sp_res))
     K₀a, K₀b, M, Ea, Eb = model.K₀a, model.K₀b, model.M, model.Ea, model.Eb
     Ka = K₀a*exp(-Ea/(Rgas(model)*T))
@@ -60,71 +62,43 @@ function pressure_impl(model::Quadratic, Π, T, ::typeof(sp_res))
     return -0.5*Kab + sqrt(0.25*Kab*Kab + expm1(Π/M)/Kb)
 end
 
-function x0_guess_fit(::Type{T}, data::AdsIsoTData) where T <: Quadratic
-    # Original implementation - commented out due to numerical instability
-    #=
-    #l*(1 + p*(Ka + Kb*p)) = M*(Ka*p + 2*Kb*p*p)
-    #p*Ka*l + Kb*p*p*l - M*Ka*p - 2*M*Kb*p*p = -l
-    #-p*Ka*l - Kb*p*p*l + M*Ka*p + 2*M*Kb*p*p = l
-    #-Ka*(p*l) -Kb*(p*p*l) + M*Ka*(p) + 2*M*Kb*(p*p) = l
+saturated_loading(model::Quadratic, T) = 2*model.M
 
-    # Split data by temperature
-    Ts, l_p = split_data_by_temperature(data)
+function x0_guess_fit(::Type{Q}, data::AdsIsoTData) where Q <: Quadratic
 
-    # Initialize vectors for Ka, Kb, and M values
-    Kas = Vector{eltype(Ts)}(undef, length(l_p))
-    Kbs = Vector{eltype(Ts)}(undef, length(l_p))
-    Ms = Vector{eltype(Ts)}(undef, length(l_p))
-   
-    # Perform fitting for each (l, p) tuple
-    for i in 1:length(l_p)
-        l_i, p_i = l_p[i]
-        Kaneg, Kbneg, MKa, MKb2 = hcat(p_i .* l_i, p_i .* p_i .* l_i, p_i, p_i .* p_i) \ l_i
-
-        Ka = abs(Kaneg)
-        Kb = abs(Kbneg)
-        Ma = MKa / Ka
-        Mb = abs(0.5 * MKb2 / Kb)
-        Ms[i] = 0.5 * (Ma + Mb)
-        Kas[i] = Ka
-        Kbs[i] = Kb
-    end
-
-    M = sum(Ms)/length(Ms) #Mean of all values
-
-    _1 = one(eltype(Ts))
-    _1s = ones(eltype(Ts), length(Ts))
-
-    if length(l_p) > 1
-        logKa, Ea = hcat(_1s, _1s./ (Rgas(T).*Ts)) \ log.(Kas)
-        Ka = exp(logKa)
-        logKb, Eb = hcat(_1s, _1s./(Rgas(T).*Ts)) \ log.(Kbs)
-        Kb = exp(logKb)
-    else
-        Ka = first(Kas)
-        Kb = first(Kbs)
-        Ea = _1
-        Eb = _1
-    end
-
-    return T(abs(Ka), abs(Kb), M, -abs(Ea), -abs(Eb))
-    =#
-
-    # Simplified approach: Use Langmuir fit as initial guess for both sites
-    # This provides more stable initial values than trying to fit 5 parameters independently
+    # Simplified approach: Use Langmuir fit as initial guess for M,K0a,Ea
     langmuir_model = x0_guess_fit(LangmuirS1, data)
-    M = langmuir_model.M
-    K₀ = langmuir_model.K₀
-    E = langmuir_model.E
-    
-    # Use the same affinity and energy for both Ka and Kb
-    # Set Kb to be smaller (typically the quadratic term is a smaller correction)
-    K₀a = K₀
-    K₀b = K₀ * 0.1  # 10% of the primary affinity
-    Ea = E
-    Eb = E
-    
-    return T(K₀a, K₀b, M, Ea, Eb)
+    M = langmuir_model.M*0.5
+    K₀a = langmuir_model.K₀*2
+    Ea = langmuir_model.E    
+    p = pressure(data)
+    T = temperature(data)
+    l = loading(data)
+    RT_inv = @. 1/(Rgas(1.0)*T)
+    Ka = @. K₀a*exp(-Ea*RT_inv)
+
+    #=
+    l*(_1 + p*(Ka + Kb*p)) = M*(Ka + 2.0*Kb*p)*p
+    l*(_1 + p*Ka + Kb*p*p) = M*(Ka*p * Kb*p*p)
+    l + l*p*Ka + l*Kb*p*p - M*Ka*p - 2*M*Kb*p*p = 0
+    l*Kb*p*p - 2*M*Kb*p*p = -(l + l*p*Ka - M*Ka*p)
+    l*Kb - 2*M*Kb= -(l + l*p*Ka - M*Ka*p) ./ p*p
+    Kb= -(l + l*p*Ka - M*Ka*p) ./ p*p / (l - 2M)
+    =#
+    Kb =  @. (-l/(p*p) - (l - M)*Ka/p) /(l - 2M)
+    i = findall(x -> isfinite(x) && x > 0,Kb)
+    Kb = Kb[i]
+    RT_inv = RT_inv[i]
+    Kb .= clamp.(Kb, 1e-30, 1e15)
+    logKb = Kb
+    logKb .= log.(Kb)
+    _1s  = ones(eltype(RT_inv), length(RT_inv))
+    coeffs = hcat(_1s, RT_inv) \ logKb
+    logK₀b = coeffs[1]
+    slope = coeffs[2]
+    K₀b = exp(logK₀b)
+    Eb = -slope  # Since slope = -E, we have E = -slope
+    return Q(K₀a, K₀b, M, Ea, Eb)
 end
 
 export Quadratic
