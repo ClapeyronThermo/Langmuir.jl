@@ -201,6 +201,22 @@ function auto_interp_inv(_y, _lb, _ub, logspace = false)
     return x
 end
 
+#translate from [lb,ub] to [-Inf,Inf]
+function unconstrain(_y,_lb,_ub,logspace = true)
+    y,lb,ub = promote(_y,_lb,_ub)
+    isinf(lb) && isinf(ub) && (return y)
+    x = auto_interp_inv(y,lb,ub,logspace)
+    return auto_interp_eval(x,-Inf,Inf,logspace)
+end
+
+#translate from [-Inf,Inf] to [lb,ub]
+function constrain(_ȳ,_lb,_ub,logspace = true)
+    ȳ,lb,ub = promote(_ȳ,_lb,_ub)
+    isinf(lb) && isinf(ub) && (return ȳ)
+    x = auto_interp_inv(ȳ,-Inf,Inf,logspace)
+    return auto_interp_eval(x,lb,ub,logspace)
+end
+
 function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
 alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     
