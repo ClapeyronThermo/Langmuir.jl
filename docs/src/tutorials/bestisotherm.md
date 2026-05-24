@@ -47,9 +47,8 @@ The reference manuscript fitted a Toth model to CH4. Let's try a few models to s
 Fitting a Langmuir model is quite simple as the parameters are easy to initialize. We will use it as an initial guess for all models, but we want to compare first the Langmuir single-site model with the Thermodynamic Langmuir model, which is an implicit model that takes into consideration an activity coefficient.  
 
 ```@example multicomponent
-using Langmuir
-alg = DEIsothermFittingSolver(max_steps = 500, population_size = 100,
-logspace = true, verbose = true)
+using Langmuir, Metaheuristics
+alg = Metaheuristics.ECA(options = Options(seed = 42))
 prob_lang = IsothermFittingProblem(LangmuirS1, CH4_data, abs2)
 loss_lang, model_lang = fit(prob_lang, alg)
 plot!(fig1, model_lang, 273.0, (0.0, maximum(CH4_data.p)), color = :blue)
@@ -61,8 +60,7 @@ Now, we will compare similar models, i.e., the Toth and Sips models, which are b
 
 ```@example multicomponent 
 prob_tlang = IsothermFittingProblem(ThermodynamicLangmuir, CH4_data, abs2)
-alg = DEIsothermFittingSolver(max_steps = 1000, population_size = 1000,
-logspace = false, verbose = true, time_limit = 40)
+alg = Metaheuristics.ECA(options = Options(seed = 42))
 loss_tlang, model_tlang = fit(prob_tlang, alg)
 plot!(fig1, model_tlang, 273.0, (0.0, maximum(CH4_data.p)), color = :blue, linestyle = :dot)
 plot!(fig1, model_tlang, 298.0, (0.0, maximum(CH4_data.p)), color = :green, linestyle = :dot)
@@ -71,8 +69,6 @@ plot!(fig1, model_tlang, 323.0, (0.0, maximum(CH4_data.p)), color = :red, linest
 
 The Toth model is more trick to fit as the `f` parameter is made temperature dependent. The default bounds for the parameters are too large, so we need to set them manually. The fitted Langmuir above can be used as a good initial guess for the parameters.
 
-!!! note
-    **It is important to set a time limit for the optimization algorithm** to prevent it from running indefinitely in search of a better fit - from previous experience, you won't need more than 10s to fit an isotherm with a good initial guess. You can do this by setting the `time_limit` parameter in the `DEIsothermFittingSolver` constructor.
 
 ```@example multicomponent
 fig2 = Plots.plot();
@@ -84,8 +80,7 @@ plot!(fig2, CH4_data, 323.0, label = "CH4 at 323K", markershape = :circle, m = (
 
 
 prob_toth = IsothermFittingProblem(Toth, CH4_data, abs2)
-alg = DEIsothermFittingSolver(max_steps = 500, population_size = 100,
-logspace = false, verbose = true, time_limit = 15)
+alg = Metaheuristics.ECA(options = Options(seed = 42))
 loss_toth, model_toth = fit(prob_toth, alg)
 plot!(fig2, model_toth, 273.0, (0.0, 5.0), color = :blue, linestyle = :dash)
 plot!(fig2, model_toth, 298.0, (0.0, 5.0), color = :green, linestyle = :dash)
@@ -98,8 +93,7 @@ This behavior reflects a common issue in isotherm models with a high number of p
 
 ```@example multicomponent
 prob_sips = IsothermFittingProblem(Sips, CH4_data, abs2)
-alg = DEIsothermFittingSolver(max_steps = 500, population_size = 100,
-logspace = false, verbose = true, time_limit = 15)
+alg = Metaheuristics.PSO(options = Options(seed = 42))
 loss_sips, model_sips = fit(prob_sips, alg)
 plot!(fig2, model_sips, 273.0, (0.0, 5.0), color = :blue, linestyle = :dashdot)
 plot!(fig2, model_sips, 298.0, (0.0, 5.0), color = :green, linestyle = :dashdot)

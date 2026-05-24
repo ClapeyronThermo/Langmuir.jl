@@ -51,21 +51,25 @@ scatter!(d_ethylene, 323.0, label = "Ethylene at 323K",
 markershape = :square, m = (3, :white, stroke(1, :red)))
 ```
 
-Following the reference manuscript, the quadratic isotherm is the chosen model for fitting the data. In this tutorial, the same strategy is used. Note that the bounds for the parameters were be manually set since the default ones were too large. Once the bounds are custom, you also need to provide the initial guess. We have default initial guesses for each isotherm, but to expose it, you need to `import` the `x0_guess_fit` function. We also import the `to_vec` function to convert the initial guess into a vector format, which is required by the fitting problem.
+Following the reference manuscript, the quadratic isotherm is the chosen model for fitting the data. We have default initial guesses for each isotherm, to see it, you can access the fild ``x0`` of an ``IsothermFittingProblem``.
 
- Also observe that the argument next to d_ethane is `nothing`. This is because the fitting problem does not involve any additional data, such as calorimetric data, to estimate the isotherm parameters.
+```julia
+prob = IsothermFittingProblem(Quadratic, d_ethane, abs2)
+prob.x0 #To get the default initial guess
+```
+
+We have support for global optimization algorithms through the Metaheuristics.jl library. Checkout their documented algorithms to see which one performs better for your case. Here we will use Evolutionary Centers Algorithm and passing it as the second argument of the ``fit`` function as ``Metaheuristics.ECA()`` as you can see below:
 
 ```@example fitting
+using Metaheuristics
 prob_ethane = IsothermFittingProblem(Quadratic, d_ethane, abs2) #Bounds have to be manually tweaked. Default interval is too large
-alg = DEIsothermFittingSolver(max_steps = 1500, population_size = 500,
-logspace = true, verbose = true, time_limit = 40)
+alg = Metaheuristics.ECA()
 loss_fit_ethane, ethane_isotherm = fit(prob_ethane, alg)
 println("Fitting loss for ethane is $loss_fit_ethane")
 ethane_isotherm
 ```
 
 The fitting results can be visualized by plotting the isotherm predictions against the experimental data. The `plot!` function can be used to overlay the fitted isotherm on the experimental data. This is also a custom case of the `plot` function from the `Plots.jl` to facilitate the visualization of isotherms. You can use it to plot the isotherm predictions for a specific temperature and pressure range. 
-
 
 ```@example fitting
 #Plotting ethane fitting
@@ -77,9 +81,9 @@ color = :blue, label = "Quadratic Ethane - 323.0 K")
 
 ```@example fitting
 #Fitting Ethylene
-prob_ethylene = IsothermFittingProblem(Quadratic, d_ethylene, abs2)
-loss_fit_ethylene, ethylene_isotherm = fit(prob_ethylene, alg)
-println("Fitting loss for ethane is $loss_fit_ethylene")
+prob_ethylene = IsothermFittingProblem(LangmuirFreundlich, d_ethylene, abs2)
+loss_fit_ethylene, ethylene_isotherm = fit(prob_ethylene, Metaheuristics.ECA())
+println("Fitting loss for ethylene is $loss_fit_ethylene")
 ethylene_isotherm
 ```
 
