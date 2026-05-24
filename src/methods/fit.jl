@@ -75,60 +75,48 @@ function auto_interp_eval(_x,_lb,_ub,logspace = false)
     x,lb,ub = promote(_x,_lb,_ub)
     
     x = clamp(x,zero(x),one(x))
+
+    if isinf(lb) && isinf(ub)
+        y = logspace ? atanh(2*x - 1) : tanpi(x - 0.5)
+        return y
+    end
+    #translation
+    w = abs(ub) > abs(lb) ? max(zero(lb),-2*lb) : min(zero(ub),-2*ub)
+    ubt,lbt = ub + w, lb + w
+
     if isinf(lb) && !isinf(ub)
         #=
         from -Inf to ub
         at x = 0 -> y = -Inf
         at x = 1 -> y = ub
         =#
-        maybe_logspace_ub = log2(abs(ub)) < -16 && !iszero(ub)
-        _logspace = logspace && !iszero(ub)
-        if _logspace || maybe_logspace_ub
-            u = log2(x)
-            x̄ =  1/(1 - u)
-        else
-            x̄ =  x
-        end
-        w = max(zero(ub),-2*ub)
-        y = -1/x̄  + (ub + w)*x̄ + 1 - w
-    elseif isinf(lb) && isinf(ub)
-        #=
-        from -Inf to Inf
-        at x = 0 -> y = -Inf
-        at x = 1 -> y = Inf
-        =#
-        y = tanpi(x - 0.5)
+        is_log = (logspace || log2(abs(ub)) < -16) && !iszero(ub)
+        x̄ = is_log ? 1/(1 - log2(x)) : x
+        y = -1/x̄ - ubt*x̄ + 1 + 2*ub + w
+
     elseif !isinf(lb) && isinf(ub)
         #=
         from lb to Inf
         at x = 0 -> y = lb
         at x = 1 -> y = Inf
         =#
-        maybe_logspace_lb = log2(abs(lb)) < -16 && !iszero(lb)
-        _logspace = logspace && !iszero(lb)
-        
-        w = min(zero(lb),-2*lb)
-        if _logspace || maybe_logspace_lb
-            u = log2(x)
-            x̄ =  1 - 1/(1 - u)
-        else
-            x̄ =  1 - x
-        end
-        y = 1/x̄ + (lb + w)*x̄ - 1 - w
+        is_log = (logspace || log2(abs(lb)) < -16) && !iszero(lb)
+        x̄ = is_log ? 1 - 1/(1 - log2(x)) : 1 - x
+        y = 1/x̄ - lbt*x̄ -1 + 2*lb + w
+
     else
-        maybe_log_positive = (0 < abs(lb) < max(ub,ub - 2*lb)) && max(ub,ub - 2*lb)/abs(lb) > 100
-        maybe_log_negative = (min(lb,lb - 2*ub) < -abs(ub) < 0) && -abs(ub)/min(lb,lb - 2*ub) > 100
+        ratio = ubt/lbt
+        maybe_log_negative = ubt < 0 && ratio < 0.01
+        maybe_log_positive = lbt > 0 && ratio > 100
         if logspace || maybe_log_positive || maybe_log_negative
             if iszero(ub) #[ub,0]
                 lny = (1 - x)*log2(-lb + 1)
                 y = 1 - exp2(lny)
             elseif iszero(lb) #[0,ub]
                 lny = x*log2(ub + 1)
-                y = 1exp2(lny) - 1
+                y = exp2(lny) - 1
             else #[lb,ub]
-                w = abs(lb) > abs(ub) ? min(zero(ub),-2*ub) : max(zero(lb),-2*lb)
-                ratio = (ub + w)/(lb + w)
-                y = (lb + w)*exp2(x*log2(ratio)) - w
+                y = lbt*exp2(x*log2(ratio)) - w
             end
         else
             y = x*ub + (1 - x)*lb
@@ -137,20 +125,28 @@ function auto_interp_eval(_x,_lb,_ub,logspace = false)
     return y
 end
 
+
 #from (lb,ub) to (0,1)
 function auto_interp_inv(_y, _lb, _ub, logspace = false)
     y,lb,ub = promote(_y,_lb,_ub)
     y = clamp(y,lb,ub)
-    @assert lb < ub "invalid bounds, lb is equal or greater than ub"
+    @assert lb < ub "invalid bounds, lb = $lb is equal or greater than ub = $ub"
+
+    if isinf(lb) && isinf(ub)
+        y = logspace ? 0.5*(tanh(y) + 1) : atan(y)/π + 0.5
+        return y
+    end
+
+    #translation
+    w = abs(ub) > abs(lb) ? max(zero(lb),-2*lb) : min(zero(ub),-2*ub)
+    ubt,lbt = ub + w, lb + w
+    yt = y + w
     if isinf(lb) && !isinf(ub) 
-        maybe_logspace_ub = log2(abs(ub)) < -16 && !iszero(ub)
-        _logspace = logspace && !iszero(ub)
-        w = max(zero(ub),-2*ub)
-        #0 = -1/x̄  + (ub + w)*x̄ + 1 - w - y
-        #0 = -1/x̄  + (ub + w)*x̄ + 1 - w - y
-        #0 =   -1  + (ub + w)*x̄^2 + (1 - w - y)*x̄
-        a = (ub + w)
-        b = (1 - w - y)
+        #y = -1/x̄  - ubt*x̄   +  1 + 2*ub + w
+        #0 = -1/x̄  - ubt*x̄   +  1 + 2*ub + w - y
+        #0 =   -1  - ubt*x̄^2 + (1 + 2*ub + w - y)*x̄
+        a = -ubt
+        b = (1 + 2*ub + w - y)
         c = -1
         if !iszero(a)
             disc2 = b^2 - 4*a*c
@@ -161,26 +157,15 @@ function auto_interp_inv(_y, _lb, _ub, logspace = false)
         else
             x̄ = -c/b
         end
-        if _logspace || maybe_logspace_ub
-            #=
-            x̄ =  1/(1 - log(x))
-            =#
-            x = exp2(1 - 1/x̄)
-        else
-            x = x̄
-        end
-    elseif isinf(lb) && isinf(ub)
-        # y = tanpi(x - 0.5)  →  x = atan(y)/π + 0.5
-        x = atan(y)/π + 0.5
+        is_log = (logspace || log2(abs(ub)) < -16) && !iszero(ub)
+        x = is_log ? exp2(1 - 1/x̄) : x̄
+
     elseif !isinf(lb) && isinf(ub)
-        maybe_logspace_lb = log2(abs(lb)) < -16 && !iszero(lb)
-        _logspace = logspace && iszero(lb)
-        w = min(zero(lb),-2*lb)
-        #y = 1/x̄ + (lb + w)*x̄   - 1 - w
-        #0 = 1/x̄ + (ub + w)*x̄   - 1 - w - y
-        #0 = 1 +   (ub + w)*x̄^2 + (-1 - w - y)*x̄
-        a = (lb + w)
-        b = (-1 - w - y)
+        #y = 1/x̄ - lbt*x̄      - 1 + 2*lb + w
+        #0 = 1/x̄ - lbt*x̄      - 1 + 2*lb + w - y
+        #0 = 1   - lbt*x̄^2 + (- 1 + 2*lb + w - y)*x̄
+        a = -lbt
+        b = (- 1 + 2*lb + w - y)
         c = 1
         if !iszero(a)
             disc2 = b^2 - 4*a*c
@@ -192,36 +177,21 @@ function auto_interp_inv(_y, _lb, _ub, logspace = false)
             x̄ = -c/b
         end
         u = 1 - x̄
-        if _logspace || maybe_logspace_lb
-            #=x̄ =  1 - 1/(1 - log(x))
-            u = 1/(1 - log(x))
-            =#
-            x = exp2(1 - 1/u)
-        else
-            x = u
-        end
+        is_log = (logspace || log2(abs(lb)) < -16) && !iszero(lb)
+        x = is_log ? exp2(1 - 1/u) : u
+
     else
-        maybe_log_positive = (0 < abs(lb) < max(ub,ub - 2*lb)) && max(ub,ub - 2*lb)/abs(lb) > 100
-        maybe_log_negative = (min(lb,lb - 2*ub) < -abs(ub) < 0) && -abs(ub)/min(lb,lb - 2*ub) > 100
-        
-        
+        ratio = ubt/lbt
+        maybe_log_negative = ubt < 0 && ratio < 0.01
+        maybe_log_positive = lbt > 0 && ratio > 100
         if logspace || maybe_log_positive || maybe_log_negative
             if iszero(ub) #[ub,0]
-                #=
-                lny = (1 - x)*log2(-lb + 1)
-                y = 1 - exp2((1 - x)*log2(-lb + 1))
-                log2(1 - y) = (1 - x)*log2(-lb + 1)
-                =#
                 u = log2(1 - y)/log2(-lb + 1)
                 x = 1 - u
             elseif iszero(lb) #[0,ub]
                 x = log2(y + 1)/log2(ub + 1)
-                #lny = x*log2(ub + 1)
-                #y = exp2(lny) - 1
             else
-                w = abs(lb) > abs(ub) ? min(zero(ub),-2*ub) : max(zero(lb),-2*lb)
-                ratio = (ub + w)/(lb + w)
-                x = log2((y + w)/(lb + w))/log2(ratio)
+                x = log2(yt/lbt)/log2(ratio)
             end
         else
             # y = x*ub + (1-x)*lb  →  x = (y - lb)/(ub - lb)
