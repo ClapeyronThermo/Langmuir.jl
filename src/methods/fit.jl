@@ -18,7 +18,7 @@ IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, ca
 IsothermFittingProblem{M, TT, typeof(loading_data), DC, L, X, LB, UB, F}(IsothermModel, loading_data, calorimetric_data, loss, x0, lb, ub, fittable, model_template)
 
 # Simplified constructor
-function IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, loss::L; fittable::Union{Nothing,AbstractVector{Bool}}=nothing) where {M <: IsothermModel, TT, L}
+function IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, loss::L = abs2; fittable::Union{Nothing,AbstractVector{Bool}}=nothing) where {M <: IsothermModel, TT, L}
     model_template = x0_guess_fit(IsothermModel, loading_data)
     
     # Default: all parameters are fittable

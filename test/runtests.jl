@@ -49,7 +49,7 @@ biased_rand(σ) = max(0.5,1 + σ*Langmuir.BlackBoxOptim.randn())
         l = map(pT -> loading(langmuir_true, pT[1]*biased_rand(σ), pT[2]), eachrow(pt_))
         d = isotherm_data(P, l, T)
 
-        prob = IsothermFittingProblem(LangmuirS1, d, abs2)
+        prob = IsothermFittingProblem(LangmuirS1, d)
         loss_fit, fitted_isotherm = fit(prob, Metaheuristics.ECA())
 
         @test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
