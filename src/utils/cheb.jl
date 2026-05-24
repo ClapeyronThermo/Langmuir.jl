@@ -1,5 +1,7 @@
 ## This is a vendored version of the code in EoSSuperancillaries.jl v1.4
+#=
 
+import Polynomials
 struct ChebyshevRange{R,T}
     range::R
     coeffs::T
@@ -270,3 +272,4 @@ function integrate_cheb(cheb::ChebyshevRangeVec{T}) where {T}
     end
     return ChebyshevRange(cheb.range,intcoeffs)
 end
+=#

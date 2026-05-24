@@ -1,4 +1,4 @@
-#struct to cache isotherm loading and sp_res
+#=struct to cache isotherm loading and sp_res
 struct CachedIsotherm{T,I} <: IsothermModel{T}
     pmax::T
     temp::T
@@ -60,6 +60,8 @@ function henry_coefficient(model::CachedIsotherm, T)
     _,dldp = cheb_deval(cheb_zero_p, -oneunit(T))
     return dldp
 end
+
 saturated_loading(model::CachedIsotherm, T) = saturated_loading(model.isotherm, T)
 
 export CachedIsotherm
+=#

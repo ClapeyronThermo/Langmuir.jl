@@ -12,33 +12,32 @@ struct IsothermFittingProblem{M <: IsothermModel, TT, DL, DC, L, X, LB, UB, F}
     model_template::M
 end
 
-
 # Constructor with all arguments
-IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, calorimetric_data::DC, loss::L, x0::X, lb::LB, ub::UB, fittable::F, model_template::M) where {M <: IsothermModel, TT, DC, L, X, LB, UB, F} = 
+IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, calorimetric_data::DC, loss::L, x0::X, lb::LB, ub::UB, fittable::F, model_template::M) where {M <: IsothermModel, TT, DC, L, X, LB, UB, F} =
 IsothermFittingProblem{M, TT, typeof(loading_data), DC, L, X, LB, UB, F}(IsothermModel, loading_data, calorimetric_data, loss, x0, lb, ub, fittable, model_template)
 
 # Simplified constructor
 function IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, loss::L = abs2; fittable::Union{Nothing,AbstractVector{Bool}}=nothing) where {M <: IsothermModel, TT, L}
     model_template = x0_guess_fit(IsothermModel, loading_data)
-    
+
     # Default: all parameters are fittable
     if fittable === nothing
         fittable = trues(model_length(IsothermModel))
     end
-    
+
     # Validate fittable length
     length(fittable) == model_length(IsothermModel) || throw(ArgumentError("fittable vector length must match number of model parameters"))
-    
+
     # Extract fittable parameters
     x0 = to_vec_fittable(model_template, fittable)
     full_lb = isotherm_lower_bound(eltype(loading_data), IsothermModel)
     full_ub = isotherm_upper_bound(eltype(loading_data), IsothermModel)
-    
+
     # Get bounds for only fittable parameters
     fittable_indices = findall(fittable)
     lb = [full_lb[i] for i in fittable_indices]
     ub = [full_ub[i] for i in fittable_indices]
-    
+
     return IsothermFittingProblem(IsothermModel, loading_data, nothing, loss, x0, lb, ub, fittable, model_template)
 end
 
@@ -65,15 +64,15 @@ Base.@kwdef struct NLSolversIsothermFittingSolver{T} <: IsothermFittingSolver
 end
 
 #= function heterogeneity_penalty(M::Union{Freundlich, LangmuirFreundlich, Sips, RedlichPeterson}, T)
-       
-    return ifelse(M.f₀ - M.β/T < 0.0, 50.0, zero(eltype(M))) 
+
+    return ifelse(M.f₀ - M.β/T < 0.0, 50.0, zero(eltype(M)))
 
 end =#
 
 #from (0,1) to (lb,ub)
 function auto_interp_eval(_x,_lb,_ub,logspace = false)
     x,lb,ub = promote(_x,_lb,_ub)
-    
+
     x = clamp(x,zero(x),one(x))
 
     if isinf(lb) && isinf(ub)
@@ -141,7 +140,7 @@ function auto_interp_inv(_y, _lb, _ub, logspace = false)
     w = abs(ub) > abs(lb) ? max(zero(lb),-2*lb) : min(zero(ub),-2*ub)
     ubt,lbt = ub + w, lb + w
     yt = y + w
-    if isinf(lb) && !isinf(ub) 
+    if isinf(lb) && !isinf(ub)
         #y = -1/x̄  - ubt*x̄   +  1 + 2*ub + w
         #0 = -1/x̄  - ubt*x̄   +  1 + 2*ub + w - y
         #0 =   -1  - ubt*x̄^2 + (1 + 2*ub + w - y)*x̄
@@ -219,7 +218,7 @@ end
 
 function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
 alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
-    
+
     Ðₗ = prob.LoadingData
     Ðₕ = prob.CalorimetricData
 
@@ -240,7 +239,7 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
         model = from_vec_fittable(prob.IsothermModel, _θ, prob.model_template, prob.fittable)
 
         ℓr = zero(eltype(model))
-        
+
         for (pᵢ, nᵢ, Tᵢ, σ²ᵢ) in zip(p, l, T, σ²)
             n̂ᵢ = loading(model, pᵢ, Tᵢ) #Predicted loading
             ℓrᵢ = iszero(σ²ᵢ) ? prob.loss(nᵢ - n̂ᵢ) : prob.loss(nᵢ - n̂ᵢ)/σ²ᵢ #if zero variance, just use the loss
@@ -257,8 +256,8 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     x0 = auto_interp_inv.(prob.x0,prob.lb,prob.ub,alg.logspace)
     seed0 = BlackBoxOptim.Random.seed!()
     BlackBoxOptim.Random.seed!(alg.seed)
-    
-    result = BlackBoxOptim.bboptimize(ℓ, x0; 
+
+    result = BlackBoxOptim.bboptimize(ℓ, x0;
                                     SearchRange = [(_0, _1) for i in eachindex(x0)],
                                     PopulationSize = alg.population_size,
                                     MaxTime = alg.time_limit,
@@ -284,22 +283,22 @@ end
 
 function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
 alg::NLSolversIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
-    
+
     Ðₗ = prob.LoadingData
     p = pressure(Ðₗ)
     l = loading(Ðₗ)
     T = temperature(Ðₗ)
     σ² = variance(Ðₗ)
-    
+
     # Box constraints for NLSolvers
     lb = collect(prob.lb)
     ub = collect(prob.ub)
-    
+
     # Objective function (sum of squared errors)
     function loss_fn(θ)
         # Reconstruct full model from fittable parameters
         model = from_vec_fittable(prob.IsothermModel, θ, prob.model_template, prob.fittable)
-        
+
         ℓr = zero(eltype(model))
         for (pᵢ, nᵢ, Tᵢ, σ²ᵢ) in zip(p, l, T, σ²)
             n̂ᵢ = loading(model, pᵢ, Tᵢ)
@@ -310,10 +309,10 @@ alg::NLSolversIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
         end
         return ℓr
     end
-    
+
     # Use NLSolvers with box constraints
     x0 = copy(prob.x0)
-    
+
     # Set up optimization options
     options = NLSolvers.OptimizationOptions(
         maxiter = alg.max_iter,
@@ -321,29 +320,29 @@ alg::NLSolversIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
         x_abstol = alg.xtol,
         show_trace = alg.verbose
     )
-    
+
     # Use L-BFGS method - for bounded optimization, use through TrustRegion/ActiveBox
     method = alg.method
-    
+
     # Create objective with automatic differentiation
     obj = ADScalarObjective(loss_fn, x0)
-    
+
     # Create optimization problem with bounds (inplace=true required)
     prob_opt = NLSolvers.OptimizationProblem(obj, (lb, ub); inplace = true)
-    
+
     # Solve the optimization problem starting from x0
     result = NLSolvers.solve(prob_opt, x0, method, options)
-    
+
     opt_θ = result.info.solution
     loss_opt = result.info.fx
-    
+
     # Reconstruct full model from fitted fittable parameters
     return result, loss_opt, from_vec_fittable(prob.IsothermModel, opt_θ, prob.model_template, prob.fittable)
 end
 
 function fit(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
     alg) where {M, L, DL, DC, X, LB, UB, F}
-    
+
     return solve(prob, alg)
 
 end
@@ -377,11 +376,11 @@ loss, model = fit(Freundlich, data, fittable=[true, true, false, true])
 loss, model = fit(Freundlich, data, solver=NLSolversIsothermFittingSolver())
 ```
 """
-function fit(::Type{M}, data::AdsIsoTData; 
+function fit(::Type{M}, data::AdsIsoTData;
              fittable::Union{Nothing,AbstractVector{Bool}}=nothing,
              loss=abs2,
              solver=DEIsothermFittingSolver()) where M <: IsothermModel
-    
+
     prob = IsothermFittingProblem(M, data, loss; fittable=fittable)
     return fit(prob, solver)
 end

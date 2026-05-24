@@ -15,7 +15,6 @@ using Printf
 using PrettyTables
 #using ForwardDiffChainRules
 import ChainRulesCore
-import Polynomials
 using RecipesBase
 #import FastGaussQuadrature
 
