@@ -54,9 +54,10 @@ biased_rand(σ) = max(0.5,1 + σ*Langmuir.BlackBoxOptim.randn())
         options = Metaheuristics.Options(f_calls_limit = 3000);
         mh_alg = Metaheuristics.ECA(information = information, options = options)
         de_alg = DEIsothermFittingSolver(max_steps = 3000, logspace = true, time_limit = 10.0, verbose = true)
-
+        newton_alg = NLSolversIsothermFittingSolver()
         loss_fit_mh, fitted_isotherm_mh = fit(prob,mh_alg)
         loss_fit_de, fitted_isotherm_de = fit(prob,de_alg)
+        #loss_fit_ad, fitted_isotherm_ad = fit(prob,newton_alg)
         loss_fit = min(loss_fit_de,loss_fit_mh)
         #@test (abs(sqrt(loss_fit/size(l, 1)) - σ)/σ)*100.0 < 10.0 #relative error smaller than 5% 
         @test loss_fit < 10 #screw it
