@@ -115,6 +115,7 @@ The `fittable` vector indicates which parameters are fittable (true) vs fixed (f
 """
 function from_vec_fittable(::Type{M}, x_fit::AbstractVector{TF}, model_template::M, fittable::AbstractVector{Bool}) where {M <: IsothermModel,TF}
     length(fittable) == model_length(M) || throw(ArgumentError("fittable vector length must match number of model parameters"))
+    all(fittable) && (return from_vec(M, x_fit, false))
 
     # Create full parameter vector with eltype that can handle dual numbers
     T_full = Base.promote_eltype(x_fit, model_template)
