@@ -95,10 +95,14 @@ The `fittable` vector indicates which parameters should be included (true = fitt
 """
 function to_vec_fittable(model::M, fittable::AbstractVector{Bool}) where M <: IsothermModel
     length(fittable) == model_length(M) || throw(ArgumentError("fittable vector length must match number of model parameters"))
-    fittable_indices = findall(fittable)
-    x = Vector{eltype(model)}(undef, length(fittable_indices))
-    for (i, idx) in enumerate(fittable_indices)
-        x[i] = getfield(model, idx)
+    n_fittable = count(fittable)
+    x = Vector{eltype(model)}(undef, n_fittable)
+    k = 0
+    for i in eachindex(fittable)
+        if fittable[i]
+            k += 1
+            x[k] = getfield(model,i)
+        end
     end
     return x
 end
@@ -149,7 +153,7 @@ function init_fittable_bool(model,x::AbstractVector{T}) where T <: AbstractStrin
     fittable = fill(false,N)
     for i in 1:N
         name = String(names[i])
-        if name in names
+        if name in x
             fittable[i] = true
         end
     end
@@ -167,7 +171,7 @@ function init_fittable_bool(model,x::AbstractVector{T}) where T <: Symbol
     fittable = fill(false,N)
     for i in 1:N
         name = names[i]
-        if name in names
+        if name in x
             fittable[i] = true
         end
     end

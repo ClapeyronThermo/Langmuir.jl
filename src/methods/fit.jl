@@ -258,7 +258,6 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
 
         # Reconstruct full model from fittable parameters
         model = from_vec_fittable(prob.IsothermModel, _θ, prob.model_template, prob.fittable)
-
         ℓr = zero(eltype(model))
 
         for (pᵢ, nᵢ, Tᵢ, σ²ᵢ) in zip(p, l, T, σ²)
@@ -319,7 +318,6 @@ alg::NLSolversIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     function loss_fn(θ)
         # Reconstruct full model from fittable parameters
         model = from_vec_fittable(prob.IsothermModel, θ, prob.model_template, prob.fittable)
-
         ℓr = zero(eltype(model))
         for (pᵢ, nᵢ, Tᵢ, σ²ᵢ) in zip(p, l, T, σ²)
             n̂ᵢ = loading(model, pᵢ, Tᵢ)
