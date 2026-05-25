@@ -17,7 +17,7 @@ IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, ca
 IsothermFittingProblem{M, TT, typeof(loading_data), DC, L, X, LB, UB, F}(IsothermModel, loading_data, calorimetric_data, loss, x0, lb, ub, fittable, model_template)
 
 # Simplified constructor
-function IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, loss::L = abs2; fittable::Union{Nothing,AbstractVector{Bool}}=nothing) where {M <: IsothermModel, TT, L}
+function IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTData{TT}, loss::L = abs2; fittable = nothing) where {M <: IsothermModel, TT, L}
     model_template = x0_guess_fit(IsothermModel, loading_data)
 
     # Default: all parameters are fittable
@@ -29,9 +29,8 @@ function IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTDat
     full_ub = isotherm_upper_bound(eltype(loading_data), IsothermModel)
 
     # Get bounds for only fittable parameters
-    fittable_indices = findall(fittable_bool)
-    lb = [full_lb[i] for i in fittable_indices]
-    ub = [full_ub[i] for i in fittable_indices]
+    lb = full_lb[fittable_bool]
+    ub = full_ub[fittable_bool]
 
     return IsothermFittingProblem(IsothermModel, loading_data, nothing, loss, x0, lb, ub, fittable_bool, model_template)
 end
@@ -399,9 +398,9 @@ loss, model = fit(Freundlich, data, solver=NLSolversIsothermFittingSolver())
 ```
 """
 function fit(::Type{M}, data::AdsIsoTData;
-             fittable::Union{Nothing,AbstractVector{Bool}}=nothing,
-             loss=abs2,
-             solver=DEIsothermFittingSolver()) where M <: IsothermModel
+             fittable = nothing,
+             loss = abs2,
+             solver = DEIsothermFittingSolver()) where M <: IsothermModel
 
     prob = IsothermFittingProblem(M, data, loss; fittable=fittable)
     return fit(prob, solver)
