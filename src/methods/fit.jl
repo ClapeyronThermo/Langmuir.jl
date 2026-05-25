@@ -21,24 +21,19 @@ function IsothermFittingProblem(IsothermModel::Type{M}, loading_data::AdsIsoTDat
     model_template = x0_guess_fit(IsothermModel, loading_data)
 
     # Default: all parameters are fittable
-    if fittable === nothing
-        fittable = trues(model_length(IsothermModel))
-    end
-
-    # Validate fittable length
-    length(fittable) == model_length(IsothermModel) || throw(ArgumentError("fittable vector length must match number of model parameters"))
+    fittable_bool = init_fittable_bool(IsothermModel,fittable)
 
     # Extract fittable parameters
-    x0 = to_vec_fittable(model_template, fittable)
+    x0 = to_vec_fittable(model_template, fittable_bool)
     full_lb = isotherm_lower_bound(eltype(loading_data), IsothermModel)
     full_ub = isotherm_upper_bound(eltype(loading_data), IsothermModel)
 
     # Get bounds for only fittable parameters
-    fittable_indices = findall(fittable)
+    fittable_indices = findall(fittable_bool)
     lb = [full_lb[i] for i in fittable_indices]
     ub = [full_ub[i] for i in fittable_indices]
 
-    return IsothermFittingProblem(IsothermModel, loading_data, nothing, loss, x0, lb, ub, fittable, model_template)
+    return IsothermFittingProblem(IsothermModel, loading_data, nothing, loss, x0, lb, ub, fittable_bool, model_template)
 end
 
 
@@ -214,6 +209,33 @@ function constrain(_ȳ,_lb,_ub,logspace = true)
     isinf(lb) && isinf(ub) && (return ȳ)
     x = auto_interp_inv(ȳ,-Inf,Inf,logspace)
     return auto_interp_eval(x,lb,ub,logspace)
+end
+
+function eval_loss(prob::IsothermFittingProblem,θ)
+    p = pressure(Ðₗ)
+    l = loading(Ðₗ)
+    T = temperature(Ðₗ)
+    σ² = variance(Ðₗ)
+    _0 = zero(Base.promote_eltype(p,l,T,σ²))
+    _1 = one(_0)
+    θ = copy(θ)
+    _θ .= auto_interp_eval.(θ,lb,ub,is_logspace)
+
+    # Reconstruct full model from fittable parameters
+    model = from_vec_fittable(prob.IsothermModel, _θ, prob.model_template, prob.fittable)
+
+    ℓr = zero(eltype(model))
+
+    for (pᵢ, nᵢ, Tᵢ, σ²ᵢ) in zip(p, l, T, σ²)
+        n̂ᵢ = loading(model, pᵢ, Tᵢ) #Predicted loading
+        ℓrᵢ = iszero(σ²ᵢ) ? prob.loss(nᵢ - n̂ᵢ) : prob.loss(nᵢ - n̂ᵢ)/σ²ᵢ #if zero variance, just use the loss
+        #!isfinite(ℓrᵢ) && (ℓrᵢ += 1e100) #if not finite, add a big number
+        #n̂ᵢ < 0 && (ℓrᵢ *= exp(100*abs(n̂ᵢ))) #if loading is negative, add a penalty multiplier, proportional to the negativity
+        #n̂ᵢ > n_max && (ℓrᵢ *= exp(abs(n_max - n̂ᵢ))) #if loading is greater than maximum loading, also add penalty
+        ℓr += ℓrᵢ
+    end
+
+    return ℓr
 end
 
 function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},

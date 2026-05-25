@@ -111,24 +111,67 @@ The `fittable` vector indicates which parameters are fittable (true) vs fixed (f
 """
 function from_vec_fittable(::Type{M}, x_fit::AbstractVector{TF}, model_template::M, fittable::AbstractVector{Bool}) where {M <: IsothermModel,TF}
     length(fittable) == model_length(M) || throw(ArgumentError("fittable vector length must match number of model parameters"))
-    fittable_indices = findall(fittable)
-    fixed_indices = findall(.!fittable)
-    
+
     # Create full parameter vector with eltype that can handle dual numbers
     T_full = Base.promote_eltype(x_fit, model_template)
     x_full = Vector{T_full}(undef, model_length(M))
-    
-    # Fill in fittable parameters
-    for (i, idx) in enumerate(fittable_indices)
-        x_full[idx] = x_fit[i]
+
+    k = 0
+    for (i,is_fittable) in enumerate(fittable)
+        if is_fittable
+            k += 1
+            x_full[i] = x_fit[k]
+        else
+            x_full[i] = getfield(model_template, i)
+        end
     end
-    
-    # Fill in fixed parameters from template
-    for idx in fixed_indices
-        x_full[idx] = getfield(model_template, idx)
-    end
-    
+
     return from_vec(M, x_full, false)
+end
+
+function init_fittable_bool(model,fittable::AbstractVector{Bool})
+    length(fittable) == model_length(model) || throw(ArgumentError("fittable vector length must match number of model parameters"))
+    return copy(fittable)
+end
+
+function init_fittable_bool(model,::Nothing)
+    return fill(true,model_length(model))
+end
+
+function init_fittable_bool(model,x::AbstractVector{T}) where T <: AbstractString
+    if model isa IsothermModel
+        names = fieldnames(typeof(model))
+    else
+        names = fieldnames(model)
+    end
+    @assert allunique(x)
+    N = model_length(model)
+    fittable = fill(false,N)
+    for i in 1:N
+        name = String(names[i])
+        if name in names
+            fittable[i] = true
+        end
+    end
+    return fittable
+end
+
+function init_fittable_bool(model,x::AbstractVector{T}) where T <: Symbol
+    if model isa IsothermModel
+        names = fieldnames(typeof(model))
+    else
+        names = fieldnames(model)
+    end
+    @assert allunique(x)
+    N = model_length(model)
+    fittable = fill(false,N)
+    for i in 1:N
+        name = names[i]
+        if name in names
+            fittable[i] = true
+        end
+    end
+    return fittable
 end
 
 Base.zero(model::M) where M <: IsothermModel = Base.zero(M)
@@ -166,16 +209,16 @@ end
 
 #Get p, l for the highest temperature in the data set - used for xO_guess_fit
 function Tmax_data(data)
-    
+
     l, p, t = loading(data), pressure(data), temperature(data)
-    
+
     is_tmax = findall(t .== findmax(t)[1])
 
     l_min, p_min = l[is_tmax], p[is_tmax]
 
     return l_min, p_min
 
-end 
+end
 
 
 function isotherm_descriptions(::Type{T}) where T <: IsothermModel
@@ -277,7 +320,7 @@ macro with_metadata(_struct_def)
             elseif arg_i.head == :(::)
                 tuple_expr = Any[arg_i,:nothing,""] #no metadata provided
             end
-            
+
             # Parse bounds (index 2)
             if length(tuple_expr) > 1
                 bounds = tuple_expr[2] #bounds provided
@@ -302,7 +345,7 @@ macro with_metadata(_struct_def)
                 push!(_lb,-Inf)
                 push!(_ub,Inf)
             end
-            
+
             push!(descriptions,description_i)
             struct_fields.args[i] = tuple_expr[1]
         end
@@ -314,7 +357,7 @@ macro with_metadata(_struct_def)
     lb_tuple = Expr(:tuple,float_lb...)
     ub_tuple = Expr(:tuple,float_ub...)
     descriptions_tuple = Expr(:tuple,descriptions...)
-    
+
     quote
         Base.@__doc__ $struct_def
 
