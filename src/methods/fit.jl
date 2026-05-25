@@ -314,7 +314,8 @@ alg::NLSolversIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
         maxiter = alg.maxiters,
         f_abstol = alg.ftol,
         x_abstol = alg.xtol,
-        show_trace = alg.verbose
+        show_trace = alg.verbose,
+        f_limit = 0.0
     )
 
     # Create objective with automatic differentiation
