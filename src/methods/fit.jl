@@ -278,12 +278,6 @@ alg::DEIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
     return loss_opt_M, from_vec_fittable(prob.IsothermModel, θ_best, prob.model_template, prob.fittable)
 end
 
-function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
-alg::NewtonIsothermFittingSolver) where {M, L, DL, DC, X, LB, UB, F}
-
-
-end
-
 const NLSOLVERS_BOUNDED_METHODS = Union{NLSolvers.ActiveBox,NLSolvers.ParticleSwarm,NLSolvers.PureRandomSearch}
 
 function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
