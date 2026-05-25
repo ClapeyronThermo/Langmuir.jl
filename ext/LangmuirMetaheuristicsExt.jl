@@ -5,8 +5,8 @@ using Langmuir.CommonSolve
 
 function CommonSolve.solve(prob::IsothermFittingProblem{M, L, DL, DC, X, LB, UB, F},
 alg::Metaheuristics.AbstractAlgorithm) where {M, L, DL, DC, X, LB, UB, F}
-    
-    _0 = zero(Base.promote_eltype(pressure(Ðₗ),loading(Ðₗ),temperature(Ðₗ),variance(Ðₗ),prob.x0,prob.lb,prob.ub))
+    data = prob.LoadingData
+    _0 = zero(Base.promote_eltype(pressure(data),loading(data),temperature(data),variance(data),prob.x0,prob.lb,prob.ub))
     _1 = one(_0)
     #n_max,i_max = findmax(l)
     #n_max += 3*sqrt(σ²[i_max]) #maximum bound
