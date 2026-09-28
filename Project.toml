@@ -42,7 +42,7 @@ Integrals = "4, 5"
 LinearAlgebra = "1"
 LogExpFunctions = "^0.3.24, 1"
 Metaheuristics = "3"
-NLSolvers = "0.5"
+NLSolvers = "0.5, 0.6"
 PolyLog = "^2.5.0"
 Polynomials = "4"
 PrettyTables = "2, 3"
@@ -53,9 +53,9 @@ Tables = "^1.8"
 julia = "1.10"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Clapeyron = "7c7805af-46cc-48c9-995b-ed0ed2dc909a"
 Metaheuristics = "bcdb8e00-2c21-11e9-3065-2b553b22f898"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Clapeyron", "Metaheuristics"]
